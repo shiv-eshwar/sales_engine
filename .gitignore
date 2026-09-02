@@ -1,0 +1,31 @@
+# Dependencies and build
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vite/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*service-account*.json
+google-credentials.json
+
+# Local data (never commit call records)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+data/
+recordings/
+transcripts/
+
+# OS and editor
+.DS_Store
+.idea/
+.vscode/
+*.log

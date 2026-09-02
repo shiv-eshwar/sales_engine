@@ -1,0 +1,23 @@
+---
+description: Always read and update engineering_progress.md before and after each build phase.
+alwaysApply: true
+---
+
+# Engineering progress protocol
+
+`engineering_progress.md` is the living build tracker. `whatthis.md` is the product spec.
+
+Before planning or starting any phase, slice, or iteration:
+
+1. Read `engineering_progress.md` in full.
+2. Read the matching sections of `whatthis.md` for the current slice.
+3. Do not start a later slice while the current slice’s core acceptance checks are failing.
+4. Do not implement `whatthis.md` §4 non-goals.
+
+After every build or iteration:
+
+1. Mark finished tasks `[x]` in `engineering_progress.md`.
+2. Update the current-phase table, slice status, and holdout/user-input tables.
+3. Append a row to the iteration log.
+
+If a task is blocked, set status to `blocked` and record what is missing. Do not mark work complete without the proof listed in the phase overview table.
