@@ -2,7 +2,7 @@
 
 Last automated run: 2026-09-02.
 
-**Commit under test:** working tree on top of `83f30081cc804c80a15f45aeb5833b7417c86366` (`Add Slice 4 live coaching and Slice 5 post-call CRM review.`). Slice 6 files were uncommitted at documentation time. Re-run this file’s commands after the Slice 6 commit and replace the SHA.
+**Commit under test:** `e03c2c8` (`Add Slice 6 verification: holdouts, Playwright E2E, drain, and docs.`).
 
 No real lead PII, recordings, or provider credentials are copied here.
 
@@ -14,7 +14,10 @@ No real lead PII, recordings, or provider credentials are copied here.
 | `npm test` (Vitest) | 18 files, **74 passed** |
 | `npx playwright install chromium` (once per machine) | Installed |
 | `npm run test:e2e` | Vite `VITE_E2E=true` build + Playwright **3 passed** (login→approve, Deepgram drop, invalid Sheet schema) |
-| Live PSTN / Google Sheet / paid LLM smoke (`whatthis.md` §19) | **Not run** — blocked on credentials |
+| `docker build -t sales-engine .` | Pass (image `sales-engine:latest`) |
+| `NODE_ENV=production` `GET /health/live` | `{"status":"ok"}` |
+| `NODE_ENV=production` `GET /health/ready` | `status: ok`; Sheet memory schema valid; **Twilio / Deepgram / LLM not configured** |
+| Live PSTN / Google Sheet / paid LLM smoke (`whatthis.md` §19) | **Not run** — `.env` has no Twilio, Deepgram, LLM, or Google Sheets credentials |
 
 Default `npm test` does not start a browser and does not call paid APIs. Fakes cover Twilio webhooks/media, Deepgram, LLM, and an in-memory Sheet.
 
@@ -119,4 +122,4 @@ If labels are reversed, swap the two env vars and update this table.
 - Default audio-track mapping is assumed until §19 is executed.
 - Playwright does not exercise WebRTC or a real microphone.
 - SIGTERM drain is covered by `tests/integration/drain.test.ts` (503 new sessions; active session not hung up). Bounded drain timeout defaults to 30s (`DRAIN_TIMEOUT_MS`).
-- Docker image was not built in this pass; `Dockerfile` and README `docker run` are the recipe.
+- Docker image `sales-engine:latest` built locally on 2026-09-02 (`docker build -t sales-engine .`).
