@@ -60,6 +60,8 @@ describe("Twilio call sessions and webhooks", () => {
     expect(twiml.body).toContain("+14155550100");
     expect(twiml.body).not.toContain("+19995550199");
     expect(twiml.body).toContain("<Dial");
+    expect(twiml.body).toContain("<Stream");
+    expect(twiml.body).toContain("record-from-answer-dual");
   });
 
   it("rejects unsigned webhooks", async () => {

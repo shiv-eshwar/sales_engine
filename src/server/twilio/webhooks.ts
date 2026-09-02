@@ -4,6 +4,7 @@ import {
   applyTransportStatus,
   attachChildSid,
   attachParentSid,
+  attachRecordingSid,
   findSessionByChildSid,
   findSessionByParentSid,
   getSession,
@@ -56,7 +57,7 @@ export async function registerTwilioWebhooks(app: FastifyInstance, ctx: AppConte
       attachParentSid(ctx.db, session.id, params.CallSid);
     }
     applyTransportStatus(ctx.db, session.id, "queued");
-    return xml(reply, outboundDialTwiml(ctx.env, snapshot.phoneE164));
+    return xml(reply, outboundDialTwiml(ctx, session.id, snapshot.phoneE164));
   });
 
   app.post("/twilio/voice/status", async (request, reply) => {
@@ -72,6 +73,14 @@ export async function registerTwilioWebhooks(app: FastifyInstance, ctx: AppConte
       return reply.code(403).send({ error: "Invalid Twilio signature" });
     }
     applyWebhook(ctx, formParams(request.body), "child");
+    return reply.code(204).send();
+  });
+
+  app.post("/twilio/recording/status", async (request, reply) => {
+    if (!requireSignature(ctx, request, "/twilio/recording/status")) {
+      return reply.code(403).send({ error: "Invalid Twilio signature" });
+    }
+    applyRecordingWebhook(ctx, formParams(request.body));
     return reply.code(204).send();
   });
 }
@@ -124,5 +133,39 @@ function applyWebhook(
     }
   });
 
+  run();
+}
+
+function applyRecordingWebhook(ctx: AppContext, params: Record<string, string>): void {
+  const recordingSid = params.RecordingSid;
+  const status = params.RecordingStatus || params.RecordingCallStatus || "unknown";
+  if (!recordingSid) {
+    return;
+  }
+  const key = webhookIdempotencyKey(recordingSid, status);
+  const run = ctx.db.transaction(() => {
+    const first = recordWebhookOnce(ctx.db, {
+      idempotencyKey: key,
+      provider: "twilio",
+      eventType: `recording:${status}`,
+      payloadHash: hashPayload({
+        RecordingSid: recordingSid,
+        RecordingStatus: status,
+        CallSid: params.CallSid ?? ""
+      }),
+      result: recordingSid
+    });
+    if (!first) {
+      return;
+    }
+    const session =
+      (params.CallSid ? findSessionByParentSid(ctx.db, params.CallSid) : null) ??
+      (params.CallSid ? findSessionByChildSid(ctx.db, params.CallSid) : null) ??
+      (params.sessionId ? getSession(ctx.db, params.sessionId) : null);
+    if (!session) {
+      return;
+    }
+    attachRecordingSid(ctx.db, session.id, recordingSid);
+  });
   run();
 }

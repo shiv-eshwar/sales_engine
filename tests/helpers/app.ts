@@ -1,5 +1,6 @@
 import { hashPassword } from "../../src/server/auth/password.js";
-import { buildApp } from "../../src/server/index.js";
+import { buildApp, type BuildAppOptions } from "../../src/server/index.js";
+import type { AppContext } from "../../src/server/context.js";
 import type { Env } from "../../src/server/env.js";
 
 export const TEST_PASSWORD = "test-password";
@@ -27,7 +28,12 @@ export async function makeTestEnv(overrides: Partial<Env> = {}): Promise<Env> {
     TWILIO_ALLOWED_COUNTRIES: "US",
     RECORDING_NOTICE: "Test recording notice. Not legal advice.",
     DEEPGRAM_API_KEY: undefined,
-    DEEPGRAM_MODEL: undefined,
+    DEEPGRAM_MODEL: "nova-3",
+    DEEPGRAM_LANGUAGE: "en",
+    DEEPGRAM_RECONNECT_DELAY_MS: 20,
+    DEEPGRAM_FLUSH_MS: 50,
+    TWILIO_TRACK_CALLER: "inbound",
+    TWILIO_TRACK_CONTACT: "outbound",
     LLM_BASE_URL: undefined,
     LLM_API_KEY: undefined,
     LLM_MODEL: undefined,
@@ -35,10 +41,14 @@ export async function makeTestEnv(overrides: Partial<Env> = {}): Promise<Env> {
   };
 }
 
-export async function startTestApp(overrides: Partial<Env> = {}) {
+export async function startTestApp(overrides: Partial<Env> = {}, options: BuildAppOptions = {}) {
   const env = await makeTestEnv(overrides);
-  const app = await buildApp(env);
+  const app = await buildApp(env, options);
   return { app, env };
+}
+
+export function getAppContext(app: Awaited<ReturnType<typeof buildApp>>): AppContext {
+  return (app as typeof app & { appContext: AppContext }).appContext;
 }
 
 export async function loginCookie(app: Awaited<ReturnType<typeof buildApp>>): Promise<string> {
@@ -53,4 +63,14 @@ export async function loginCookie(app: Awaited<ReturnType<typeof buildApp>>): Pr
     throw new Error(`Login failed: ${response.statusCode} ${response.body}`);
   }
   return raw.split(";")[0] ?? raw;
+}
+
+export function extractStreamToken(twiml: string): string {
+  const match =
+    twiml.match(/name="streamToken" value="([^"]+)"/) ?? twiml.match(/name="streamToken">([^<]+)</);
+  const token = match?.[1];
+  if (!token) {
+    throw new Error(`streamToken missing from TwiML: ${twiml}`);
+  }
+  return token;
 }

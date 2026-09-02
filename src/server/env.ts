@@ -26,7 +26,13 @@ const envSchema = z.object({
       "Recording and transcription may be active. Give any required notice before substantive conversation. This app does not guarantee legal compliance."
     ),
   DEEPGRAM_API_KEY: z.string().optional(),
-  DEEPGRAM_MODEL: z.string().optional(),
+  DEEPGRAM_MODEL: z.string().default("nova-3"),
+  DEEPGRAM_LANGUAGE: z.string().default("en"),
+  DEEPGRAM_RECONNECT_DELAY_MS: z.coerce.number().int().positive().default(1000),
+  DEEPGRAM_FLUSH_MS: z.coerce.number().int().positive().default(5000),
+  // inbound → caller, outbound → contact until live smoke confirms the mapping.
+  TWILIO_TRACK_CALLER: z.string().default("inbound"),
+  TWILIO_TRACK_CONTACT: z.string().default("outbound"),
   LLM_BASE_URL: z.string().optional(),
   LLM_API_KEY: z.string().optional(),
   LLM_MODEL: z.string().optional()

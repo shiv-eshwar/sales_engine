@@ -1,16 +1,18 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../context.js";
-import { requireSession } from "../auth/routes.js";
+import { isAuthenticated, requireSession } from "../auth/routes.js";
 import {
   ActiveCallExistsError,
   applyTransportStatus,
   createCallSession,
   findActiveSession,
   getSession,
-  publicCallSession
+  publicCallSession,
+  type CallSessionRow
 } from "../calls/ledger.js";
 import { isTerminalStatus } from "../calls/state.js";
+import { listUtterances } from "../transcript/utterances.js";
 import { twilioVoiceConfigured } from "../twilio/config.js";
 import { createVoiceAccessToken } from "../twilio/token.js";
 
@@ -18,6 +20,14 @@ const createSessionSchema = z.object({
   leadId: z.string().min(1),
   campaignId: z.string().min(1)
 });
+
+function serializeCall(ctx: AppContext, row: CallSessionRow) {
+  return {
+    ...publicCallSession(row),
+    transcriptionHealth: ctx.mediaHub.getHealth(row.id),
+    utterances: listUtterances(ctx.db, row.id)
+  };
+}
 
 export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const auth = async (request: import("fastify").FastifyRequest, reply: import("fastify").FastifyReply) => {
@@ -64,7 +74,7 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
           role: lead.role
         }
       });
-      return reply.code(201).send(publicCallSession(session));
+      return reply.code(201).send(serializeCall(ctx, session));
     } catch (error) {
       if (error instanceof ActiveCallExistsError) {
         return reply.code(409).send({ error: error.message, code: "active_call", sessionId: error.sessionId });
@@ -75,7 +85,7 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
 
   app.get("/api/calls/active", { preHandler: auth }, async () => {
     const row = findActiveSession(ctx.db);
-    return { call: row ? publicCallSession(row) : null };
+    return { call: row ? serializeCall(ctx, row) : null };
   });
 
   app.get("/api/calls/:id", { preHandler: auth }, async (request, reply) => {
@@ -84,7 +94,32 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
     if (!row) {
       return reply.code(404).send({ error: "Call session not found" });
     }
-    return publicCallSession(row);
+    return serializeCall(ctx, row);
+  });
+
+  app.get("/api/calls/:id/events", { websocket: true }, (socket, request) => {
+    if (!isAuthenticated(ctx, request)) {
+      socket.close(4401, "Authentication required");
+      return;
+    }
+    const { id } = request.params as { id: string };
+    const row = getSession(ctx.db, id);
+    if (!row) {
+      socket.close(4404, "Call session not found");
+      return;
+    }
+    socket.send(JSON.stringify({ type: "health", status: ctx.mediaHub.getHealth(id) }));
+    for (const utterance of listUtterances(ctx.db, id)) {
+      socket.send(JSON.stringify({ type: "final", utterance }));
+    }
+    const unsubscribe = ctx.liveEvents.subscribe(id, (event) => {
+      if (socket.readyState === 1) {
+        socket.send(JSON.stringify(event));
+      }
+    });
+    socket.on("close", () => {
+      unsubscribe();
+    });
   });
 
   app.post("/api/calls/:id/cancel", { preHandler: auth }, async (request, reply) => {
@@ -97,6 +132,6 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
       applyTransportStatus(ctx.db, id, "canceled");
     }
     const updated = getSession(ctx.db, id);
-    return updated ? publicCallSession(updated) : reply.code(404).send({ error: "Call session not found" });
+    return updated ? serializeCall(ctx, updated) : reply.code(404).send({ error: "Call session not found" });
   });
 }

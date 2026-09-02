@@ -1,4 +1,4 @@
-import type { PublicLead } from "../../shared/contracts";
+import type { PublicLead, PublicUtterance, TranscriptionHealth } from "../../shared/contracts";
 
 export type CallSessionView = {
   id: string;
@@ -11,9 +11,15 @@ export type CallSessionView = {
   startedAt: string | null;
   connectedAt: string | null;
   endedAt: string | null;
+  recordingSid: string | null;
+  transcriptComplete: boolean | null;
+  transcriptionHealth: TranscriptionHealth;
+  utterances: PublicUtterance[];
 };
 
 export type DeviceStatus = "offline" | "registering" | "registered" | "error";
+
+export type { PublicUtterance, TranscriptionHealth };
 
 async function parseError(response: Response): Promise<string> {
   try {
@@ -66,6 +72,11 @@ export async function cancelCallSession(id: string): Promise<CallSessionView> {
     throw new Error(await parseError(response));
   }
   return (await response.json()) as CallSessionView;
+}
+
+export function callEventsUrl(sessionId: string): string {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}/api/calls/${sessionId}/events`;
 }
 
 export function callDisabledReason(input: {

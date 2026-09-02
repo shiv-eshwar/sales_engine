@@ -139,6 +139,26 @@ export function attachChildSid(db: Database.Database, sessionId: string, sid: st
   return getSession(db, sessionId);
 }
 
+export function attachRecordingSid(
+  db: Database.Database,
+  sessionId: string,
+  recordingSid: string
+): CallSessionRow | null {
+  const session = getSession(db, sessionId);
+  if (!session) {
+    return null;
+  }
+  if (session.recording_sid) {
+    return session;
+  }
+  db.prepare("UPDATE call_sessions SET recording_sid = ?, updated_at = ? WHERE id = ?").run(
+    recordingSid,
+    nowIso(),
+    sessionId
+  );
+  return getSession(db, sessionId);
+}
+
 export function applyTransportStatus(
   db: Database.Database,
   sessionId: string,
@@ -220,6 +240,8 @@ export function publicCallSession(row: CallSessionRow) {
     contactName: snapshot.fullName,
     startedAt: row.started_at,
     connectedAt: row.connected_at,
-    endedAt: row.ended_at
+    endedAt: row.ended_at,
+    recordingSid: row.recording_sid,
+    transcriptComplete: row.transcript_complete === null ? null : Boolean(row.transcript_complete)
   };
 }

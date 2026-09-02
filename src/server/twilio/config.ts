@@ -17,3 +17,7 @@ export function publicUrl(env: Env, path: string): string {
   const base = env.APP_BASE_URL.replace(/\/$/, "");
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
+
+export function publicWsUrl(env: Env, path: string): string {
+  return publicUrl(env, path).replace(/^https:/i, "wss:").replace(/^http:/i, "ws:");
+}

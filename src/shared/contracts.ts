@@ -67,3 +67,22 @@ export type HealthReadyResponse = {
     }
   >;
 };
+
+export type TranscriptionHealth = "ok" | "interrupted" | "unavailable";
+
+export type PublicUtterance = {
+  id: string;
+  sessionId: string;
+  speaker: "caller" | "contact";
+  text: string;
+  startedAtMs: number;
+  endedAtMs: number;
+  confidence: number | null;
+  isFinal: true;
+  sequence: number;
+};
+
+export type CallLiveEvent =
+  | { type: "interim"; speaker: "caller" | "contact"; text: string }
+  | { type: "final"; utterance: PublicUtterance }
+  | { type: "health"; status: TranscriptionHealth };

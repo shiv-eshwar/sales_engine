@@ -1,24 +1,35 @@
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import fastifyStatic from "@fastify/static";
+import websocket from "@fastify/websocket";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadCampaigns } from "./config/campaigns.js";
 import { loadPlaybook } from "./config/playbook.js";
 import { loadSheetsConfig } from "./config/sheets.js";
 import { createOperatorState, type AppContext } from "./context.js";
-import { isProduction, loadEnv } from "./env.js";
+import type { DeepgramLiveFactory } from "./deepgram/types.js";
+import { createDeepgramFactory } from "./deepgram/live.js";
+import { isProduction, loadEnv, type Env } from "./env.js";
 import { migrate, openDatabase } from "./db/index.js";
 import { registerAuth } from "./auth/routes.js";
 import { registerHealth } from "./api/health.js";
 import { registerLeads } from "./api/leads.js";
 import { registerCallApi } from "./api/calls.js";
 import { registerTwilioWebhooks } from "./twilio/webhooks.js";
+import { registerTwilioMedia } from "./twilio/media.js";
+import { LiveEventBus } from "./transcript/events.js";
+import { MediaHub } from "./twilio/mediaHub.js";
+import { StreamTokenStore } from "./twilio/streamTokens.js";
 import formbody from "@fastify/formbody";
 import { SheetAdapter } from "./sheets/adapter.js";
 import { allowedCountriesFromEnv, createSheetStore } from "./sheets/createStore.js";
 
-export async function buildApp(env = loadEnv()) {
+export type BuildAppOptions = {
+  deepgramFactory?: DeepgramLiveFactory;
+};
+
+export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = {}) {
   const app = Fastify({
     logger:
       env.NODE_ENV === "test"
@@ -43,6 +54,7 @@ export async function buildApp(env = loadEnv()) {
 
   await app.register(cookie);
   await app.register(formbody);
+  await app.register(websocket);
 
   const dbPath = env.DATABASE_PATH === ":memory:" ? ":memory:" : resolve(env.DATABASE_PATH);
   const db = openDatabase(dbPath);
@@ -84,6 +96,11 @@ export async function buildApp(env = loadEnv()) {
     }
   }
 
+  const streamTokens = new StreamTokenStore();
+  const liveEvents = new LiveEventBus();
+  const deepgramFactory = options.deepgramFactory ?? createDeepgramFactory(env);
+  const mediaHub = new MediaHub({ env, db, streamTokens, liveEvents, deepgramFactory });
+
   const ctx: AppContext = {
     env,
     db,
@@ -93,14 +110,21 @@ export async function buildApp(env = loadEnv()) {
     sheetsConfigError,
     adapter,
     sheetMessage,
-    operator: createOperatorState()
+    operator: createOperatorState(),
+    streamTokens,
+    liveEvents,
+    deepgramFactory,
+    mediaHub
   };
+
+  app.decorate("appContext", ctx);
 
   await registerHealth(app, ctx);
   await registerAuth(app, ctx);
   await registerLeads(app, ctx);
   await registerCallApi(app, ctx);
   await registerTwilioWebhooks(app, ctx);
+  await registerTwilioMedia(app, ctx);
 
   const clientDir = resolve("dist/client");
   if (isProduction(env) && existsSync(clientDir)) {

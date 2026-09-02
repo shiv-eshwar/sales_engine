@@ -56,6 +56,13 @@ export async function registerHealth(app: FastifyInstance, ctx: AppContext): Pro
         : "Twilio not configured"
     };
 
+    checks.deepgram = {
+      ok: true,
+      message: ctx.env.DEEPGRAM_API_KEY
+        ? "Deepgram API key is set"
+        : "Deepgram not configured; transcription will be interrupted"
+    };
+
     const ready = Object.values(checks).every((check) => check.ok);
     const body: HealthReadyResponse = { status: ready ? "ok" : "not_ready", checks };
     return reply.code(ready ? 200 : 503).send(body);

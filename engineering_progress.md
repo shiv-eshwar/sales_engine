@@ -27,11 +27,11 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 
 | Field | Value |
 |---|---|
-| Phase | Slice 2 — Reliable Twilio call |
-| Slice | 2 (code complete; live PSTN gated) |
+| Phase | Slice 3 — Recording and transcription |
+| Slice | 3 (code complete; live speaker-map gated) |
 | Status | `blocked` |
-| Next action | Configure Twilio Voice, point `APP_BASE_URL` at a public HTTPS tunnel, call a user-owned number. Do not start Slice 3 until that works. |
-| Blocked on | Twilio credentials, TwiML app, caller ID, public webhook URL, and a user-owned test number. |
+| Next action | After a live PSTN call works, confirm inbound/outbound track mapping and Deepgram transcription. Do not start Slice 4 until that works. |
+| Blocked on | Twilio credentials (same as Slice 2), `DEEPGRAM_API_KEY`, public `APP_BASE_URL`, and a user-owned test number. |
 
 ---
 
@@ -42,7 +42,7 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 | 0 | Repo bootstrap (this tracker + spec) | `completed` | `whatthis.md` and `engineering_progress.md` exist in the repo |
 | 1 | CRM and preflight | `completed` | Login, Sheet adapter, eligible queue, ready-state UI, Sheet unit tests |
 | 2 | Reliable Twilio call | `completed` | Fake-webhook tests pass; live controlled call still required before Slice 3 |
-| 3 | Recording and transcription | `not_started` | Dual Deepgram streams, live transcript, Recording SID, interruption UI |
+| 3 | Recording and transcription | `completed` | Dual Deepgram streams, live transcript, Recording SID, interruption UI (speaker map unconfirmed until live smoke) |
 | 4 | Live coach | `not_started` | One cue card, talk ratio, qualification indicators, stale-response handling |
 | 5 | Post-call CRM update | `not_started` | Review diff, approve & next, verified batch write, retry ledger |
 | 6 | Verification and hardening | `not_started` | Holdouts H1–H14, Playwright, Docker, live smoke test, README + VERIFICATION.md |
@@ -151,22 +151,26 @@ Source: `whatthis.md` §11, §15B (transport controls), §16, §20 Slice 2.
 
 Source: `whatthis.md` §12, §15B (transcript), §20 Slice 3.
 
-- [ ] `WS /twilio/media` authenticated with a short-lived unguessable stream token
-- [ ] Handle Twilio `start`, `media`, `mark`, `stop`; preserve sequence numbers and track labels
-- [ ] One Deepgram stream per speaker track (`mulaw`, 8 kHz, interim, endpointing)
-- [ ] Map tracks to `caller` and `contact` (confirm in live smoke test; do not assume)
-- [ ] Persist finalized utterances only; interim is ephemeral and not evidence
-- [ ] Dual-channel recording from answer; store Recording SID, never a credentialed media URL
-- [ ] Deepgram reconnect: one immediate + one delayed while call is active
-- [ ] Transcript gaps marked; call continues if transcription fails
-- [ ] UI: live transcript, transcription health, `Transcription interrupted`
-- [ ] On hangup, flush streams up to 5 seconds; `transcript_complete: false` if gaps remain
+**Gate:** live speaker-to-track mapping is unconfirmed until a controlled PSTN smoke test. Default is `inbound → caller`, `outbound → contact`.
+
+- [x] `WS /twilio/media` authenticated with a short-lived unguessable stream token
+- [x] Handle Twilio `start`, `media`, `mark`, `stop`; preserve sequence numbers and track labels
+- [x] One Deepgram stream per speaker track (`mulaw`, 8 kHz, interim, endpointing)
+- [x] Map tracks to `caller` and `contact` (confirm in live smoke test; do not assume)
+- [x] Persist finalized utterances only; interim is ephemeral and not evidence
+- [x] Dual-channel recording from answer; store Recording SID, never a credentialed media URL
+- [x] Deepgram reconnect: one immediate + one delayed while call is active
+- [x] Transcript gaps marked; call continues if transcription fails
+- [x] UI: live transcript, transcription health, `Transcription interrupted`
+- [x] On hangup, flush streams up to 5 seconds; `transcript_complete: false` if gaps remain
 
 ### Slice 3 tests
 
-- [ ] Both audio tracks produce correctly attributed final utterances
-- [ ] Interim text never becomes qualification evidence
-- [ ] Transcription outage shows degraded state; call controls still work
+- [x] Both audio tracks produce correctly attributed final utterances
+- [x] Interim text never becomes qualification evidence
+- [x] Transcription outage shows degraded state; call controls still work
+
+Live speaker-map confirmation is **not** required to merge Slice 3 code.
 
 ---
 
@@ -311,3 +315,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-02 | Added `.gitignore`, created private GitHub repo `shiv-eshwar/sales_engine`, and pushed the initial commit. | Slice 0 complete; Slice 1 is next |
 | 2026-09-02 | Slice 1: TypeScript app, login, SQLite ledger, YAML Sheet adapter with memory fixture, ready-state UI, Vitest 16/16. Call remains disabled. Retry UI for pending writes is Slice 5. | Slice 1 complete; Slice 2 is next |
 | 2026-09-02 | Slice 2: Twilio token, server sessions, signed TwiML/status webhooks, Call/Mute/Hang Up UI. Vitest 26/26. Live PSTN call still needs Twilio credentials. | Slice 2 code complete; live call blocked |
+| 2026-09-02 | Slice 3: dual-track Media Streams, Deepgram STT fakes, Recording SID webhook, live transcript UI. Vitest 36/36. Speaker map unconfirmed until live smoke. | Slice 3 code complete; live transcription blocked |
