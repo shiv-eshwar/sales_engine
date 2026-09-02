@@ -27,11 +27,11 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 
 | Field | Value |
 |---|---|
-| Phase | Slice 1 — CRM and preflight |
-| Slice | 1 (not started) |
+| Phase | Slice 2 — Reliable Twilio call |
+| Slice | 2 (not started) |
 | Status | `not_started` |
-| Next action | Scaffold Slice 1: TypeScript repo, Fastify, SQLite migrations, login, Sheet adapter, ready-state UI. Use example YAML until §23 inputs arrive. |
-| Blocked on | Nothing for scaffolding. Production Sheet mapping waits on `whatthis.md` §23 inputs. |
+| Next action | Token endpoint, Twilio Device, session creation, TwiML, call controls. A controlled real call is the gate before Slice 3. |
+| Blocked on | Twilio credentials and a user-owned test number. Slice 1 scaffolding does not require them. |
 
 ---
 
@@ -40,7 +40,7 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 | ID | Slice | Status | Proof it is done |
 |---|---|---|---|
 | 0 | Repo bootstrap (this tracker + spec) | `completed` | `whatthis.md` and `engineering_progress.md` exist in the repo |
-| 1 | CRM and preflight | `not_started` | Login, Sheet adapter, eligible queue, ready-state UI, Sheet unit tests |
+| 1 | CRM and preflight | `completed` | Login, Sheet adapter, eligible queue, ready-state UI, Sheet unit tests |
 | 2 | Reliable Twilio call | `not_started` | Controlled real call; Call / Mute / Hang Up; idempotent webhooks |
 | 3 | Recording and transcription | `not_started` | Dual Deepgram streams, live transcript, Recording SID, interruption UI |
 | 4 | Live coach | `not_started` | One cue card, talk ratio, qualification indicators, stale-response handling |
@@ -67,53 +67,53 @@ Source: `whatthis.md` §6–8, §15A, §16–17, §20 Slice 1.
 
 ### 1.1 Repository and runtime
 
-- [ ] One TypeScript repo, Node.js LTS, strict mode
-- [ ] React + Vite frontend, Tailwind CSS
-- [ ] Fastify backend serving API, WebSockets, and built assets
-- [ ] Zod, `yaml`, Pino, `better-sqlite3`
-- [ ] `.env.example` with placeholders only
-- [ ] `config/sheets.example.yaml` and campaign/playbook example YAML
-- [ ] SQL migrations directory; WAL mode; migrations run before ready
+- [x] One TypeScript repo, Node.js LTS, strict mode
+- [x] React + Vite frontend, Tailwind CSS
+- [x] Fastify backend serving API and built assets (WebSocket attach is Slice 3)
+- [x] Zod, `yaml`, Pino, `better-sqlite3`
+- [x] `.env.example` with placeholders only
+- [x] `config/sheets.example.yaml` and campaign/playbook example YAML
+- [x] SQL migrations directory; WAL mode; migrations run before ready
 
 ### 1.2 Auth and health
 
-- [ ] Single-user password login (`APP_PASSWORD_HASH`)
-- [ ] Signed HTTP-only Secure SameSite=Lax session cookie
-- [ ] Application API/WebSocket routes require the session
-- [ ] `/health/live` (no external calls)
-- [ ] `/health/ready` checks config, migrations, Sheet schema, provider setup without placing a call
+- [x] Single-user password login (`APP_PASSWORD_HASH`)
+- [x] Signed HTTP-only Secure SameSite=Lax session cookie
+- [x] Application API/WebSocket routes require the session
+- [x] `/health/live` (no external calls)
+- [x] `/health/ready` checks config, migrations, Sheet schema, provider setup without placing a call
 
 ### 1.3 Sheet adapter
 
-- [ ] Load `config/sheets.yaml`; never hard-code column letters
-- [ ] Startup header validation: every configured column exists exactly once
-- [ ] Missing/duplicate headers fail readiness with an actionable error; no Sheet writes
-- [ ] Identity is `lead_id`; blank/duplicate IDs rejected from the queue and reported
-- [ ] Phone normalized to E.164; invalid numbers not dialable
-- [ ] Eligible queue uses `eligible_when`; refresh after approve and on manual refresh
-- [ ] Write path: re-resolve by `lead_id`, match identity + phone snapshot, allowlisted cells only
-- [ ] One `batchUpdate` per approved outcome; formula-injection safe (`=`, `+`, `-`, `@`)
-- [ ] Read-back verification; failed write stored as `pending_retry` with Retry action
-- [ ] Gumloop-owned columns never writable through any application path
-- [ ] Transcripts never written to Sheets
+- [x] Load `config/sheets.yaml`; never hard-code column letters
+- [x] Startup header validation: every configured column exists exactly once
+- [x] Missing/duplicate headers fail readiness with an actionable error; no Sheet writes
+- [x] Identity is `lead_id`; blank/duplicate IDs rejected from the queue and reported
+- [x] Phone normalized to E.164; invalid numbers not dialable
+- [x] Eligible queue uses `eligible_when`; refresh after approve and on manual refresh
+- [x] Write path: re-resolve by `lead_id`, match identity + phone snapshot, allowlisted cells only
+- [x] One `batchUpdate` per approved outcome; formula-injection safe (`=`, `+`, `-`, `@`)
+- [x] Read-back verification; failed write stored as `pending_retry` (Retry button is Slice 5 review UI)
+- [x] Gumloop-owned columns never writable through any application path
+- [x] Transcripts never written to Sheets
 
 ### 1.4 Ready-state UI
 
-- [ ] Campaign selector
-- [ ] Twilio device readiness placeholder (wired in Slice 2)
-- [ ] Sheet connectivity status
-- [ ] Next contact: name, role, company, phone
-- [ ] CRM/enrichment context and campaign objective
-- [ ] Required questions collapsed by default
-- [ ] Call, Skip, Refresh (Call disabled until Slice 2 telephony is ready)
+- [x] Campaign selector
+- [x] Twilio device readiness placeholder (wired in Slice 2)
+- [x] Sheet connectivity status
+- [x] Next contact: name, role, company, phone
+- [x] CRM/enrichment context and campaign objective
+- [x] Required questions collapsed by default
+- [x] Call, Skip, Refresh (Call disabled until Slice 2 telephony is ready)
 
 ### 1.5 Slice 1 tests
 
-- [ ] Header mapping survives reordered columns
-- [ ] Missing and duplicate headers fail preflight without any write
-- [ ] Writable-field validator rejects Gumloop-owned fields
-- [ ] Phone normalization accepts E.164-compatible inputs and rejects invalid numbers
-- [ ] Formula-like Sheet strings written as literal text
+- [x] Header mapping survives reordered columns
+- [x] Missing and duplicate headers fail preflight without any write
+- [x] Writable-field validator rejects Gumloop-owned fields
+- [x] Phone normalization accepts E.164-compatible inputs and rejects invalid numbers
+- [x] Formula-like Sheet strings written as literal text
 
 ---
 
@@ -309,3 +309,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 |---|---|---|
 | 2026-09-02 | Imported spec as `whatthis.md` (renamed from `ai-call-operator-spec.md`). Created this tracker and the always-on Cursor rule to read/update it before each phase. Repo still has no application code. | Slice 0 in progress; Slice 1 is next |
 | 2026-09-02 | Added `.gitignore`, created private GitHub repo `shiv-eshwar/sales_engine`, and pushed the initial commit. | Slice 0 complete; Slice 1 is next |
+| 2026-09-02 | Slice 1: TypeScript app, login, SQLite ledger, YAML Sheet adapter with memory fixture, ready-state UI, Vitest 16/16. Call remains disabled. Retry UI for pending writes is Slice 5. | Slice 1 complete; Slice 2 is next |

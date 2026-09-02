@@ -1,0 +1,56 @@
+id: "lamina-sales"
+name: "Lamina founder sales"
+type: "sales"
+version: 1
+objective: "Qualify the UX verification problem and secure a focused follow-up"
+
+opening_context: |
+  Brief approved context the caller may use.
+
+approved_claims:
+  - id: "claim_1"
+    text: "Exact approved factual claim"
+    evidence: "Internal source or case-study reference"
+
+required_questions:
+  - id: "current_workflow"
+    prompt: "How do you currently verify user-facing behavior?"
+    required: true
+
+forbidden_behaviors:
+  - "invent_case_studies"
+  - "promise_guaranteed_results"
+  - "argue_with_contact"
+
+success_outcomes:
+  - "meeting_booked"
+  - "permission_to_follow_up"
+  - "reference_received"
+  - "callback_later"
+
+terminal_outcomes:
+  - "not_interested"
+  - "disqualified"
+  - "do_not_contact"
+  - "wrong_number"
+
+qualification:
+  criteria:
+    relevant_problem:
+      prompt: "Does the contact have the problem this campaign addresses?"
+      required_for_qualified: true
+    meaningful_cost:
+      prompt: "Does the problem impose meaningful cost, risk, or friction?"
+      required_for_qualified: true
+    influence:
+      prompt: "Can the contact make or influence the next decision?"
+      required_for_qualified: true
+    timing:
+      prompt: "Is there a plausible reason to act in the configured time window?"
+      required_for_qualified: false
+  disqualifiers:
+    - "no_relevant_problem"
+    - "wrong_company_type"
+    - "no_influence_and_no_referral"
+    - "existing_solution_fully_satisfies_need"
+    - "explicit_do_not_contact"

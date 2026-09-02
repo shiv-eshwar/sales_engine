@@ -1,0 +1,56 @@
+id: "lamina-research"
+name: "Lamina market research"
+type: "research"
+version: 1
+objective: "Capture how teams currently verify user-facing behavior, using concrete recent examples and exact language."
+
+opening_context: |
+  This is a research conversation, not a sales pitch unless the contact asks.
+
+approved_claims:
+  - id: "research_purpose"
+    text: "We are gathering evidence about current verification workflows."
+    evidence: "Campaign brief"
+
+required_questions:
+  - id: "recent_example"
+    prompt: "Can you walk me through a recent time something shipped and later broke in the product?"
+    required: true
+  - id: "current_process"
+    prompt: "How do you currently check that the product still works after a change?"
+    required: true
+
+forbidden_behaviors:
+  - "pitch_unless_asked"
+  - "ask_leading_questions"
+  - "invent_case_studies"
+
+success_outcomes:
+  - "permission_to_follow_up"
+  - "reference_received"
+  - "callback_later"
+
+terminal_outcomes:
+  - "not_interested"
+  - "disqualified"
+  - "do_not_contact"
+  - "wrong_number"
+
+qualification:
+  criteria:
+    relevant_problem:
+      prompt: "Does this contact's team ship user-facing software that can regress?"
+      required_for_qualified: true
+    meaningful_cost:
+      prompt: "Can they describe a concrete recent example with enough detail to be useful evidence?"
+      required_for_qualified: true
+    influence:
+      prompt: "Are they close enough to the workflow to describe it accurately?"
+      required_for_qualified: true
+    timing:
+      prompt: "Are they willing to continue the conversation or a follow-up?"
+      required_for_qualified: false
+  disqualifiers:
+    - "no_relevant_problem"
+    - "wrong_company_type"
+    - "explicit_do_not_contact"

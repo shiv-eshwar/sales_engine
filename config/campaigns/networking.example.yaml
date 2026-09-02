@@ -1,0 +1,54 @@
+id: "lamina-networking"
+name: "Lamina founder networking"
+type: "networking"
+version: 1
+objective: "Understand the other person's context, earn useful advice, and leave with an appropriate follow-up or introduction."
+
+opening_context: |
+  This is a relationship conversation. Do not run a sales close.
+
+approved_claims:
+  - id: "who_we_are"
+    text: "I am a founder working on a verification workflow problem."
+    evidence: "Internal positioning"
+
+required_questions:
+  - id: "their_context"
+    prompt: "What are you focused on in your work right now?"
+    required: true
+  - id: "advice"
+    prompt: "If you were in my seat, what would you watch out for?"
+    required: true
+
+forbidden_behaviors:
+  - "aggressive_close"
+  - "sales_objection_handling"
+  - "invent_case_studies"
+  - "promise_guaranteed_results"
+
+success_outcomes:
+  - "permission_to_follow_up"
+  - "reference_received"
+  - "callback_later"
+
+terminal_outcomes:
+  - "not_interested"
+  - "do_not_contact"
+  - "wrong_number"
+
+qualification:
+  criteria:
+    relevant_problem:
+      prompt: "Is there enough shared context for this to be a useful relationship?"
+      required_for_qualified: true
+    meaningful_cost:
+      prompt: "Did they share advice or experience we can act on?"
+      required_for_qualified: false
+    influence:
+      prompt: "Could they introduce a relevant person, or are they a useful peer?"
+      required_for_qualified: false
+    timing:
+      prompt: "Is there a natural next step soon?"
+      required_for_qualified: false
+  disqualifiers:
+    - "explicit_do_not_contact"

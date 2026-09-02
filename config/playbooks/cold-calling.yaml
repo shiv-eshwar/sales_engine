@@ -1,0 +1,51 @@
+id: cold-calling
+version: 1
+stages:
+  - opener
+  - hook
+  - problem
+  - discovery
+  - qualification
+  - value_proposition
+  - objection
+  - cta
+  - closed
+
+talk_ratio:
+  caller_target: 0.25
+  warn_caller_above: 0.4
+  warn_after_connected_seconds: 60
+
+principles:
+  - Prefer flows and intent over memorized scripts.
+  - Focus on the problem and its consequences before explaining the product.
+  - Prefer concise questions that cause the contact to describe their situation.
+  - Treat clear rejection and disqualification as useful outcomes.
+  - Do not argue with objections.
+  - Never invent customer names, results, prices, integrations, guarantees, or claims.
+  - Cues must be at most 160 characters. should_show false is valid.
+
+objection_flow:
+  - acknowledge
+  - clarify
+  - diagnose
+  - answer_from_approved_evidence
+  - confirm
+
+objections:
+  - not_interested
+  - bad_timing
+  - send_information
+  - existing_solution
+  - in_house_team
+  - no_budget
+  - too_expensive
+  - no_authority
+  - need_to_think
+  - trust_or_risk
+  - busy_now
+  - wrong_person
+  - do_not_contact
+  - other
+
+cue_max_characters: 160
