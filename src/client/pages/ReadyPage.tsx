@@ -71,8 +71,10 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
     twilioConfigured,
     deviceStatus,
     lead,
-    callActive
+    callActive,
+    sheetStatus: data.sheet.status
   });
+  const sheetBlocking = data.sheet.status === "error" || data.sheet.status === "unconfigured";
 
   useEffect(() => {
     if (!twilioConfigured) {
@@ -245,13 +247,26 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
       </section>
 
       {data.sheet.diagnostics.length > 0 && !callActive && !reviewing ? (
-        <section className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3" aria-label="Sheet diagnostics">
-          <h2 className="text-sm font-semibold">Queue diagnostics</h2>
+        <section
+          className={`mt-4 rounded-md border p-3 ${
+            sheetBlocking ? "border-red-400 bg-red-50" : "border-amber-300 bg-amber-50"
+          }`}
+          aria-label={sheetBlocking ? "Sheet blocking error" : "Sheet diagnostics"}
+          role={sheetBlocking ? "alert" : undefined}
+        >
+          <h2 className="text-sm font-semibold">{sheetBlocking ? "Sheet is not ready" : "Queue diagnostics"}</h2>
+          <p className="mt-1 text-sm">{data.sheet.message}</p>
           <ul className="mt-2 list-disc pl-5 text-sm text-amber-950">
             {data.sheet.diagnostics.map((item, index) => (
               <li key={`${item.code}-${index}`}>{item.message}</li>
             ))}
           </ul>
+        </section>
+      ) : sheetBlocking && !callActive && !reviewing ? (
+        <section className="mt-4 rounded-md border border-red-400 bg-red-50 p-3" role="alert" aria-label="Sheet blocking error">
+          <h2 className="text-sm font-semibold">Sheet is not ready</h2>
+          <p className="mt-1 text-sm">{data.sheet.message}</p>
+          <p className="mt-1 text-sm">Call is disabled until the Sheet schema is fixed.</p>
         </section>
       ) : null}
 
@@ -392,17 +407,19 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
           </section>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              disabled={Boolean(disabledReason) || pending}
-              title={disabledReason ?? "Start a call"}
-              className="rounded-md bg-emerald-700 px-4 py-2 font-medium text-white disabled:bg-slate-300 disabled:text-slate-600"
-              onClick={() => {
-                void onCall();
-              }}
-            >
-              Call
-            </button>
+            {sheetBlocking ? null : (
+              <button
+                type="button"
+                disabled={Boolean(disabledReason) || pending}
+                title={disabledReason ?? "Start a call"}
+                className="rounded-md bg-emerald-700 px-4 py-2 font-medium text-white disabled:bg-slate-300 disabled:text-slate-600"
+                onClick={() => {
+                  void onCall();
+                }}
+              >
+                Call
+              </button>
+            )}
             <button
               type="button"
               disabled={pending || !lead}

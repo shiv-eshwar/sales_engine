@@ -32,6 +32,7 @@ export type AppContext = {
   llmClient: LlmClient | null;
   coachEngine: CoachEngine;
   finalizer: ReviewFinalizer | null;
+  shuttingDown: boolean;
 };
 
 export function createOperatorState(): OperatorState {

@@ -18,6 +18,17 @@ const lead: PublicLead = {
 };
 
 describe("call button gate", () => {
+  it("hides Call when the Sheet schema is invalid", () => {
+    const reason = callDisabledReason({
+      twilioConfigured: true,
+      deviceStatus: "registered",
+      lead,
+      callActive: false,
+      sheetStatus: "error"
+    });
+    expect(reason).toMatch(/schema is invalid/i);
+  });
+
   it("disables Call when the lead is not dialable", () => {
     const reason = callDisabledReason({
       twilioConfigured: true,

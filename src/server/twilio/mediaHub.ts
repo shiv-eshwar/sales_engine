@@ -229,7 +229,7 @@ export class MediaSocket {
     const tracks = [...this.tracks.values()];
     this.tracks.clear();
     await Promise.all(tracks.map((track) => track.stop()));
-    if (this.sessionId) {
+    if (this.sessionId && this.deps.db.open) {
       const complete = !tracks.some((track) => track.hadGap) && !sessionHasGaps(this.deps.db, this.sessionId);
       setTranscriptComplete(this.deps.db, this.sessionId, complete);
     }
@@ -321,6 +321,9 @@ export class MediaHub {
     this.tracksBySession.delete(sessionId);
     const list = [...tracks.values()];
     await Promise.all(list.map((track) => track.stop()));
+    if (!this.deps.db.open) {
+      return;
+    }
     const complete = !list.some((track) => track.hadGap) && !sessionHasGaps(this.deps.db, sessionId);
     setTranscriptComplete(this.deps.db, sessionId, complete);
   }

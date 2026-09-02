@@ -24,6 +24,12 @@ data/
 recordings/
 transcripts/
 
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # OS and editor
 .DS_Store
 .idea/

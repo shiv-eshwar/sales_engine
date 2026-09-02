@@ -1,0 +1,56 @@
+spreadsheet_id: "configured-outside-source-control"
+sheet_name: "Leads"
+header_row: 1
+identity_column: "Lead ID"
+
+read_columns:
+  lead_id: "Lead ID"
+  full_name: "Full Name"
+  phone: "Phone Number"
+  company: "Company"
+  role: "Job Title"
+  enrichment: "Enrichment"
+  campaign_id: "Campaign"
+  crm_status: "Status"
+
+write_columns:
+  call_status: "Call Status"
+  call_attempts: "Call Attempts"
+  last_called_at: "Last Called At"
+  call_outcome: "Call Outcome"
+  qualification: "Qualification"
+  qualification_reason: "Qualification Reason"
+  objections: "Objections"
+  next_step: "Next Step"
+  follow_up_at: "Follow Up At"
+  call_summary: "Call Summary"
+  twilio_call_sid: "Twilio Call SID"
+  recording_sid: "Recording SID"
+
+eligible_when:
+  crm_status: ["Ready", "Retry"]
+  call_status: ["", "Retry"]
+
+ownership:
+  gumloop_owned:
+    - "Lead ID"
+    - "Full Name"
+    - "Phone"
+    - "Company"
+    - "Job Title"
+    - "Enrichment"
+    - "Campaign"
+    - "Status"
+  application_owned:
+    - "Call Status"
+    - "Call Attempts"
+    - "Last Called At"
+    - "Call Outcome"
+    - "Qualification"
+    - "Qualification Reason"
+    - "Objections"
+    - "Next Step"
+    - "Follow Up At"
+    - "Call Summary"
+    - "Twilio Call SID"
+    - "Recording SID"

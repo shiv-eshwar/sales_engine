@@ -87,9 +87,16 @@ export function callDisabledReason(input: {
   deviceStatus: DeviceStatus;
   lead: PublicLead | null;
   callActive: boolean;
+  sheetStatus?: "ok" | "unconfigured" | "error";
 }): string | null {
   if (input.callActive) {
     return "A call is already in progress";
+  }
+  if (input.sheetStatus === "error") {
+    return "Sheet schema is invalid";
+  }
+  if (input.sheetStatus === "unconfigured") {
+    return "Sheet is not configured";
   }
   if (!input.twilioConfigured) {
     return "Twilio Voice is not configured";

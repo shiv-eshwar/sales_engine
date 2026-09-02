@@ -27,11 +27,11 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 
 | Field | Value |
 |---|---|
-| Phase | Slice 5 — Post-call CRM update |
-| Slice | 5 (code complete; live PSTN/Sheet gated) |
+| Phase | Slice 6 — Verification and hardening |
+| Slice | 6 (code complete; live PSTN/Sheet smoke gated) |
 | Status | `blocked` |
-| Next action | After a live PSTN + transcript + coaching call works, confirm review → Approve & next against a real Sheet. Do not start Slice 6 until Slice 5 live smoke works. |
-| Blocked on | Twilio credentials, Deepgram, public `APP_BASE_URL`, `LLM_*`, and a real Google Sheet for the approve-and-next smoke. |
+| Next action | Run `whatthis.md` §19 on a user-owned number once Twilio, Deepgram, LLM, public `APP_BASE_URL`, and a real Sheet exist. Fill speaker mapping and latency rows in `VERIFICATION.md`. |
+| Blocked on | Live credentials and a controlled PSTN + Sheet smoke. Automated holdouts, Playwright (fakes), SIGTERM drain, Docker recipe, README, and VERIFICATION are done. |
 
 ---
 
@@ -45,7 +45,7 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 | 3 | Recording and transcription | `completed` | Dual Deepgram streams, live transcript, Recording SID, interruption UI (speaker map unconfirmed until live smoke) |
 | 4 | Live coach | `completed` | One cue card, talk ratio, qualification indicators, stale-response handling (live model not required) |
 | 5 | Post-call CRM update | `completed` | Review diff, approve & next, verified batch write, retry ledger (live Sheet smoke still required) |
-| 6 | Verification and hardening | `not_started` | Holdouts H1–H14, Playwright, Docker, live smoke test, README + VERIFICATION.md |
+| 6 | Verification and hardening | `blocked` | Holdouts H1–H14, Playwright (fakes), Docker recipe, README + VERIFICATION.md; live smoke still required |
 
 Do not begin slice N+1 while slice N core acceptance tests are failing.
 
@@ -57,7 +57,7 @@ Do not begin slice N+1 while slice N core acceptance tests are failing.
 - [x] Engineering tracker created as `engineering_progress.md`
 - [x] Cursor rule added so later sessions read and update this file (`.cursor/rules/engineering-progress.mdc`)
 - [x] GitHub remote created (`shiv-eshwar/sales_engine`, private) and initial push
-- [ ] `README.md` stub (full README is Slice 6)
+- [x] `README.md` stub (full README is Slice 6)
 
 ---
 
@@ -235,14 +235,14 @@ Source: `whatthis.md` §14, §15C–D, §20 Slice 5.
 
 Source: `whatthis.md` §18–22, §20 Slice 6.
 
-- [ ] Holdouts H1–H14 as fixture-driven integration tests (prompts must not contain expected answers verbatim)
-- [ ] Playwright E2E against faked providers (login → call → transcript → one cue → review → approve)
-- [ ] Invalid Sheet schema: blocking error, no Call button
-- [ ] SIGTERM: stop new sessions, preserve ledger, do not kill an active PSTN call for coaching shutdown
-- [ ] One Dockerfile; one production build; persistent SQLite volume
-- [ ] `README.md` (setup, non-goals, troubleshooting, privacy warning)
-- [ ] `VERIFICATION.md` (commit, tests, holdouts, smoke evidence, speaker mapping, latencies)
-- [ ] Operator runbook section
+- [x] Holdouts H1–H14 as fixture-driven integration tests (prompts must not contain expected answers verbatim)
+- [x] Playwright E2E against faked providers (login → call → transcript → one cue → review → approve)
+- [x] Invalid Sheet schema: blocking error, no Call button
+- [x] SIGTERM: stop new sessions, preserve ledger, do not kill an active PSTN call for coaching shutdown
+- [x] One Dockerfile; one production build; persistent SQLite volume
+- [x] `README.md` (setup, non-goals, troubleshooting, privacy warning)
+- [x] `VERIFICATION.md` (commit, tests, holdouts, smoke evidence, speaker mapping, latencies)
+- [x] Operator runbook section
 - [ ] Controlled live smoke test on a user-owned number (`whatthis.md` §19)
 
 ---
@@ -251,20 +251,20 @@ Source: `whatthis.md` §18–22, §20 Slice 6.
 
 | ID | Scenario | Status |
 |---|---|---|
-| H1 | Qualified sales lead + existing-solution objection | `not_started` |
-| H2 | Clear disqualification | `not_started` |
-| H3 | Insufficient qualification evidence | `not_started` |
-| H4 | Do-not-contact | `not_started` |
-| H5 | No answer | `not_started` |
-| H6 | Duplicate and reordered provider events | `not_started` |
-| H7 | Gumloop edits the row during a call | `not_started` |
-| H8 | Lead identity conflict | `not_started` |
-| H9 | Deepgram interruption | `not_started` |
-| H10 | Malformed or unsafe LLM output | `not_started` |
-| H11 | Market research campaign | `not_started` |
-| H12 | Networking campaign | `not_started` |
-| H13 | Sheet write outage | `not_started` |
-| H14 | Approved-claims boundary | `not_started` |
+| H1 | Qualified sales lead + existing-solution objection | `completed` |
+| H2 | Clear disqualification | `completed` |
+| H3 | Insufficient qualification evidence | `completed` |
+| H4 | Do-not-contact | `completed` |
+| H5 | No answer | `completed` |
+| H6 | Duplicate and reordered provider events | `completed` |
+| H7 | Gumloop edits the row during a call | `completed` |
+| H8 | Lead identity conflict | `completed` |
+| H9 | Deepgram interruption | `completed` |
+| H10 | Malformed or unsafe LLM output | `completed` |
+| H11 | Market research campaign | `completed` |
+| H12 | Networking campaign | `completed` |
+| H13 | Sheet write outage | `completed` |
+| H14 | Approved-claims boundary | `completed` |
 
 ---
 
@@ -287,25 +287,25 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 
 ## Final acceptance (`whatthis.md` §22)
 
-- [ ] One command starts local development after configuration
-- [ ] One production build creates the single deployable service
-- [ ] No secrets or real call data are committed
-- [ ] Sheet schema preflight is blocking and non-mutating
-- [ ] Gumloop-owned columns cannot be written through any application code path
+- [x] One command starts local development after configuration
+- [x] One production build creates the single deployable service
+- [x] No secrets or real call data are committed
+- [x] Sheet schema preflight is blocking and non-mutating
+- [x] Gumloop-owned columns cannot be written through any application code path
 - [ ] Browser Twilio calling works on a controlled real call
 - [ ] Both speakers are transcribed and attributed correctly
-- [ ] Live cues are structured, short, rate-limited, and evidence/claim validated
-- [ ] Qualification cannot become positive without configured evidence
-- [ ] Objection handling begins with acknowledgement/clarification/diagnosis rather than argument
-- [ ] Non-connected calls avoid LLM costs
-- [ ] Post-call semantic updates require review
-- [ ] Sheet write is atomic at the application level, verified, and retryable
-- [ ] Duplicate provider events are idempotent
-- [ ] DNC leads are suppressed from future eligibility
-- [ ] Sales, research, and networking campaigns produce purpose-appropriate cues
-- [ ] All holdout scenarios pass
+- [x] Live cues are structured, short, rate-limited, and evidence/claim validated
+- [x] Qualification cannot become positive without configured evidence
+- [x] Objection handling begins with acknowledgement/clarification/diagnosis rather than argument
+- [x] Non-connected calls avoid LLM costs
+- [x] Post-call semantic updates require review
+- [x] Sheet write is atomic at the application level, verified, and retryable
+- [x] Duplicate provider events are idempotent
+- [x] DNC leads are suppressed from future eligibility
+- [x] Sales, research, and networking campaigns produce purpose-appropriate cues
+- [x] All holdout scenarios pass
 - [ ] Live smoke test passes and speaker mapping is documented
-- [ ] README and VERIFICATION are complete
+- [x] README and VERIFICATION are complete
 
 ---
 
@@ -320,3 +320,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-02 | Slice 3: dual-track Media Streams, Deepgram STT fakes, Recording SID webhook, live transcript UI. Vitest 36/36. Speaker map unconfirmed until live smoke. | Slice 3 code complete; live transcription blocked |
 | 2026-09-02 | Slice 4: injectable LLM coach, one cue card, talk ratio, qualification reducer, stale discard. Vitest 52/52. Live model still needs credentials. | Slice 4 code complete; live coaching blocked |
 | 2026-09-02 | Slice 5: post-call extraction, review UI, Approve & next, retry ledger, DNC suppression, daily summary. Live Sheet/PSTN smoke still required. | Slice 5 code complete; live approve-and-next blocked |
+| 2026-09-02 | Slice 6: named holdouts H1–H14, Playwright E2E against faked Twilio/Deepgram/LLM, invalid-schema Call disable, SIGTERM drain, Dockerfile, README + operator runbook + VERIFICATION.md. Live §19 smoke still blocked on credentials. | Slice 6 code complete; live smoke blocked |

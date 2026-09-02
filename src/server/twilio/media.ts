@@ -17,7 +17,7 @@ export async function registerTwilioMedia(app: FastifyInstance, ctx: AppContext)
       }
     });
     socket.on("close", () => {
-      void session.stop();
+      void session.stop().catch(() => undefined);
     });
   });
 }

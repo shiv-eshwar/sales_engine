@@ -54,6 +54,7 @@ const DNC_CUE = "Acknowledge and end respectfully. They asked not to be contacte
 export class CoachEngine {
   private readonly sessions = new Map<string, SessionCoach>();
   private readonly stopped = new Set<string>();
+  private paused = false;
 
   constructor(
     private readonly deps: {
@@ -65,6 +66,10 @@ export class CoachEngine {
       liveEvents: LiveEventBus;
     }
   ) {}
+
+  pauseAll(): void {
+    this.paused = true;
+  }
 
   stop(sessionId: string): void {
     this.stopped.add(sessionId);
@@ -91,7 +96,7 @@ export class CoachEngine {
   }
 
   consider(utterance: PublicUtterance): void {
-    if (this.stopped.has(utterance.sessionId)) {
+    if (this.paused || this.stopped.has(utterance.sessionId)) {
       return;
     }
     const talkPublished = this.publishTalk(utterance.sessionId);

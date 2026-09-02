@@ -29,16 +29,18 @@ import { StreamTokenStore } from "./twilio/streamTokens.js";
 import formbody from "@fastify/formbody";
 import { SheetAdapter } from "./sheets/adapter.js";
 import { allowedCountriesFromEnv, createSheetStore } from "./sheets/createStore.js";
+import { beginDrain } from "./shutdown.js";
 
 export type BuildAppOptions = {
   deepgramFactory?: DeepgramLiveFactory;
   llmClient?: LlmClient | null;
+  disableLogger?: boolean;
 };
 
 export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = {}) {
   const app = Fastify({
     logger:
-      env.NODE_ENV === "test"
+      env.NODE_ENV === "test" || options.disableLogger
         ? false
         : {
             level: env.NODE_ENV === "production" ? "info" : "debug",
@@ -151,7 +153,8 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
     mediaHub,
     llmClient,
     coachEngine,
-    finalizer
+    finalizer,
+    shuttingDown: false
   };
 
   app.decorate("appContext", ctx);
@@ -188,7 +191,9 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
 async function main() {
   const env = loadEnv();
   const app = await buildApp(env);
+  const ctx = (app as typeof app & { appContext: import("./context.js").AppContext }).appContext;
   const shutdown = async () => {
+    await beginDrain(ctx);
     await app.close();
     process.exit(0);
   };

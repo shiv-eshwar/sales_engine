@@ -37,7 +37,8 @@ const envSchema = z.object({
   LLM_API_KEY: z.string().optional(),
   LLM_MODEL: z.string().optional(),
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(4000),
-  COACH_RATE_LIMIT_MS: z.coerce.number().int().nonnegative().default(3000)
+  COACH_RATE_LIMIT_MS: z.coerce.number().int().nonnegative().default(3000),
+  DRAIN_TIMEOUT_MS: z.coerce.number().int().positive().default(30000)
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -47,6 +47,9 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
     if (!parsed.success) {
       return reply.code(400).send({ error: "leadId and campaignId are required" });
     }
+    if (ctx.shuttingDown) {
+      return reply.code(503).send({ error: "Server is shutting down", code: "draining" });
+    }
     if (!ctx.adapter) {
       return reply.code(503).send({ error: "Sheet is not configured" });
     }
