@@ -20,6 +20,11 @@ const envSchema = z.object({
   TWILIO_TWIML_APP_SID: z.string().optional(),
   TWILIO_CALLER_ID: z.string().optional(),
   TWILIO_ALLOWED_COUNTRIES: z.string().default("US"),
+  RECORDING_NOTICE: z
+    .string()
+    .default(
+      "Recording and transcription may be active. Give any required notice before substantive conversation. This app does not guarantee legal compliance."
+    ),
   DEEPGRAM_API_KEY: z.string().optional(),
   DEEPGRAM_MODEL: z.string().optional(),
   LLM_BASE_URL: z.string().optional(),

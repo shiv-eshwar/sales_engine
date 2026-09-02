@@ -12,32 +12,40 @@ import { migrate, openDatabase } from "./db/index.js";
 import { registerAuth } from "./auth/routes.js";
 import { registerHealth } from "./api/health.js";
 import { registerLeads } from "./api/leads.js";
+import { registerCallApi } from "./api/calls.js";
+import { registerTwilioWebhooks } from "./twilio/webhooks.js";
+import formbody from "@fastify/formbody";
 import { SheetAdapter } from "./sheets/adapter.js";
 import { allowedCountriesFromEnv, createSheetStore } from "./sheets/createStore.js";
 
 export async function buildApp(env = loadEnv()) {
   const app = Fastify({
-    logger: {
-      level: env.NODE_ENV === "production" ? "info" : "debug",
-      redact: {
-        paths: [
-          "req.headers.authorization",
-          "req.headers.cookie",
-          "req.headers['set-cookie']",
-          "*.password",
-          "*.apiKey",
-          "*.api_key",
-          "GOOGLE_SERVICE_ACCOUNT_JSON_BASE64",
-          "*.phone"
-        ],
-        censor: "[redacted]"
-      }
-    }
+    logger:
+      env.NODE_ENV === "test"
+        ? false
+        : {
+            level: env.NODE_ENV === "production" ? "info" : "debug",
+            redact: {
+              paths: [
+                "req.headers.authorization",
+                "req.headers.cookie",
+                "req.headers['set-cookie']",
+                "*.password",
+                "*.apiKey",
+                "*.api_key",
+                "GOOGLE_SERVICE_ACCOUNT_JSON_BASE64",
+                "*.phone"
+              ],
+              censor: "[redacted]"
+            }
+          }
   });
 
   await app.register(cookie);
+  await app.register(formbody);
 
-  const db = openDatabase(resolve(env.DATABASE_PATH));
+  const dbPath = env.DATABASE_PATH === ":memory:" ? ":memory:" : resolve(env.DATABASE_PATH);
+  const db = openDatabase(dbPath);
   migrate(db, resolve("migrations"));
 
   let campaigns: AppContext["campaigns"] = [];
@@ -91,6 +99,8 @@ export async function buildApp(env = loadEnv()) {
   await registerHealth(app, ctx);
   await registerAuth(app, ctx);
   await registerLeads(app, ctx);
+  await registerCallApi(app, ctx);
+  await registerTwilioWebhooks(app, ctx);
 
   const clientDir = resolve("dist/client");
   if (isProduction(env) && existsSync(clientDir)) {

@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { BootstrapResponse, PublicCampaign, PublicLead } from "../../shared/contracts.js";
 import { refreshLeadRequestSchema, skipLeadRequestSchema } from "../../shared/schemas.js";
 import type { AppContext } from "../context.js";
+import { twilioVoiceConfigured } from "../twilio/config.js";
 import { requireSession } from "../auth/routes.js";
 import type { LeadRecord } from "../../shared/types.js";
 
@@ -91,12 +92,16 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
       ctx.operator.selectedCampaignId = ctx.campaigns[0].id;
     }
     const next = await nextLead(ctx);
+    const twilioOk = twilioVoiceConfigured(ctx.env);
     const body: BootstrapResponse = {
       campaigns: ctx.campaigns.map(toPublicCampaign),
       selectedCampaignId: ctx.operator.selectedCampaignId,
       sheet: next.sheetStatus,
-      twilio: { status: "not_configured", message: "Twilio device is not wired until Slice 2" },
-      lead: next.lead
+      twilio: twilioOk
+        ? { status: "ok", message: "Twilio Voice is configured. Register the device in the browser." }
+        : { status: "not_configured", message: "Twilio Voice is not configured" },
+      lead: next.lead,
+      recordingNotice: ctx.env.RECORDING_NOTICE
     };
     return body;
   });

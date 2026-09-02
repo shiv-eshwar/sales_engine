@@ -36,6 +36,11 @@ export class SheetAdapter {
     return buildQueue(this.config, ready.index, rows, this.allowedCountries);
   }
 
+  async findLeadById(leadId: string): Promise<QueueResult["leads"][number] | null> {
+    const queue = await this.loadQueue();
+    return queue.leads.find((lead) => lead.leadId === leadId) ?? null;
+  }
+
   async applyApprovedWrite(input: ApplyWriteInput): Promise<ApplyWriteResult> {
     const ready = await this.preflight();
     if (!ready.ok) {

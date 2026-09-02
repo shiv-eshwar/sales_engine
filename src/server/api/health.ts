@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { HealthReadyResponse } from "../../shared/contracts.js";
 import { resolveSheetsBackend } from "../env.js";
 import type { AppContext } from "../context.js";
+import { twilioVoiceConfigured } from "../twilio/config.js";
 
 export async function registerHealth(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.get("/health/live", async () => ({ status: "ok" }));
@@ -50,7 +51,9 @@ export async function registerHealth(app: FastifyInstance, ctx: AppContext): Pro
 
     checks.twilio = {
       ok: true,
-      message: ctx.env.TWILIO_ACCOUNT_SID ? "Twilio env present (unused until Slice 2)" : "Twilio not configured"
+      message: twilioVoiceConfigured(ctx.env)
+        ? "Twilio Voice credentials are set"
+        : "Twilio not configured"
     };
 
     const ready = Object.values(checks).every((check) => check.ok);

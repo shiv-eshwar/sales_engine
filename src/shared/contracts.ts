@@ -46,6 +46,7 @@ export type BootstrapResponse = {
   };
   twilio: ProviderStatus;
   lead: PublicLead | null;
+  recordingNotice: string;
 };
 
 export type SessionResponse = {

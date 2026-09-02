@@ -28,10 +28,10 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 | Field | Value |
 |---|---|
 | Phase | Slice 2 — Reliable Twilio call |
-| Slice | 2 (not started) |
-| Status | `not_started` |
-| Next action | Token endpoint, Twilio Device, session creation, TwiML, call controls. A controlled real call is the gate before Slice 3. |
-| Blocked on | Twilio credentials and a user-owned test number. Slice 1 scaffolding does not require them. |
+| Slice | 2 (code complete; live PSTN gated) |
+| Status | `blocked` |
+| Next action | Configure Twilio Voice, point `APP_BASE_URL` at a public HTTPS tunnel, call a user-owned number. Do not start Slice 3 until that works. |
+| Blocked on | Twilio credentials, TwiML app, caller ID, public webhook URL, and a user-owned test number. |
 
 ---
 
@@ -41,7 +41,7 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 |---|---|---|---|
 | 0 | Repo bootstrap (this tracker + spec) | `completed` | `whatthis.md` and `engineering_progress.md` exist in the repo |
 | 1 | CRM and preflight | `completed` | Login, Sheet adapter, eligible queue, ready-state UI, Sheet unit tests |
-| 2 | Reliable Twilio call | `not_started` | Controlled real call; Call / Mute / Hang Up; idempotent webhooks |
+| 2 | Reliable Twilio call | `completed` | Fake-webhook tests pass; live controlled call still required before Slice 3 |
 | 3 | Recording and transcription | `not_started` | Dual Deepgram streams, live transcript, Recording SID, interruption UI |
 | 4 | Live coach | `not_started` | One cue card, talk ratio, qualification indicators, stale-response handling |
 | 5 | Post-call CRM update | `not_started` | Review diff, approve & next, verified batch write, retry ledger |
@@ -123,27 +123,27 @@ Source: `whatthis.md` §11, §15B (transport controls), §16, §20 Slice 2.
 
 **Gate:** a real controlled-number call must work before Slice 3.
 
-- [ ] `POST /api/twilio/token` issues a short-lived Voice access token
-- [ ] One `Twilio.Device`; UI shows `registered` / `offline` / `error`
-- [ ] Click Call → server creates session, then `device.connect({ sessionId })` (never trust client-supplied destination)
-- [ ] TwiML webhook resolves session and dials server-validated E.164
-- [ ] Endpoints: `/twilio/voice/outbound`, `/twilio/voice/status`, `/twilio/voice/number-status`
-- [ ] Verify `X-Twilio-Signature` on every HTTP webhook
-- [ ] Twilio Call SID + event type used as idempotency keys
-- [ ] Distinct handling: queued, ringing, in-progress, completed, busy, failed, no-answer, canceled
-- [ ] Allowed destination countries; reject before contacting Twilio
-- [ ] Call, Mute/Unmute, Hang Up; no keypad
-- [ ] One simultaneous active call; second call rejected
-- [ ] `beforeunload` during an active call
-- [ ] Recording-notice reminder visible (compliance not claimed)
-- [ ] Controlled real call to a user-owned test number succeeds
+- [x] `POST /api/twilio/token` issues a short-lived Voice access token
+- [x] One `Twilio.Device`; UI shows `registered` / `offline` / `error`
+- [x] Click Call → server creates session, then `device.connect({ sessionId })` (never trust client-supplied destination)
+- [x] TwiML webhook resolves session and dials server-validated E.164
+- [x] Endpoints: `/twilio/voice/outbound`, `/twilio/voice/status`, `/twilio/voice/number-status`
+- [x] Verify `X-Twilio-Signature` on every HTTP webhook
+- [x] Twilio Call SID + event type used as idempotency keys
+- [x] Distinct handling: queued, ringing, in-progress, completed, busy, failed, no-answer, canceled
+- [x] Allowed destination countries; reject before contacting Twilio
+- [x] Call, Mute/Unmute, Hang Up; no keypad
+- [x] One simultaneous active call; second call rejected
+- [x] `beforeunload` during an active call
+- [x] Recording-notice reminder visible (compliance not claimed)
+- [ ] Controlled real call to a user-owned test number succeeds (`blocked` on credentials)
 
 ### Slice 2 tests
 
-- [ ] Session state machine rejects illegal transitions and simultaneous calls
-- [ ] Browser-call session maps one lead ID to one Twilio session
-- [ ] Duplicate status callbacks are idempotent
-- [ ] Out-of-order Twilio callbacks converge on the correct terminal state
+- [x] Session state machine rejects illegal transitions and simultaneous calls
+- [x] Browser-call session maps one lead ID to one Twilio session
+- [x] Duplicate status callbacks are idempotent
+- [x] Out-of-order Twilio callbacks converge on the correct terminal state
 
 ---
 
@@ -310,3 +310,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-02 | Imported spec as `whatthis.md` (renamed from `ai-call-operator-spec.md`). Created this tracker and the always-on Cursor rule to read/update it before each phase. Repo still has no application code. | Slice 0 in progress; Slice 1 is next |
 | 2026-09-02 | Added `.gitignore`, created private GitHub repo `shiv-eshwar/sales_engine`, and pushed the initial commit. | Slice 0 complete; Slice 1 is next |
 | 2026-09-02 | Slice 1: TypeScript app, login, SQLite ledger, YAML Sheet adapter with memory fixture, ready-state UI, Vitest 16/16. Call remains disabled. Retry UI for pending writes is Slice 5. | Slice 1 complete; Slice 2 is next |
+| 2026-09-02 | Slice 2: Twilio token, server sessions, signed TwiML/status webhooks, Call/Mute/Hang Up UI. Vitest 26/26. Live PSTN call still needs Twilio credentials. | Slice 2 code complete; live call blocked |
