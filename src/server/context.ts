@@ -1,7 +1,10 @@
 import type Database from "better-sqlite3";
 import type { CampaignConfig, PlaybookConfig, SheetsConfig } from "../shared/schemas.js";
+import type { CoachEngine } from "./coach/engine.js";
 import type { DeepgramLiveFactory } from "./deepgram/types.js";
+import type { LlmClient } from "./llm/types.js";
 import type { Env } from "./env.js";
+import type { ReviewFinalizer } from "./review/finalize.js";
 import { SheetAdapter } from "./sheets/adapter.js";
 import type { LiveEventBus } from "./transcript/events.js";
 import type { MediaHub } from "./twilio/mediaHub.js";
@@ -26,6 +29,9 @@ export type AppContext = {
   liveEvents: LiveEventBus;
   deepgramFactory: DeepgramLiveFactory;
   mediaHub: MediaHub;
+  llmClient: LlmClient | null;
+  coachEngine: CoachEngine;
+  finalizer: ReviewFinalizer | null;
 };
 
 export function createOperatorState(): OperatorState {

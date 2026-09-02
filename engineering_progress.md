@@ -27,11 +27,11 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 
 | Field | Value |
 |---|---|
-| Phase | Slice 3 — Recording and transcription |
-| Slice | 3 (code complete; live speaker-map gated) |
+| Phase | Slice 5 — Post-call CRM update |
+| Slice | 5 (code complete; live PSTN/Sheet gated) |
 | Status | `blocked` |
-| Next action | After a live PSTN call works, confirm inbound/outbound track mapping and Deepgram transcription. Do not start Slice 4 until that works. |
-| Blocked on | Twilio credentials (same as Slice 2), `DEEPGRAM_API_KEY`, public `APP_BASE_URL`, and a user-owned test number. |
+| Next action | After a live PSTN + transcript + coaching call works, confirm review → Approve & next against a real Sheet. Do not start Slice 6 until Slice 5 live smoke works. |
+| Blocked on | Twilio credentials, Deepgram, public `APP_BASE_URL`, `LLM_*`, and a real Google Sheet for the approve-and-next smoke. |
 
 ---
 
@@ -43,8 +43,8 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 | 1 | CRM and preflight | `completed` | Login, Sheet adapter, eligible queue, ready-state UI, Sheet unit tests |
 | 2 | Reliable Twilio call | `completed` | Fake-webhook tests pass; live controlled call still required before Slice 3 |
 | 3 | Recording and transcription | `completed` | Dual Deepgram streams, live transcript, Recording SID, interruption UI (speaker map unconfirmed until live smoke) |
-| 4 | Live coach | `not_started` | One cue card, talk ratio, qualification indicators, stale-response handling |
-| 5 | Post-call CRM update | `not_started` | Review diff, approve & next, verified batch write, retry ledger |
+| 4 | Live coach | `completed` | One cue card, talk ratio, qualification indicators, stale-response handling (live model not required) |
+| 5 | Post-call CRM update | `completed` | Review diff, approve & next, verified batch write, retry ledger (live Sheet smoke still required) |
 | 6 | Verification and hardening | `not_started` | Holdouts H1–H14, Playwright, Docker, live smoke test, README + VERIFICATION.md |
 
 Do not begin slice N+1 while slice N core acceptance tests are failing.
@@ -178,30 +178,32 @@ Live speaker-map confirmation is **not** required to merge Slice 3 code.
 
 Source: `whatthis.md` §9–10, §13, §15B (cue card), §20 Slice 4.
 
-- [ ] Campaign YAML loader (sales / research / networking); restart to pick up changes
-- [ ] Playbook `config/playbooks/cold-calling.yaml` editable without TypeScript changes
-- [ ] `LLMClient` behind `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`
-- [ ] Call continues with no coaching if the LLM is unavailable
-- [ ] Trigger only on connected call + final meaningful contact utterance + 3s rate limit (except urgent DNC)
-- [ ] Stale responses discarded by transcript sequence
-- [ ] Bounded context: rolling summary + last 20 utterances
-- [ ] Validate structured output; invalid output → no cue, never raw model text
-- [ ] Evidence and approved-claims validators
-- [ ] One cue card; `shouldShow: false` allowed; max 160 characters
-- [ ] Deterministic talk ratio from utterance timings; warn if caller > 40% after 60s connected
-- [ ] Compact qualification criteria indicators; `unknown` until evidence exists
-- [ ] Sales objection first cue clarifies/diagnoses, does not rebut
+**Gate:** a live model call is not required to merge Slice 4 code. Prove with an injectable fake LLM.
+
+- [x] Campaign YAML loader (sales / research / networking); restart to pick up changes
+- [x] Playbook `config/playbooks/cold-calling.yaml` editable without TypeScript changes
+- [x] `LLMClient` behind `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`
+- [x] Call continues with no coaching if the LLM is unavailable
+- [x] Trigger only on connected call + final meaningful contact utterance + 3s rate limit (except urgent DNC)
+- [x] Stale responses discarded by transcript sequence
+- [x] Bounded context: rolling summary + last 20 utterances
+- [x] Validate structured output; invalid output → no cue, never raw model text
+- [x] Evidence and approved-claims validators
+- [x] One cue card; `shouldShow: false` allowed; max 160 characters
+- [x] Deterministic talk ratio from utterance timings; warn if caller > 40% after 60s connected
+- [x] Compact qualification criteria indicators; `unknown` until evidence exists
+- [x] Sales objection first cue clarifies/diagnoses, does not rebut
 
 ### Slice 4 tests
 
-- [ ] Campaign YAML validates; forbidden values fail startup
-- [ ] Qualification reducer preserves `unknown` without evidence
-- [ ] Configured disqualifiers map to deterministic recommendations
-- [ ] Talk ratio calculated from timestamps, not the model
-- [ ] Live-coach schema rejects oversized cues and unknown criteria
-- [ ] Evidence validator rejects qualification evidence absent from context
-- [ ] Stale coaching responses discarded
-- [ ] Invalid model JSON produces no live cue and does not end the call
+- [x] Campaign YAML validates; forbidden values fail startup
+- [x] Qualification reducer preserves `unknown` without evidence
+- [x] Configured disqualifiers map to deterministic recommendations
+- [x] Talk ratio calculated from timestamps, not the model
+- [x] Live-coach schema rejects oversized cues and unknown criteria
+- [x] Evidence validator rejects qualification evidence absent from context
+- [x] Stale coaching responses discarded
+- [x] Invalid model JSON produces no live cue and does not end the call
 
 ---
 
@@ -209,23 +211,23 @@ Source: `whatthis.md` §9–10, §13, §15B (cue card), §20 Slice 4.
 
 Source: `whatthis.md` §14, §15C–D, §20 Slice 5.
 
-- [ ] Non-connect outcomes (busy / failed / no-answer / canceled / invalid): no LLM; increment attempts once; Retry or Skip
-- [ ] Connected finalization: stop coaching, flush Deepgram, one post-call extraction, store proposal
-- [ ] Review UI: transport vs semantic outcome, evidence, warnings, field-level Sheet diff
-- [ ] User may edit only application-owned proposed values
-- [ ] **Approve & next**: re-validate, one batch write, read-back, mark applied, load next lead
-- [ ] Write failure retains proposal and Retry; never drop it
-- [ ] Identity/phone mismatch blocks write and requires resolution
-- [ ] `do_not_contact` is visually prominent; approved DNC never reappears as eligible
-- [ ] Daily summary from SQLite ledger (no charts)
+- [x] Non-connect outcomes (busy / failed / no-answer / canceled / invalid): no LLM; increment attempts once; Retry or Skip
+- [x] Connected finalization: stop coaching, flush Deepgram, one post-call extraction, store proposal
+- [x] Review UI: transport vs semantic outcome, evidence, warnings, field-level Sheet diff
+- [x] User may edit only application-owned proposed values
+- [x] **Approve & next**: re-validate, one batch write, read-back, mark applied, load next lead
+- [x] Write failure retains proposal and Retry; never drop it
+- [x] Identity/phone mismatch blocks write and requires resolution
+- [x] `do_not_contact` is visually prominent; approved DNC never reappears as eligible
+- [x] Daily summary from SQLite ledger (no charts)
 
 ### Slice 5 tests
 
-- [ ] No-answer/busy/failed updates do not invoke the LLM
-- [ ] Semantic proposal does not write before approval
-- [ ] Approved outcome writes one batch to only allowlisted cells and verifies the result
-- [ ] Failed Sheet write remains pending and succeeds on retry without duplication
-- [ ] Gumloop changes to owned cells during the call remain intact
+- [x] No-answer/busy/failed updates do not invoke the LLM
+- [x] Semantic proposal does not write before approval
+- [x] Approved outcome writes one batch to only allowlisted cells and verifies the result
+- [x] Failed Sheet write remains pending and succeeds on retry without duplication
+- [x] Gumloop changes to owned cells during the call remain intact
 
 ---
 
@@ -316,3 +318,5 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-02 | Slice 1: TypeScript app, login, SQLite ledger, YAML Sheet adapter with memory fixture, ready-state UI, Vitest 16/16. Call remains disabled. Retry UI for pending writes is Slice 5. | Slice 1 complete; Slice 2 is next |
 | 2026-09-02 | Slice 2: Twilio token, server sessions, signed TwiML/status webhooks, Call/Mute/Hang Up UI. Vitest 26/26. Live PSTN call still needs Twilio credentials. | Slice 2 code complete; live call blocked |
 | 2026-09-02 | Slice 3: dual-track Media Streams, Deepgram STT fakes, Recording SID webhook, live transcript UI. Vitest 36/36. Speaker map unconfirmed until live smoke. | Slice 3 code complete; live transcription blocked |
+| 2026-09-02 | Slice 4: injectable LLM coach, one cue card, talk ratio, qualification reducer, stale discard. Vitest 52/52. Live model still needs credentials. | Slice 4 code complete; live coaching blocked |
+| 2026-09-02 | Slice 5: post-call extraction, review UI, Approve & next, retry ledger, DNC suppression, daily summary. Live Sheet/PSTN smoke still required. | Slice 5 code complete; live approve-and-next blocked |

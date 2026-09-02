@@ -13,7 +13,7 @@ export class SheetAdapter {
   private headerCache: { headers: string[]; index: HeaderIndex } | null = null;
 
   constructor(
-    private readonly store: SheetStore,
+    readonly store: SheetStore,
     private readonly config: SheetsConfig,
     private readonly allowedCountries: CountryCode[],
     private readonly db?: Database.Database
@@ -100,11 +100,32 @@ export class SheetAdapter {
       return { ok: true, verified };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      if (input.proposalId) {
+        return { ok: false, code: "verify_failed", message, pendingRetryId: input.proposalId };
+      }
       const pendingRetryId = this.db
         ? storePendingRetry(this.db, { leadId: input.leadId, fields: input.fields }, message)
         : undefined;
       return { ok: false, code: "verify_failed", message, pendingRetryId };
     }
+  }
+
+  async readApplicationSnapshot(leadId: string): Promise<{
+    phone: string;
+    cells: Record<string, string>;
+  } | null> {
+    const resolved = await this.resolveLead(leadId);
+    if (!resolved) {
+      return null;
+    }
+    const cells: Record<string, string> = {};
+    for (const header of resolved.index.keys()) {
+      cells[header] = cell(resolved.values, resolved.index, header);
+    }
+    return {
+      phone: cell(resolved.values, resolved.index, this.config.read_columns.phone),
+      cells
+    };
   }
 
   private async ensureIndex(): Promise<{ headers: string[]; index: HeaderIndex }> {

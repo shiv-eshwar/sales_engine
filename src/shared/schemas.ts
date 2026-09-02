@@ -7,35 +7,50 @@ export const criterionSchema = z.object({
   required_for_qualified: z.boolean()
 });
 
-export const campaignConfigSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  type: campaignTypeSchema,
-  version: z.number().int().positive(),
-  objective: z.string().min(1),
-  opening_context: z.string().min(1),
-  approved_claims: z.array(
-    z.object({
-      id: z.string().min(1),
-      text: z.string().min(1),
-      evidence: z.string().min(1)
+const SALES_CLOSE_OUTCOMES = new Set(["meeting_booked"]);
+
+export const campaignConfigSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    type: campaignTypeSchema,
+    version: z.number().int().positive(),
+    objective: z.string().min(1),
+    opening_context: z.string().min(1),
+    approved_claims: z.array(
+      z.object({
+        id: z.string().min(1),
+        text: z.string().min(1),
+        evidence: z.string().min(1)
+      })
+    ),
+    required_questions: z.array(
+      z.object({
+        id: z.string().min(1),
+        prompt: z.string().min(1),
+        required: z.boolean()
+      })
+    ),
+    forbidden_behaviors: z.array(z.string().min(1)),
+    success_outcomes: z.array(z.string().min(1)).min(1),
+    terminal_outcomes: z.array(z.string().min(1)).min(1),
+    qualification: z.object({
+      criteria: z.record(z.string(), criterionSchema),
+      disqualifiers: z.array(z.string().min(1))
     })
-  ),
-  required_questions: z.array(
-    z.object({
-      id: z.string().min(1),
-      prompt: z.string().min(1),
-      required: z.boolean()
-    })
-  ),
-  forbidden_behaviors: z.array(z.string().min(1)),
-  success_outcomes: z.array(z.string().min(1)).min(1),
-  terminal_outcomes: z.array(z.string().min(1)).min(1),
-  qualification: z.object({
-    criteria: z.record(z.string(), criterionSchema),
-    disqualifiers: z.array(z.string().min(1))
   })
-});
+  .superRefine((cfg, ctx) => {
+    if (cfg.type === "research" || cfg.type === "networking") {
+      for (const outcome of cfg.success_outcomes) {
+        if (SALES_CLOSE_OUTCOMES.has(outcome)) {
+          ctx.addIssue({
+            code: "custom",
+            message: `${cfg.type} campaign cannot use sales-close outcome "${outcome}"`
+          });
+        }
+      }
+    }
+  });
 
 export const sheetsConfigSchema = z
   .object({
@@ -109,10 +124,36 @@ export const sheetsConfigSchema = z
     }
   });
 
+export const callStageSchema = z.enum([
+  "opener",
+  "hook",
+  "problem",
+  "discovery",
+  "qualification",
+  "value_proposition",
+  "objection",
+  "cta",
+  "closed"
+]);
+
+export const cueTypeSchema = z.enum([
+  "question",
+  "objection",
+  "listen",
+  "clarify",
+  "qualify",
+  "disqualify",
+  "cta",
+  "warning",
+  "none"
+]);
+
+export const criterionStateSchema = z.enum(["yes", "no", "unknown"]);
+
 export const playbookConfigSchema = z.object({
   id: z.string().min(1),
   version: z.number().int().positive(),
-  stages: z.array(z.string().min(1)).min(1),
+  stages: z.array(callStageSchema).min(1),
   talk_ratio: z.object({
     caller_target: z.number(),
     warn_caller_above: z.number(),
@@ -121,7 +162,17 @@ export const playbookConfigSchema = z.object({
   principles: z.array(z.string().min(1)),
   objection_flow: z.array(z.string().min(1)),
   objections: z.array(z.string().min(1)),
-  cue_max_characters: z.number().int().positive()
+  cue_max_characters: z.number().int().positive(),
+  cue_min_confidence: z.number().min(0).max(1).default(0.5),
+  objection_guides: z
+    .record(
+      z.string(),
+      z.object({
+        first_cue: z.enum(["clarify", "listen", "qualify"]).optional(),
+        prompt: z.string().min(1)
+      })
+    )
+    .optional()
 });
 
 export type CampaignConfig = z.infer<typeof campaignConfigSchema>;
@@ -155,3 +206,68 @@ export const writeFieldKeySchema = z.enum([
   "twilio_call_sid",
   "recording_sid"
 ]);
+
+export const writeFieldsSchema = z.object({
+  call_status: z.string().optional(),
+  call_attempts: z.string().optional(),
+  last_called_at: z.string().optional(),
+  call_outcome: z.string().optional(),
+  qualification: z.string().optional(),
+  qualification_reason: z.string().optional(),
+  objections: z.string().optional(),
+  next_step: z.string().optional(),
+  follow_up_at: z.string().optional(),
+  call_summary: z.string().optional(),
+  twilio_call_sid: z.string().optional(),
+  recording_sid: z.string().optional()
+});
+
+export const semanticOutcomeSchema = z.enum([
+  "meeting_booked",
+  "permission_to_follow_up",
+  "reference_received",
+  "callback_later",
+  "not_interested",
+  "disqualified",
+  "do_not_contact",
+  "wrong_person",
+  "wrong_number",
+  "conversation_incomplete",
+  "unknown"
+]);
+
+export const postCallQualificationSchema = z.enum(["qualified", "disqualified", "defer", "unknown"]);
+
+export const postCallOutcomeSchema = z.object({
+  semanticOutcome: semanticOutcomeSchema,
+  qualification: postCallQualificationSchema,
+  qualificationReason: z.string().max(500),
+  criteria: z.record(
+    z.string(),
+    z.object({
+      state: criterionStateSchema,
+      evidence: z.string().nullable(),
+      confidence: z.number().min(0).max(1)
+    })
+  ),
+  painOrResearchFindings: z.array(z.string().max(300)).max(8),
+  objections: z.array(z.string().max(200)).max(8),
+  nextStep: z.string().max(500),
+  followUpAt: z.string().nullable(),
+  summary: z.string().max(1000),
+  callerCommitments: z.array(z.string().max(300)).max(8),
+  contactCommitments: z.array(z.string().max(300)).max(8),
+  transcriptComplete: z.boolean(),
+  confidence: z.number().min(0).max(1)
+});
+
+export const approveProposalRequestSchema = z.object({
+  fields: writeFieldsSchema.optional()
+});
+
+export const discardProposalRequestSchema = z.object({
+  confirm: z.literal(true)
+});
+
+export type PostCallOutcome = z.infer<typeof postCallOutcomeSchema>;
+export type WriteFieldsInput = z.infer<typeof writeFieldsSchema>;

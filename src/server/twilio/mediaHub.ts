@@ -10,6 +10,7 @@ import {
   insertUtterance,
   sessionHasGaps,
   setTranscriptComplete,
+  type PublicUtterance,
   type TranscriptionHealth
 } from "../transcript/utterances.js";
 import type { StreamTokenStore } from "./streamTokens.js";
@@ -40,6 +41,7 @@ type MediaHubDeps = {
   streamTokens: StreamTokenStore;
   liveEvents: LiveEventBus;
   deepgramFactory: DeepgramLiveFactory;
+  onUtterance?: (utterance: PublicUtterance) => void;
 };
 
 class SpeakerTrack {
@@ -128,6 +130,7 @@ class SpeakerTrack {
             confidence: input.confidence
           });
           this.deps.liveEvents.publish(this.sessionId, { type: "final", utterance });
+          this.deps.onUtterance?.(utterance);
         },
         onError: () => {
           void this.handleDrop(connection);
@@ -184,6 +187,7 @@ class SpeakerTrack {
       endMs: at
     });
     this.deps.liveEvents.publish(this.sessionId, { type: "final", utterance });
+    this.deps.onUtterance?.(utterance);
   }
 }
 
@@ -307,6 +311,18 @@ export class MediaHub {
       this.tracksBySession.set(sessionId, tracks);
     }
     tracks.set(label, track);
+  }
+
+  async flushSession(sessionId: string): Promise<void> {
+    const tracks = this.tracksBySession.get(sessionId);
+    if (!tracks) {
+      return;
+    }
+    this.tracksBySession.delete(sessionId);
+    const list = [...tracks.values()];
+    await Promise.all(list.map((track) => track.stop()));
+    const complete = !list.some((track) => track.hadGap) && !sessionHasGaps(this.deps.db, sessionId);
+    setTranscriptComplete(this.deps.db, sessionId, complete);
   }
 }
 

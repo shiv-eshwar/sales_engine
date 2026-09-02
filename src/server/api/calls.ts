@@ -25,7 +25,8 @@ function serializeCall(ctx: AppContext, row: CallSessionRow) {
   return {
     ...publicCallSession(row),
     transcriptionHealth: ctx.mediaHub.getHealth(row.id),
-    utterances: listUtterances(ctx.db, row.id)
+    utterances: listUtterances(ctx.db, row.id),
+    coach: ctx.coachEngine.getSnapshot(row.id)
   };
 }
 
@@ -109,6 +110,10 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
       return;
     }
     socket.send(JSON.stringify({ type: "health", status: ctx.mediaHub.getHealth(id) }));
+    const coach = ctx.coachEngine.getSnapshot(id);
+    if (coach) {
+      socket.send(JSON.stringify({ type: "coach", snapshot: coach }));
+    }
     for (const utterance of listUtterances(ctx.db, id)) {
       socket.send(JSON.stringify({ type: "final", utterance }));
     }
@@ -132,6 +137,13 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
       applyTransportStatus(ctx.db, id, "canceled");
     }
     const updated = getSession(ctx.db, id);
+    if (updated && isTerminalStatus(updated.status) && ctx.finalizer) {
+      try {
+        await ctx.finalizer.finalize(id);
+      } catch {
+        // Proposal stays retryable via POST /api/calls/:id/finalize
+      }
+    }
     return updated ? serializeCall(ctx, updated) : reply.code(404).send({ error: "Call session not found" });
   });
 }

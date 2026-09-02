@@ -134,6 +134,18 @@ function applyWebhook(
   });
 
   run();
+
+  if (ctx.finalizer) {
+    const session =
+      (params.sessionId ? getSession(ctx.db, params.sessionId) : null) ??
+      (params.CallSid ? findSessionByParentSid(ctx.db, params.CallSid) : null) ??
+      (params.CallSid ? findSessionByChildSid(ctx.db, params.CallSid) : null) ??
+      (params.DialCallSid ? findSessionByChildSid(ctx.db, params.DialCallSid) : null) ??
+      (params.ParentCallSid ? findSessionByParentSid(ctx.db, params.ParentCallSid) : null);
+    if (session && isTerminalStatus(session.status)) {
+      void ctx.finalizer.finalize(session.id).catch(() => undefined);
+    }
+  }
 }
 
 function applyRecordingWebhook(ctx: AppContext, params: Record<string, string>): void {

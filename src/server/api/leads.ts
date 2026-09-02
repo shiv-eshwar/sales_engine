@@ -1,10 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import type { BootstrapResponse, PublicCampaign, PublicLead } from "../../shared/contracts.js";
+import type { BootstrapResponse, PublicCampaign } from "../../shared/contracts.js";
 import { refreshLeadRequestSchema, skipLeadRequestSchema } from "../../shared/schemas.js";
 import type { AppContext } from "../context.js";
 import { twilioVoiceConfigured } from "../twilio/config.js";
 import { requireSession } from "../auth/routes.js";
-import type { LeadRecord } from "../../shared/types.js";
+import { loadNextLead } from "../leads/nextLead.js";
+import { findPendingProposal } from "../review/store.js";
+import { buildDailySummary } from "../review/summary.js";
 
 function toPublicCampaign(campaign: AppContext["campaigns"][number]): PublicCampaign {
   return {
@@ -17,69 +19,19 @@ function toPublicCampaign(campaign: AppContext["campaigns"][number]): PublicCamp
   };
 }
 
-function toPublicLead(lead: LeadRecord): PublicLead {
-  return {
-    leadId: lead.leadId,
-    fullName: lead.fullName,
-    phone: lead.phone,
-    phoneE164: lead.phoneE164,
-    dialable: lead.dialable,
-    company: lead.company,
-    role: lead.role,
-    enrichment: lead.enrichment,
-    campaignId: lead.campaignId,
-    crmStatus: lead.crmStatus,
-    callStatus: lead.callStatus,
-    issues: lead.issues
-  };
-}
-
-async function nextLead(ctx: AppContext): Promise<{
-  lead: PublicLead | null;
-  diagnostics: BootstrapResponse["sheet"]["diagnostics"];
-  sheetStatus: BootstrapResponse["sheet"];
-}> {
-  if (!ctx.adapter) {
-    return {
-      lead: null,
-      diagnostics: [],
-      sheetStatus: {
-        status: "unconfigured",
-        message: ctx.sheetMessage || "Google Sheets is not configured",
-        diagnostics: []
-      }
-    };
+function pendingProposal(ctx: AppContext): BootstrapResponse["pendingProposal"] {
+  if (!ctx.finalizer) {
+    return null;
   }
-
-  const preflight = await ctx.adapter.preflight();
-  if (!preflight.ok) {
-    return {
-      lead: null,
-      diagnostics: [],
-      sheetStatus: {
-        status: "error",
-        message: preflight.errors.join(" "),
-        diagnostics: preflight.errors.map((message) => ({
-          code: message.includes("more than once") ? "duplicate_header" : "missing_header",
-          message
-        }))
-      }
-    };
+  const row = findPendingProposal(ctx.db);
+  if (!row || row.status === "processing") {
+    return null;
   }
-
-  const queue = await ctx.adapter.loadQueue();
-  const available = queue.leads.filter((lead) => !ctx.operator.skippedLeadIds.has(lead.leadId));
-  const lead = available[0] ?? null;
-
-  return {
-    lead: lead ? toPublicLead(lead) : null,
-    diagnostics: queue.diagnostics,
-    sheetStatus: {
-      status: "ok",
-      message: lead ? "Sheet connected" : "No eligible leads",
-      diagnostics: queue.diagnostics
-    }
-  };
+  try {
+    return ctx.finalizer.present(row);
+  } catch {
+    return null;
+  }
 }
 
 export async function registerLeads(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -91,7 +43,7 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
     if (ctx.campaigns[0] && !ctx.operator.selectedCampaignId) {
       ctx.operator.selectedCampaignId = ctx.campaigns[0].id;
     }
-    const next = await nextLead(ctx);
+    const next = await loadNextLead(ctx);
     const twilioOk = twilioVoiceConfigured(ctx.env);
     const body: BootstrapResponse = {
       campaigns: ctx.campaigns.map(toPublicCampaign),
@@ -101,13 +53,15 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
         ? { status: "ok", message: "Twilio Voice is configured. Register the device in the browser." }
         : { status: "not_configured", message: "Twilio Voice is not configured" },
       lead: next.lead,
-      recordingNotice: ctx.env.RECORDING_NOTICE
+      recordingNotice: ctx.env.RECORDING_NOTICE,
+      pendingProposal: pendingProposal(ctx),
+      summary: buildDailySummary(ctx.db, ctx.playbook, ctx.campaigns)
     };
     return body;
   });
 
   app.get("/api/leads/next", { preHandler: auth }, async () => {
-    const next = await nextLead(ctx);
+    const next = await loadNextLead(ctx);
     return { lead: next.lead, sheet: next.sheetStatus };
   });
 
@@ -120,7 +74,7 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
       ctx.operator.selectedCampaignId = parsed.data.campaignId;
     }
     ctx.operator.skippedLeadIds.add(parsed.data.leadId);
-    const next = await nextLead(ctx);
+    const next = await loadNextLead(ctx);
     return { lead: next.lead, sheet: next.sheetStatus };
   });
 
@@ -129,7 +83,7 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
     if (parsed.success && parsed.data.campaignId) {
       ctx.operator.selectedCampaignId = parsed.data.campaignId;
     }
-    const next = await nextLead(ctx);
+    const next = await loadNextLead(ctx);
     return { lead: next.lead, sheet: next.sheetStatus };
   });
 
@@ -139,7 +93,7 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
       return reply.code(400).send({ error: "Unknown campaign" });
     }
     ctx.operator.selectedCampaignId = body.campaignId;
-    const next = await nextLead(ctx);
+    const next = await loadNextLead(ctx);
     return { selectedCampaignId: body.campaignId, lead: next.lead, sheet: next.sheetStatus };
   });
 }

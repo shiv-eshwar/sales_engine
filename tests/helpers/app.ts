@@ -37,6 +37,8 @@ export async function makeTestEnv(overrides: Partial<Env> = {}): Promise<Env> {
     LLM_BASE_URL: undefined,
     LLM_API_KEY: undefined,
     LLM_MODEL: undefined,
+    LLM_TIMEOUT_MS: 4000,
+    COACH_RATE_LIMIT_MS: 0,
     ...overrides
   };
 }

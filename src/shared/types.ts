@@ -44,6 +44,7 @@ export type ApplyWriteInput = {
   leadId: string;
   snapshotPhone: string;
   fields: WriteFields;
+  proposalId?: string;
 };
 
 export type ApplyWriteResult =

@@ -49,3 +49,24 @@ objections:
   - other
 
 cue_max_characters: 160
+cue_min_confidence: 0.5
+
+objection_guides:
+  existing_solution:
+    first_cue: clarify
+    prompt: "Ask what the current solution covers and what still hurts before offering any comparison."
+  not_interested:
+    first_cue: clarify
+    prompt: "Acknowledge and ask what they would rather not spend time on."
+  do_not_contact:
+    first_cue: clarify
+    prompt: "Acknowledge immediately and end respectfully. Do not continue the pitch."
+  bad_timing:
+    first_cue: clarify
+    prompt: "Ask when timing would be better rather than pushing a meeting."
+  no_authority:
+    first_cue: qualify
+    prompt: "Ask who else is involved before trying to close."
+  other:
+    first_cue: clarify
+    prompt: "Ask one diagnostic question to understand the objection."

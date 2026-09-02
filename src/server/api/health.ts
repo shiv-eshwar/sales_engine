@@ -63,6 +63,14 @@ export async function registerHealth(app: FastifyInstance, ctx: AppContext): Pro
         : "Deepgram not configured; transcription will be interrupted"
     };
 
+    const llmConfigured = Boolean(ctx.env.LLM_BASE_URL && ctx.env.LLM_API_KEY && ctx.env.LLM_MODEL);
+    checks.llm = {
+      ok: true,
+      message: llmConfigured
+        ? "LLM is configured"
+        : "LLM not configured; live coaching will be skipped"
+    };
+
     const ready = Object.values(checks).every((check) => check.ok);
     const body: HealthReadyResponse = { status: ready ? "ok" : "not_ready", checks };
     return reply.code(ready ? 200 : 503).send(body);

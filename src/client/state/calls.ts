@@ -1,4 +1,6 @@
-import type { PublicLead, PublicUtterance, TranscriptionHealth } from "../../shared/contracts";
+import type { CallLiveEvent, PublicLead, PublicUtterance, TranscriptionHealth } from "../../shared/contracts";
+
+export type CoachSnapshot = Extract<CallLiveEvent, { type: "coach" }>["snapshot"];
 
 export type CallSessionView = {
   id: string;
@@ -15,6 +17,7 @@ export type CallSessionView = {
   transcriptComplete: boolean | null;
   transcriptionHealth: TranscriptionHealth;
   utterances: PublicUtterance[];
+  coach: CoachSnapshot | null;
 };
 
 export type DeviceStatus = "offline" | "registering" | "registered" | "error";

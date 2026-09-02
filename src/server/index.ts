@@ -10,12 +10,17 @@ import { loadSheetsConfig } from "./config/sheets.js";
 import { createOperatorState, type AppContext } from "./context.js";
 import type { DeepgramLiveFactory } from "./deepgram/types.js";
 import { createDeepgramFactory } from "./deepgram/live.js";
+import { CoachEngine } from "./coach/engine.js";
+import { createLlmClient } from "./llm/client.js";
+import type { LlmClient } from "./llm/types.js";
 import { isProduction, loadEnv, type Env } from "./env.js";
 import { migrate, openDatabase } from "./db/index.js";
 import { registerAuth } from "./auth/routes.js";
 import { registerHealth } from "./api/health.js";
 import { registerLeads } from "./api/leads.js";
 import { registerCallApi } from "./api/calls.js";
+import { registerReviewApi } from "./api/review.js";
+import { ReviewFinalizer } from "./review/finalize.js";
 import { registerTwilioWebhooks } from "./twilio/webhooks.js";
 import { registerTwilioMedia } from "./twilio/media.js";
 import { LiveEventBus } from "./transcript/events.js";
@@ -27,6 +32,7 @@ import { allowedCountriesFromEnv, createSheetStore } from "./sheets/createStore.
 
 export type BuildAppOptions = {
   deepgramFactory?: DeepgramLiveFactory;
+  llmClient?: LlmClient | null;
 };
 
 export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = {}) {
@@ -99,7 +105,35 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
   const streamTokens = new StreamTokenStore();
   const liveEvents = new LiveEventBus();
   const deepgramFactory = options.deepgramFactory ?? createDeepgramFactory(env);
-  const mediaHub = new MediaHub({ env, db, streamTokens, liveEvents, deepgramFactory });
+  const llmClient = options.llmClient === undefined ? createLlmClient(env) : options.llmClient;
+  const coachEngine = new CoachEngine({
+    env,
+    db,
+    campaigns,
+    playbook,
+    llm: llmClient,
+    liveEvents
+  });
+  const mediaHub = new MediaHub({
+    env,
+    db,
+    streamTokens,
+    liveEvents,
+    deepgramFactory,
+    onUtterance: (utterance) => coachEngine.consider(utterance)
+  });
+  const finalizer = adapter
+    ? new ReviewFinalizer({
+        db,
+        campaigns,
+        playbook,
+        sheetsConfig,
+        adapter,
+        llm: llmClient,
+        coachEngine,
+        mediaHub
+      })
+    : null;
 
   const ctx: AppContext = {
     env,
@@ -114,7 +148,10 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
     streamTokens,
     liveEvents,
     deepgramFactory,
-    mediaHub
+    mediaHub,
+    llmClient,
+    coachEngine,
+    finalizer
   };
 
   app.decorate("appContext", ctx);
@@ -123,6 +160,7 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
   await registerAuth(app, ctx);
   await registerLeads(app, ctx);
   await registerCallApi(app, ctx);
+  await registerReviewApi(app, ctx);
   await registerTwilioWebhooks(app, ctx);
   await registerTwilioMedia(app, ctx);
 

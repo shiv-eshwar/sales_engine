@@ -1,3 +1,4 @@
+import type { CoachSnapshot } from "../coach/engine.js";
 import type { PublicUtterance, TranscriptionHealth } from "./utterances.js";
 
 export type Speaker = "caller" | "contact";
@@ -5,7 +6,8 @@ export type Speaker = "caller" | "contact";
 export type CallLiveEvent =
   | { type: "interim"; speaker: Speaker; text: string }
   | { type: "final"; utterance: PublicUtterance }
-  | { type: "health"; status: TranscriptionHealth };
+  | { type: "health"; status: TranscriptionHealth }
+  | { type: "coach"; snapshot: CoachSnapshot };
 
 export class LiveEventBus {
   private readonly listeners = new Map<string, Set<(event: CallLiveEvent) => void>>();

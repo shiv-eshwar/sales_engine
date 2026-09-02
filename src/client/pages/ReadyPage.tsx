@@ -1,7 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import type { BootstrapResponse } from "../../shared/contracts";
 import { CallingPanel } from "../components/CallingPanel";
-import { logout, refreshLeads, selectCampaign, skipLead } from "../state/api";
+import { DailySummaryPanel } from "../components/DailySummaryPanel";
+import { ReviewPanel } from "../components/ReviewPanel";
+import {
+  approveProposal,
+  discardProposal,
+  fetchBootstrap,
+  finalizeCall,
+  logout,
+  refreshLeads,
+  retryProposalProcessing,
+  retryProposalWrite,
+  skipLead,
+  skipProposal,
+  selectCampaign
+} from "../state/api";
 import {
   callDisabledReason,
   cancelCallSession,
@@ -10,6 +24,7 @@ import {
   type DeviceStatus
 } from "../state/calls";
 import { connectTwilioCall, hangUpTwilioCall, startTwilioDevice, stopTwilioDevice } from "../twilio/device";
+import type { PublicProposal, PublicWriteFields } from "../../shared/contracts";
 
 type ReadyPageProps = {
   data: BootstrapResponse;
@@ -43,6 +58,7 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>("offline");
   const [deviceDetail, setDeviceDetail] = useState(data.twilio.message);
   const [call, setCall] = useState<CallSessionView | null>(null);
+  const [review, setReview] = useState<PublicProposal | null>(data.pendingProposal);
   const campaign = useMemo(
     () => data.campaigns.find((item) => item.id === data.selectedCampaignId) ?? data.campaigns[0],
     [data.campaigns, data.selectedCampaignId]
@@ -50,6 +66,7 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
   const lead = data.lead;
   const twilioConfigured = data.twilio.status === "ok";
   const callActive = Boolean(call);
+  const reviewing = Boolean(review) && !callActive;
   const disabledReason = callDisabledReason({
     twilioConfigured,
     deviceStatus,
@@ -113,6 +130,11 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
         await connectTwilioCall(session.id);
       } catch (connectError) {
         await cancelCallSession(session.id);
+        try {
+          setReview(await finalizeCall(session.id));
+        } catch {
+          setCall(null);
+        }
         setCall(null);
         throw connectError;
       }
@@ -123,19 +145,67 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
     }
   }
 
+  async function openReview(sessionId: string) {
+    hangUpTwilioCall();
+    const proposal = await finalizeCall(sessionId);
+    setReview(proposal);
+    setCall(null);
+  }
+
+  async function afterWrite(result: {
+    proposal: PublicProposal;
+    lead: BootstrapResponse["lead"];
+    sheet: BootstrapResponse["sheet"];
+  }) {
+    if (result.proposal.status === "applied" || result.proposal.status === "discarded") {
+      setReview(null);
+      const bootstrap = await fetchBootstrap();
+      onChange(bootstrap);
+      return;
+    }
+    setReview(result.proposal);
+    onChange({
+      ...data,
+      lead: result.lead,
+      sheet: result.sheet,
+      pendingProposal: result.proposal.status === "pending_retry" ? result.proposal : null
+    });
+  }
+
+  async function onReviewApprove(fields?: PublicWriteFields) {
+    if (!review) {
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      await afterWrite(await approveProposal(review.id, fields));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Approve failed");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{callActive ? "On a call" : "Ready to call"}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {callActive ? "On a call" : reviewing ? "Review" : "Ready to call"}
+          </h1>
           <p className="text-sm text-slate-600">
-            {callActive ? "Stay on this page until the call ends." : "Select a campaign and call the next eligible lead from the browser."}
+            {callActive
+              ? "Stay on this page until the call ends."
+              : reviewing
+                ? "Review the proposed Sheet update before anything is written."
+                : "Select a campaign and call the next eligible lead from the browser."}
           </p>
         </div>
         <button
           type="button"
           className="rounded-md border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
-          disabled={callActive}
+          disabled={callActive || reviewing}
           onClick={() => {
             void logout().then(onLoggedOut);
           }}
@@ -153,7 +223,7 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
             id="campaign"
             className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm"
             value={data.selectedCampaignId ?? ""}
-            disabled={pending || callActive}
+            disabled={pending || callActive || reviewing}
             onChange={(event) => {
               const campaignId = event.target.value;
               void run(() => selectCampaign(campaignId));
@@ -174,7 +244,7 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
         />
       </section>
 
-      {data.sheet.diagnostics.length > 0 && !callActive ? (
+      {data.sheet.diagnostics.length > 0 && !callActive && !reviewing ? (
         <section className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3" aria-label="Sheet diagnostics">
           <h2 className="text-sm font-semibold">Queue diagnostics</h2>
           <ul className="mt-2 list-disc pl-5 text-sm text-amber-950">
@@ -196,9 +266,74 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
           session={call}
           recordingNotice={data.recordingNotice}
           onSession={setCall}
-          onEnded={() => {
-            hangUpTwilioCall();
-            setCall(null);
+          onTerminal={() => {
+            void openReview(call.id).catch((err: unknown) => {
+              setError(err instanceof Error ? err.message : "Could not prepare review");
+              setCall(null);
+            });
+          }}
+        />
+      ) : review ? (
+        <ReviewPanel
+          proposal={review}
+          pending={pending}
+          error={error}
+          onApprove={(fields) => {
+            void onReviewApprove(fields);
+          }}
+          onRetryWrite={() => {
+            void (async () => {
+              setPending(true);
+              setError(null);
+              try {
+                await afterWrite(await retryProposalWrite(review.id));
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Retry failed");
+              } finally {
+                setPending(false);
+              }
+            })();
+          }}
+          onRetryProcessing={() => {
+            void (async () => {
+              setPending(true);
+              setError(null);
+              try {
+                setReview(await retryProposalProcessing(review.id));
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Reprocessing failed");
+              } finally {
+                setPending(false);
+              }
+            })();
+          }}
+          onSkip={() => {
+            void (async () => {
+              setPending(true);
+              setError(null);
+              try {
+                await afterWrite(await skipProposal(review.id));
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Skip failed");
+              } finally {
+                setPending(false);
+              }
+            })();
+          }}
+          onDiscard={() => {
+            void (async () => {
+              setPending(true);
+              setError(null);
+              try {
+                await discardProposal(review.id);
+                setReview(null);
+                onChange(await fetchBootstrap());
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Discard failed");
+              } finally {
+                setPending(false);
+              }
+            })();
           }}
         />
       ) : (
@@ -293,6 +428,7 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
             </button>
             {disabledReason ? <p className="text-sm text-slate-600">{disabledReason}</p> : null}
           </div>
+          <DailySummaryPanel summary={data.summary} />
         </>
       )}
     </main>

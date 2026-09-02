@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CallLiveEvent, PublicUtterance, TranscriptionHealth } from "../../shared/contracts";
-import type { CallSessionView } from "../state/calls";
+import type { CallSessionView, CoachSnapshot } from "../state/calls";
 import { callEventsUrl, cancelCallSession, fetchCallSession } from "../state/calls";
 import { hangUpTwilioCall, setTwilioMuted } from "../twilio/device";
 
 type CallingPanelProps = {
   session: CallSessionView;
   recordingNotice: string;
-  onEnded: () => void;
+  onTerminal: () => void;
   onSession: (session: CallSessionView) => void;
 };
 
@@ -65,13 +65,15 @@ function speakerLabel(speaker: "caller" | "contact"): string {
   return speaker === "contact" ? "Contact" : "Caller";
 }
 
-export function CallingPanel({ session, recordingNotice, onEnded, onSession }: CallingPanelProps) {
+export function CallingPanel({ session, recordingNotice, onTerminal, onSession }: CallingPanelProps) {
   const [muted, setMuted] = useState(false);
   const [, setTick] = useState(0);
   const [health, setHealth] = useState<TranscriptionHealth>(session.transcriptionHealth ?? "unavailable");
   const [utterances, setUtterances] = useState<PublicUtterance[]>(session.utterances ?? []);
   const [interims, setInterims] = useState<{ caller?: string; contact?: string }>({});
+  const [coach, setCoach] = useState<CoachSnapshot | null>(session.coach ?? null);
   const terminal = TERMINAL.has(session.status);
+  const notifiedTerminal = useRef(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setTick((value) => value + 1), 1000);
@@ -89,10 +91,11 @@ export function CallingPanel({ session, recordingNotice, onEnded, onSession }: C
   }, [session.id, terminal, onSession]);
 
   useEffect(() => {
-    if (terminal) {
-      onEnded();
+    if (terminal && !notifiedTerminal.current) {
+      notifiedTerminal.current = true;
+      onTerminal();
     }
-  }, [terminal, onEnded]);
+  }, [terminal, onTerminal]);
 
   useEffect(() => {
     if (terminal) {
@@ -109,6 +112,9 @@ export function CallingPanel({ session, recordingNotice, onEnded, onSession }: C
   useEffect(() => {
     setHealth(session.transcriptionHealth ?? "unavailable");
     setUtterances((current) => mergeUtterances(current, session.utterances ?? []));
+    if (session.coach) {
+      setCoach(session.coach);
+    }
   }, [session]);
 
   useEffect(() => {
@@ -134,6 +140,10 @@ export function CallingPanel({ session, recordingNotice, onEnded, onSession }: C
       }
       if (parsed.type === "interim") {
         setInterims((current) => ({ ...current, [parsed.speaker]: parsed.text }));
+        return;
+      }
+      if (parsed.type === "coach") {
+        setCoach(parsed.snapshot);
       }
     };
     return () => {
@@ -149,6 +159,43 @@ export function CallingPanel({ session, recordingNotice, onEnded, onSession }: C
       <p className="mt-3 text-lg" aria-label={`Call state ${transportLabel(session.status)}`}>
         {transportLabel(session.status)} · {formatDuration(session.connectedAt ?? session.startedAt)}
       </p>
+      <p className="mt-2 text-sm" aria-label={`Call stage ${coach?.stage ?? "opener"}`}>
+        Stage: {(coach?.stage ?? "opener").replaceAll("_", " ")}
+      </p>
+      {health !== "interrupted" && coach?.cue?.shouldShow ? (
+        <article className="mt-4 rounded-md border border-emerald-400/70 bg-emerald-950/40 p-4" aria-label="Live coaching cue">
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-200">{coach.cue.cueType}</p>
+          <p className="mt-1 text-xl font-semibold leading-snug">{coach.cue.text}</p>
+        </article>
+      ) : (
+        <article className="mt-4 rounded-md border border-slate-700 p-4" aria-label="Live coaching cue">
+          <p className="text-sm text-slate-400">
+            {health === "interrupted" ? "Cue hidden while transcription is interrupted." : "No cue right now."}
+          </p>
+        </article>
+      )}
+      <div className="mt-3 text-sm" aria-label="Talk ratio">
+        Talk ratio: {Math.round((coach?.talkRatio.callerShare ?? 0) * 100)}% caller /{" "}
+        {Math.round((coach?.talkRatio.contactShare ?? 0) * 100)}% contact
+        {coach?.talkRatio.warn ? (
+          <p className="mt-1 text-amber-200" role="status">
+            You are talking more than 40% after a minute. Let the contact speak.
+          </p>
+        ) : null}
+      </div>
+      {coach && coach.qualification.length > 0 ? (
+        <ul className="mt-3 flex flex-wrap gap-2" aria-label="Qualification criteria">
+          {coach.qualification.map((item) => (
+            <li
+              key={item.id}
+              className="rounded-md border border-slate-700 px-2 py-1 text-xs"
+              aria-label={`${item.id} ${item.state}`}
+            >
+              {item.id.replaceAll("_", " ")}: {item.state}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <p className="mt-2 text-sm" aria-label={`Transcription health ${healthLabel(health)}`}>
         Transcription health: {healthLabel(health)}
       </p>
@@ -204,7 +251,9 @@ export function CallingPanel({ session, recordingNotice, onEnded, onSession }: C
           className="rounded-md bg-red-700 px-4 py-2 font-medium text-white"
           onClick={() => {
             hangUpTwilioCall();
-            void cancelCallSession(session.id).finally(onEnded);
+            if (session.status !== "in_progress") {
+              void cancelCallSession(session.id);
+            }
           }}
         >
           Hang Up

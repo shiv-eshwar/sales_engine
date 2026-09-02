@@ -1,4 +1,4 @@
-import type { BootstrapResponse, PublicLead } from "../../shared/contracts";
+import type { BootstrapResponse, DailySummary, PublicLead, PublicProposal, PublicWriteFields } from "../../shared/contracts";
 
 async function parseError(response: Response): Promise<string> {
   try {
@@ -80,3 +80,95 @@ export async function selectCampaign(campaignId: string): Promise<{ selectedCamp
     sheet: BootstrapResponse["sheet"];
   };
 }
+
+export async function finalizeCall(sessionId: string): Promise<PublicProposal> {
+  const response = await fetch(`/api/calls/${sessionId}/finalize`, {
+    method: "POST",
+    credentials: "include"
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return (await response.json()) as PublicProposal;
+}
+
+export async function approveProposal(
+  id: string,
+  fields?: PublicWriteFields
+): Promise<{ proposal: PublicProposal; lead: PublicLead | null; sheet: BootstrapResponse["sheet"] }> {
+  const response = await fetch(`/api/proposals/${id}/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ fields })
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return (await response.json()) as {
+    proposal: PublicProposal;
+    lead: PublicLead | null;
+    sheet: BootstrapResponse["sheet"];
+  };
+}
+
+export async function retryProposalWrite(
+  id: string
+): Promise<{ proposal: PublicProposal; lead: PublicLead | null; sheet: BootstrapResponse["sheet"] }> {
+  const response = await fetch(`/api/proposals/${id}/retry-write`, {
+    method: "POST",
+    credentials: "include"
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return (await response.json()) as {
+    proposal: PublicProposal;
+    lead: PublicLead | null;
+    sheet: BootstrapResponse["sheet"];
+  };
+}
+
+export async function skipProposal(
+  id: string
+): Promise<{ proposal: PublicProposal; lead: PublicLead | null; sheet: BootstrapResponse["sheet"] }> {
+  const response = await fetch(`/api/proposals/${id}/skip`, {
+    method: "POST",
+    credentials: "include"
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return (await response.json()) as {
+    proposal: PublicProposal;
+    lead: PublicLead | null;
+    sheet: BootstrapResponse["sheet"];
+  };
+}
+
+export async function retryProposalProcessing(id: string): Promise<PublicProposal> {
+  const response = await fetch(`/api/proposals/${id}/retry-processing`, {
+    method: "POST",
+    credentials: "include"
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return (await response.json()) as PublicProposal;
+}
+
+export async function discardProposal(id: string): Promise<PublicProposal> {
+  const response = await fetch(`/api/proposals/${id}/discard`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ confirm: true })
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  const body = (await response.json()) as { proposal: PublicProposal };
+  return body.proposal;
+}
+
+export type { DailySummary };

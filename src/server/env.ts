@@ -35,7 +35,9 @@ const envSchema = z.object({
   TWILIO_TRACK_CONTACT: z.string().default("outbound"),
   LLM_BASE_URL: z.string().optional(),
   LLM_API_KEY: z.string().optional(),
-  LLM_MODEL: z.string().optional()
+  LLM_MODEL: z.string().optional(),
+  LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(4000),
+  COACH_RATE_LIMIT_MS: z.coerce.number().int().nonnegative().default(3000)
 });
 
 export type Env = z.infer<typeof envSchema>;
