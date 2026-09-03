@@ -30,8 +30,8 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 | Phase | Slice 6 — Verification and hardening |
 | Slice | 6 (code complete; live PSTN/Sheet smoke gated) |
 | Status | `blocked` |
-| Next action | Run `whatthis.md` §19 on a user-owned number once Twilio, Deepgram, LLM, public `APP_BASE_URL`, and a real Sheet exist. Fill speaker mapping and latency rows in `VERIFICATION.md`. |
-| Blocked on | Live credentials and a controlled PSTN + Sheet smoke. Automated holdouts, Playwright (fakes), SIGTERM drain, Docker recipe, README, and VERIFICATION are done. |
+| Next action | Upgrade Twilio off Trial, buy Voice number + TwiML App, replace rejected OpenAI key, then run §19 smoke. Google Sheet mapping when ready (`SHEETS_BACKEND=google`). |
+| Blocked on | Twilio Trial cannot create TwiML Applications and has no `TWILIO_CALLER_ID`; OpenAI key returns 401; Google Sheet deferred by operator. App runs on memory Sheet. |
 
 ---
 
@@ -281,7 +281,7 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | Campaign definitions (sales / research / networking) | `not_started` | Objective, claims, questions, qualification, outcomes |
 | Allowed calling countries | `not_started` | |
 | Recording notice policy and retention | `not_started` | Default ledger retention 90 days until specified |
-| Runtime credentials in local/deploy secrets | `not_started` | Never paste into source or chat |
+| Runtime credentials in local/deploy secrets | `in_progress` | Local `.env` has Deepgram + Twilio account/API keys + LLM env; OpenAI key 401; Twilio TwiML App SID + caller ID missing (Trial). Keys were pasted in chat — rotate. |
 
 ---
 
@@ -322,3 +322,5 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-02 | Slice 5: post-call extraction, review UI, Approve & next, retry ledger, DNC suppression, daily summary. Live Sheet/PSTN smoke still required. | Slice 5 code complete; live approve-and-next blocked |
 | 2026-09-02 | Slice 6: named holdouts H1–H14, Playwright E2E against faked Twilio/Deepgram/LLM, invalid-schema Call disable, SIGTERM drain, Dockerfile, README + operator runbook + VERIFICATION.md. Live §19 smoke still blocked on credentials. | Slice 6 code complete; live smoke blocked |
 | 2026-09-02 | Recorded Slice 6 commit SHA `e03c2c8` in VERIFICATION.md. Docker image `sales-engine` built. Production `/health/ready` confirms memory Sheet + auth; Twilio/Deepgram/LLM still unset so PSTN smoke cannot run. | Slice 6 code complete; live smoke blocked |
+| 2026-09-03 | Wired local `.env` (memory Sheet, Deepgram OK, Twilio keys without number/TwiML App, LLM key rejected by OpenAI). ngrok installed + tunnel. Production server on `:3000` ready; Call disabled until paid Twilio number + TwiML App. Operator notes in gitignored `.local-run.txt`. | Slice 6 blocked on Trial Twilio + valid OpenAI key + Sheet |
+| 2026-09-03 | Added `scripts/start-local.sh`, `scripts/tunnel.sh`, `scripts/status.sh` and `npm run start:local`. Verified login → bootstrap → memory lead queue. Goal handoff complete for local operator use; PSTN + Sheet deferred per Trial/credentials. | Local setup complete; live smoke blocked |

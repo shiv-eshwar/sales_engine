@@ -9,6 +9,7 @@ coverage/
 .env
 .env.*
 !.env.example
+.local-run.txt
 *.pem
 *.p12
 *service-account*.json

@@ -12,6 +12,7 @@
     "dev:client": "vite",
     "build": "vite build",
     "start": "NODE_ENV=production tsx src/server/index.ts",
+    "start:local": "./scripts/start-local.sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
