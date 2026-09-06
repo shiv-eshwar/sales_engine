@@ -28,10 +28,10 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 | Field | Value |
 |---|---|
 | Phase | Slice 6 — Verification and hardening |
-| Slice | 6 (code complete; live PSTN/Sheet smoke gated) |
+| Slice | 6 (code complete; live PSTN smoke gated) |
 | Status | `blocked` |
-| Next action | Upgrade Twilio off Trial, buy Voice number + TwiML App, replace rejected OpenAI key, then run §19 smoke. Google Sheet mapping when ready (`SHEETS_BACKEND=google`). |
-| Blocked on | Twilio Trial cannot create TwiML Applications and has no `TWILIO_CALLER_ID`; OpenAI key returns 401; Google Sheet deferred by operator. App runs on memory Sheet. |
+| Next action | Confirm public `APP_BASE_URL` (ngrok) matches TwiML App, then run §19 live PSTN smoke and fill speaker mapping in `VERIFICATION.md`. |
+| Blocked on | Live controlled PSTN smoke / speaker mapping. Google Sheet is connected; Twilio Voice credentials present in local `.env`. |
 
 ---
 
@@ -274,14 +274,14 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 
 | Input | Status | Notes |
 |---|---|---|
-| Exact Google Sheet header row | `not_started` | Example YAML must not be assumed to match production |
-| One anonymized example lead row | `not_started` | |
-| Gumloop-owned columns | `not_started` | |
-| Application-writable columns | `not_started` | |
+| Exact Google Sheet header row | `completed` | Live Sheet1 expanded to full CRM headers matching `config/sheets.yaml` |
+| One anonymized example lead row | `completed` | `TEST-20260906-001` / +12025550123 / Status Ready |
+| Gumloop-owned columns | `completed` | Spec example ownership used in `config/sheets.yaml` |
+| Application-writable columns | `completed` | Spec example ownership used in `config/sheets.yaml` |
 | Campaign definitions (sales / research / networking) | `not_started` | Objective, claims, questions, qualification, outcomes |
 | Allowed calling countries | `not_started` | |
 | Recording notice policy and retention | `not_started` | Default ledger retention 90 days until specified |
-| Runtime credentials in local/deploy secrets | `in_progress` | Local `.env` has Deepgram + Twilio account/API keys + LLM env; OpenAI key 401; Twilio TwiML App SID + caller ID missing (Trial). Keys were pasted in chat — rotate. |
+| Runtime credentials in local/deploy secrets | `in_progress` | Local `.env` has Google SA + Sheet config (gitignored), Twilio Voice fields, Deepgram, LLM. Rotate any keys that were pasted in chat. |
 
 ---
 
@@ -324,3 +324,5 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-02 | Recorded Slice 6 commit SHA `e03c2c8` in VERIFICATION.md. Docker image `sales-engine` built. Production `/health/ready` confirms memory Sheet + auth; Twilio/Deepgram/LLM still unset so PSTN smoke cannot run. | Slice 6 code complete; live smoke blocked |
 | 2026-09-03 | Wired local `.env` (memory Sheet, Deepgram OK, Twilio keys without number/TwiML App, LLM key rejected by OpenAI). ngrok installed + tunnel. Production server on `:3000` ready; Call disabled until paid Twilio number + TwiML App. Operator notes in gitignored `.local-run.txt`. | Slice 6 blocked on Trial Twilio + valid OpenAI key + Sheet |
 | 2026-09-03 | Added `scripts/start-local.sh`, `scripts/tunnel.sh`, `scripts/status.sh` and `npm run start:local`. Verified login → bootstrap → memory lead queue. Goal handoff complete for local operator use; PSTN + Sheet deferred per Trial/credentials. | Local setup complete; live smoke blocked |
+| 2026-09-06 | Wired live Google Sheets CRM: `config/sheets.yaml` (gitignored), service-account base64 in `.env`, Sheet1 headers expanded to full CRM contract, test lead `TEST-20260906-001`. `/health/ready` reports Sheet schema valid (google); bootstrap returns Test Contact. | Google CRM live; PSTN smoke still gated |
+| 2026-09-06 | Removed password login gate: open access to API and UI; Sign out removed; e2e opens Ready page directly. | Open access; PSTN smoke still gated |

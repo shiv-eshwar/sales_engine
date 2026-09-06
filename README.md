@@ -20,7 +20,7 @@ The application does **not**:
 ## Architecture
 
 ```
-Browser (React)  --session cookie-->  Fastify (Node 22)
+Browser (React)  --open access-->  Fastify (Node 22)
        |                                    |
        | Twilio Voice SDK                   | TwiML + status + recording webhooks
        |                                    | Media Streams WS -> Deepgram (caller + contact)
@@ -46,11 +46,9 @@ Copy `.env.example` to `.env` and fill values locally. Never commit `.env` or se
 ```bash
 cp .env.example .env
 npm install
-npm run hash-password -- "your-password"
-# paste the scrypt hash into APP_PASSWORD_HASH
 ```
 
-Set `SESSION_SECRET` to at least 32 random characters.
+Auth is **open access** for this single-user operator (no login password). Do not expose the host publicly without adding a gate or network restriction.
 
 ## Twilio (TwiML app + number)
 

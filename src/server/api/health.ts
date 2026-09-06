@@ -10,10 +10,9 @@ export async function registerHealth(app: FastifyInstance, ctx: AppContext): Pro
   app.get("/health/ready", async (_request, reply) => {
     const checks: HealthReadyResponse["checks"] = {};
 
-    const authConfigured = Boolean(ctx.env.APP_PASSWORD_HASH && ctx.env.SESSION_SECRET);
     checks.auth = {
-      ok: authConfigured,
-      message: authConfigured ? "Password and session secret are set" : "APP_PASSWORD_HASH or SESSION_SECRET is missing"
+      ok: true,
+      message: "Open access (no password gate)"
     };
 
     checks.database = { ok: true, message: "Migrations applied" };
