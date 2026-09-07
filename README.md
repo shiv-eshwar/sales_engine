@@ -128,6 +128,14 @@ When `LLM_BASE_URL` points to `api.openai.com`, web research reuses that key and
 
 `AI_GENERATION_TIMEOUT_MS` defaults to 90 seconds and `RESEARCH_TIMEOUT_MS` to 60 seconds. Live coaching retains its separate `LLM_TIMEOUT_MS` budget. A provider 401 means the configured API key was rejected; update the local environment and restart. `/health/ready` reports configured integrations, not live credential validation.
 
+## AI agents (eve)
+
+The four AI capabilities are eve-framework agents under `agents/` — one directory per agent with `agent.ts` (`defineAgent`: description, model, `outputSchema`) and `instructions.md` (static system prompt with a `{{SCHEMA}}` slot):
+
+- `live-coach`, `post-call`, `campaign-generation`, `prospect-research`
+
+`src/server/agents/loader.ts` renders instructions and the existing OpenAI-compatible transport (`src/server/llm/`) executes single structured turns, so timeouts, validators, and holdout behavior are unchanged. The full eve runtime (durable sessions, AI Gateway) is intentionally not used: this app is one process with sub-3s coaching budgets and fake-injected tests. To edit an agent's behavior, edit its `instructions.md`; contracts live in the zod schemas referenced by `agent.ts`. `tests/unit/agents.test.ts` guards both.
+
 ## Tunnel / `APP_BASE_URL`
 
 Twilio must reach your host. For local live calls:
