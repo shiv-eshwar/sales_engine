@@ -56,6 +56,7 @@ export async function startConnectedCall(input: {
   const cookie = await loginCookie(app);
   const leadId = input.leadId ?? "L-100";
   const campaignId = input.campaignId ?? "lamina-sales";
+  getAppContext(app).campaignStore.assign(campaignId, [leadId], true);
   const created = await app.inject({
     method: "POST",
     url: "/api/calls/sessions",

@@ -1,4 +1,5 @@
 import type { CallLiveEvent, PublicLead, PublicUtterance, TranscriptionHealth } from "../../shared/contracts";
+import type { ProspectPreparation } from "../../shared/campaigns";
 
 export type CoachSnapshot = Extract<CallLiveEvent, { type: "coach" }>["snapshot"];
 
@@ -6,6 +7,8 @@ export type CallSessionView = {
   id: string;
   leadId: string;
   campaignId: string;
+  campaignName?: string;
+  preparation?: ProspectPreparation | null;
   status: string;
   transportOutcome: string | null;
   phoneE164: string;
@@ -45,12 +48,12 @@ export async function fetchVoiceToken(): Promise<string> {
   return body.token;
 }
 
-export async function createCallSession(leadId: string, campaignId: string): Promise<CallSessionView> {
+export async function createCallSession(leadId: string, campaignId: string, preparationId?: string): Promise<CallSessionView> {
   const response = await fetch("/api/calls/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ leadId, campaignId })
+    body: JSON.stringify({ leadId, campaignId, preparationId })
   });
   if (!response.ok) {
     throw new Error(await parseError(response));

@@ -1,3 +1,5 @@
+import type { CampaignBrief, CampaignStrategy } from "./campaigns.js";
+
 export type SheetStatus = "ok" | "unconfigured" | "error";
 
 export type SheetDiagnostic = {
@@ -29,6 +31,8 @@ export type PublicCampaign = {
   version: number;
   objective: string;
   requiredQuestions: Array<{ id: string; prompt: string; required: boolean }>;
+  brief?: CampaignBrief;
+  strategy?: CampaignStrategy;
 };
 
 export type ProviderStatus = {
@@ -45,6 +49,8 @@ export type BootstrapResponse = {
     diagnostics: SheetDiagnostic[];
   };
   twilio: ProviderStatus;
+  ai: ProviderStatus;
+  research: ProviderStatus;
   lead: PublicLead | null;
   recordingNotice: string;
   pendingProposal: PublicProposal | null;

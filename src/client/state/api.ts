@@ -1,4 +1,5 @@
-import type { BootstrapResponse, DailySummary, PublicLead, PublicProposal, PublicWriteFields } from "../../shared/contracts";
+import type { BootstrapResponse, DailySummary, PublicCampaign, PublicLead, PublicProposal, PublicWriteFields } from "../../shared/contracts";
+import type { CampaignBrief, CampaignLead, ProspectPreparation } from "../../shared/campaigns";
 
 async function parseError(response: Response): Promise<string> {
   try {
@@ -172,3 +173,36 @@ export async function discardProposal(id: string): Promise<PublicProposal> {
 }
 
 export type { DailySummary };
+
+async function campaignRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await fetch(path, {
+    ...options,
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...options.headers }
+  });
+  if (!response.ok) throw new Error(await parseError(response));
+  return await response.json() as T;
+}
+
+export function saveCampaign(brief: CampaignBrief, requestId: string, previous?: PublicCampaign): Promise<PublicCampaign> {
+  return campaignRequest(previous ? `/api/campaigns/${encodeURIComponent(previous.id)}` : "/api/campaigns", {
+    method: previous ? "PUT" : "POST",
+    body: JSON.stringify(previous ? { brief, expectedVersion: previous.version } : { brief, requestId })
+  });
+}
+
+export function fetchCampaignLeads(campaignId: string, signal?: AbortSignal): Promise<{ leads: CampaignLead[] }> {
+  return campaignRequest(`/api/campaigns/${encodeURIComponent(campaignId)}/leads`, { signal });
+}
+
+export function assignCampaignLeads(campaignId: string, leadIds: string[], assigned: boolean): Promise<{ ok: true }> {
+  return campaignRequest(`/api/campaigns/${encodeURIComponent(campaignId)}/leads`, {
+    method: "POST", body: JSON.stringify({ leadIds, assigned })
+  });
+}
+
+export function prepareLead(campaignId: string, leadId: string, force: boolean, signal?: AbortSignal): Promise<ProspectPreparation> {
+  return campaignRequest(`/api/campaigns/${encodeURIComponent(campaignId)}/leads/${encodeURIComponent(leadId)}/prepare`, {
+    method: "POST", body: JSON.stringify({ force }), signal
+  });
+}

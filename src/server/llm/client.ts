@@ -17,17 +17,23 @@ export function createLlmClient(env: Env): LlmClient | null {
   return {
     async completeJson(input: LlmCompleteInput): Promise<string> {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const timer = setTimeout(() => controller.abort(), input.timeoutMs ?? timeoutMs);
       try {
-        const response = await fetch(`${base}/chat/completions`, {
+        const useResponses = env.LLM_API_MODE === "responses";
+        const response = await fetch(`${base}/${useResponses ? "responses" : "chat/completions"}`, {
           method: "POST",
           headers: {
             "content-type": "application/json",
             authorization: `Bearer ${apiKey}`
           },
-          body: JSON.stringify({
+          body: JSON.stringify(useResponses ? {
             model,
-            temperature: 0,
+            store: false,
+            instructions: `${input.system}\nReturn only valid JSON, without markdown fences.`,
+            input: [{ role: "user", content: input.user }]
+          } : {
+            model,
+            store: false,
             response_format: { type: "json_object" },
             messages: [
               { role: "system", content: input.system },
@@ -41,8 +47,18 @@ export function createLlmClient(env: Env): LlmClient | null {
         }
         const body = (await response.json()) as {
           choices?: Array<{ message?: { content?: string } }>;
+          status?: string;
+          output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>;
         };
-        const content = body.choices?.[0]?.message?.content;
+        if (useResponses && body.status !== "completed") {
+          throw new Error("LLM response did not complete");
+        }
+        const content = useResponses
+          ? body.output?.filter(item => item.type === "message")
+            .flatMap(item => item.content ?? [])
+            .filter(item => item.type === "output_text")
+            .map(item => item.text ?? "").join("")
+          : body.choices?.[0]?.message?.content;
         if (!content) {
           throw new Error("LLM returned empty content");
         }

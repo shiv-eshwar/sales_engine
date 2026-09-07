@@ -1,0 +1,20 @@
+# Pinned to the same version verified with Software Factory's ChatGPT provider.
+model_list:
+  - model_name: sales-fast
+    litellm_params:
+      model: chatgpt/gpt-5.6-luna
+    model_info:
+      mode: responses
+  - model_name: sales-research
+    litellm_params:
+      model: chatgpt/gpt-5.6-luna
+    model_info:
+      mode: responses
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+litellm_settings:
+  drop_params: true
+  request_timeout: 180
+  num_retries: 2
+  allowed_fails: 3
+  cooldown_time: 60

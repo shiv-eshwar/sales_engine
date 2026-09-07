@@ -1,5 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
+import type { CampaignConfig } from "../../shared/schemas.js";
+import type { CampaignBrief, ProspectPreparation } from "../../shared/campaigns.js";
 import {
   ACTIVE_CALL_STATUSES,
   applyStatusTransition,
@@ -33,7 +35,17 @@ export type LeadSnapshot = {
   phoneE164: string;
   company: string;
   role: string;
+  enrichment?: string;
+  campaign?: CampaignConfig;
+  offering?: CampaignBrief;
+  preparation?: ProspectPreparation;
 };
+
+export function sessionCampaign(row: CallSessionRow, campaigns: CampaignConfig[]): CampaignConfig | undefined {
+  const snapshot = JSON.parse(row.lead_snapshot_json) as LeadSnapshot;
+  // An active or historical call always uses the plan the operator saw when dialing.
+  return snapshot.campaign ?? campaigns.find(item => item.id === row.campaign_id && item.version === row.campaign_version);
+}
 
 export class ActiveCallExistsError extends Error {
   readonly sessionId: string;
@@ -234,6 +246,8 @@ export function publicCallSession(row: CallSessionRow) {
     id: row.id,
     leadId: row.lead_id,
     campaignId: row.campaign_id,
+    campaignName: snapshot.campaign?.name,
+    preparation: snapshot.preparation ?? null,
     status: row.status,
     transportOutcome: row.transport_outcome,
     phoneE164: snapshot.phoneE164,

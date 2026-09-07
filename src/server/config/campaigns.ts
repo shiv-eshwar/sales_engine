@@ -3,12 +3,13 @@ import { join } from "node:path";
 import { parse } from "yaml";
 import { campaignConfigSchema, type CampaignConfig } from "../../shared/schemas.js";
 
-export function loadCampaigns(dir: string): CampaignConfig[] {
+export function loadCampaigns(dir: string, options: { includeExamples?: boolean; allowEmpty?: boolean } = {}): CampaignConfig[] {
   const files = readdirSync(dir)
     .filter((name) => name.endsWith(".yaml") || name.endsWith(".yml"))
+    .filter((name) => options.includeExamples !== false || !/\.example\.ya?ml$/.test(name))
     .sort();
 
-  if (files.length === 0) {
+  if (files.length === 0 && !options.allowEmpty) {
     throw new Error(`No campaign YAML files found in ${dir}`);
   }
 

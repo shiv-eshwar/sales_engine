@@ -7,6 +7,8 @@ import { expectedTwilioSignature } from "../../src/server/twilio/signature.js";
 import { extractStreamToken, startTestApp, TEST_AUTH_TOKEN, TEST_PASSWORD } from "../helpers/app.js";
 import { createFakeDeepgramFactory, type FakeDeepgramConnection } from "../helpers/deepgram.js";
 import { coachOutput, FakeLlmClient, postCallOutput } from "../helpers/llm.js";
+import type { CampaignConfig } from "../../src/shared/schemas.js";
+import type { ResearchClient } from "../../src/server/research/client.js";
 
 export { TEST_PASSWORD };
 
@@ -83,10 +85,10 @@ function enqueueDefaultLlm(llm: FakeLlmClient): void {
   );
 }
 
-export async function startE2eServer(options: { sheetsConfigPath?: string; enqueueLlm?: boolean } = {}): Promise<E2eServer> {
-  const clientDir = resolve("dist/client");
+export async function startE2eServer(options: { sheetsConfigPath?: string; enqueueLlm?: boolean; initialCampaigns?: CampaignConfig[]; researchClient?: ResearchClient | null } = {}): Promise<E2eServer> {
+  const clientDir = resolve("dist/e2e-client");
   if (!existsSync(clientDir)) {
-    throw new Error("dist/client is missing. Run VITE_E2E=true npm run build before Playwright.");
+    throw new Error("dist/e2e-client is missing. Run npm run test:e2e first.");
   }
 
   const port = await getFreePort();
@@ -107,7 +109,10 @@ export async function startE2eServer(options: { sheetsConfigPath?: string; enque
     {
       deepgramFactory: createFakeDeepgramFactory(fakes),
       llmClient: llm,
-      disableLogger: true
+      ...(options.initialCampaigns ? { initialCampaigns: options.initialCampaigns } : {}),
+      ...(options.researchClient !== undefined ? { researchClient: options.researchClient } : {}),
+      disableLogger: true,
+      clientDir
     }
   );
 

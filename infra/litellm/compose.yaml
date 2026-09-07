@@ -1,0 +1,22 @@
+name: sales-engine
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:v1.89.5@sha256:c98bf54e313fcd113800e30e011128b1242899405522703a86bc5b5475a07439
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    ports:
+      - "127.0.0.1:${SALES_LITELLM_PORT:-4001}:4000"
+    environment:
+      LITELLM_MASTER_KEY: ${SALES_LITELLM_MASTER_KEY:?Run npm run proxy:setup first}
+      CHATGPT_TOKEN_DIR: /var/lib/litellm/chatgpt
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - chatgpt-auth:/var/lib/litellm/chatgpt
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+volumes:
+  chatgpt-auth:

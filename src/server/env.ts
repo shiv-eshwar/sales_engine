@@ -36,7 +36,13 @@ const envSchema = z.object({
   LLM_BASE_URL: z.string().optional(),
   LLM_API_KEY: z.string().optional(),
   LLM_MODEL: z.string().optional(),
+  LLM_API_MODE: z.enum(["chat_completions", "responses"]).default("chat_completions"),
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(4000),
+  AI_GENERATION_TIMEOUT_MS: z.coerce.number().int().positive().default(90000),
+  RESEARCH_BASE_URL: z.string().url().optional(),
+  RESEARCH_API_KEY: z.string().optional(),
+  RESEARCH_MODEL: z.string().optional(),
+  RESEARCH_TIMEOUT_MS: z.coerce.number().int().positive().default(60000),
   COACH_RATE_LIMIT_MS: z.coerce.number().int().nonnegative().default(3000),
   DRAIN_TIMEOUT_MS: z.coerce.number().int().positive().default(30000)
 });

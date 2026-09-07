@@ -2,7 +2,7 @@ import type Database from "better-sqlite3";
 import type { CampaignConfig, PlaybookConfig, SheetsConfig } from "../../shared/schemas.js";
 import type { PublicProposal } from "../../shared/contracts.js";
 import { isTerminalStatus } from "../calls/state.js";
-import { getSession, type LeadSnapshot } from "../calls/ledger.js";
+import { getSession, sessionCampaign, type LeadSnapshot } from "../calls/ledger.js";
 import type { CoachEngine } from "../coach/engine.js";
 import { emptyCriteria } from "../coach/qualification.js";
 import { computeTalkRatio } from "../coach/talkRatio.js";
@@ -55,7 +55,7 @@ export class ReviewFinalizer {
       throw new Error("Call is still active");
     }
 
-    const campaign = this.deps.campaigns.find((item) => item.id === session.campaign_id);
+    const campaign = sessionCampaign(session, this.deps.campaigns);
     if (!campaign) {
       throw new Error("Unknown campaign");
     }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ProspectBrief } from "./ProspectBrief";
 import type { CallLiveEvent, PublicUtterance, TranscriptionHealth } from "../../shared/contracts";
 import type { CallSessionView, CoachSnapshot } from "../state/calls";
 import { callEventsUrl, cancelCallSession, fetchCallSession } from "../state/calls";
@@ -155,6 +156,7 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
     <section className="mt-6 rounded-lg border border-slate-800 bg-slate-900 p-6 text-slate-50" aria-live="polite">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Live call</p>
       <h2 className="mt-2 text-2xl font-semibold">{session.contactName || "Contact"}</h2>
+      {session.campaignName ? <p className="mt-1 text-sm text-indigo-200">{session.campaignName}</p> : null}
       <p className="font-mono text-sm text-slate-300">{session.phoneE164}</p>
       <p className="mt-3 text-lg" aria-label={`Call state ${transportLabel(session.status)}`}>
         {transportLabel(session.status)} · {formatDuration(session.connectedAt ?? session.startedAt)}
@@ -259,6 +261,10 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
           Hang Up
         </button>
       </div>
+      {session.preparation ? <details className="mt-5">
+        <summary className="cursor-pointer text-sm font-medium">Research & call preparation</summary>
+        <div className="text-slate-900"><ProspectBrief preparation={session.preparation} /></div>
+      </details> : null}
     </section>
   );
 }

@@ -1,7 +1,7 @@
 import type { CampaignConfig, SheetsConfig } from "../../shared/schemas.js";
 import type { PublicProposal } from "../../shared/contracts.js";
 import type { LeadSnapshot } from "../calls/ledger.js";
-import { getSession } from "../calls/ledger.js";
+import { getSession, sessionCampaign } from "../calls/ledger.js";
 import { listCoachingEvents } from "../coach/store.js";
 import { listUtterances } from "../transcript/utterances.js";
 import { fieldDiff } from "./fields.js";
@@ -20,7 +20,7 @@ export function toPublicProposal(
   const body = parseBody(row);
   const session = row.session_id ? getSession(db, row.session_id) : null;
   const snapshot = session ? (JSON.parse(session.lead_snapshot_json) as LeadSnapshot) : null;
-  const campaign = input.campaigns.find((item) => item.id === body.campaignId);
+  const campaign = session ? sessionCampaign(session, input.campaigns) : input.campaigns.find((item) => item.id === body.campaignId);
   const current = input.currentFields ?? body.currentFields;
   const proposed = body.fields;
   const utterances = row.session_id ? listUtterances(db, row.session_id) : [];

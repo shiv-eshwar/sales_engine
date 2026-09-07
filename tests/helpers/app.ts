@@ -2,6 +2,7 @@ import { hashPassword } from "../../src/server/auth/password.js";
 import { buildApp, type BuildAppOptions } from "../../src/server/index.js";
 import type { AppContext } from "../../src/server/context.js";
 import type { Env } from "../../src/server/env.js";
+import { loadCampaigns } from "../../src/server/config/campaigns.js";
 
 export const TEST_PASSWORD = "test-password";
 export const TEST_AUTH_TOKEN = "test-twilio-auth-token";
@@ -37,7 +38,10 @@ export async function makeTestEnv(overrides: Partial<Env> = {}): Promise<Env> {
     LLM_BASE_URL: undefined,
     LLM_API_KEY: undefined,
     LLM_MODEL: undefined,
+    LLM_API_MODE: "chat_completions",
     LLM_TIMEOUT_MS: 4000,
+    AI_GENERATION_TIMEOUT_MS: 1000,
+    RESEARCH_TIMEOUT_MS: 1000,
     COACH_RATE_LIMIT_MS: 0,
     DRAIN_TIMEOUT_MS: 200,
     ...overrides
@@ -46,7 +50,7 @@ export async function makeTestEnv(overrides: Partial<Env> = {}): Promise<Env> {
 
 export async function startTestApp(overrides: Partial<Env> = {}, options: BuildAppOptions = {}) {
   const env = await makeTestEnv(overrides);
-  const app = await buildApp(env, options);
+  const app = await buildApp(env, { initialCampaigns: loadCampaigns(env.CAMPAIGNS_DIR), researchClient: null, ...options });
   return { app, env };
 }
 

@@ -70,4 +70,24 @@ describe("Qualification reducer", () => {
       "do_not_contact"
     );
   });
+
+  it("uses generated criterion behavior without depending on example criterion IDs", () => {
+    const generated = {
+      ...campaign,
+      qualification: {
+        criteria: {
+          invoice_backlog: { prompt: "Is there an invoice backlog?", required_for_qualified: true, negative_outcome: "disqualified" as const },
+          capacity_to_change: { prompt: "Can they evaluate a change now?", required_for_qualified: false, negative_outcome: "defer" as const }
+        },
+        disqualifiers: ["The offering does not address a relevant problem"]
+      }
+    };
+    const state = emptyCriteria(generated);
+    state.invoice_backlog!.state = "yes";
+    state.capacity_to_change!.state = "no";
+    expect(recommendOutcome(generated, state, { doNotContact: false, detectedObjection: null })).toBe("defer");
+    state.invoice_backlog!.state = "no";
+    expect(recommendOutcome(generated, state, { doNotContact: false, detectedObjection: null })).toBe("disqualified");
+    expect(recommendOutcome(generated, state, { doNotContact: true, detectedObjection: null })).toBe("do_not_contact");
+  });
 });

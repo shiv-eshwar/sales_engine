@@ -4,7 +4,8 @@ export const campaignTypeSchema = z.enum(["sales", "research", "networking"]);
 
 export const criterionSchema = z.object({
   prompt: z.string().min(1),
-  required_for_qualified: z.boolean()
+  required_for_qualified: z.boolean(),
+  negative_outcome: z.enum(["disqualified", "defer", "unknown"]).optional()
 });
 
 const SALES_CLOSE_OUTCOMES = new Set(["meeting_booked"]);

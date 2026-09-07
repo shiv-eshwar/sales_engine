@@ -1,7 +1,7 @@
 import type Database from "better-sqlite3";
 import type { CampaignConfig, PlaybookConfig } from "../../shared/schemas.js";
 import type { Env } from "../env.js";
-import { getSession, type LeadSnapshot } from "../calls/ledger.js";
+import { getSession, sessionCampaign, type LeadSnapshot } from "../calls/ledger.js";
 import type { LlmClient } from "../llm/types.js";
 import type { LiveEventBus } from "../transcript/events.js";
 import { listUtterances, type PublicUtterance } from "../transcript/utterances.js";
@@ -80,7 +80,7 @@ export class CoachEngine {
     if (!session) {
       return null;
     }
-    const campaign = this.deps.campaigns.find((item) => item.id === session.campaign_id);
+    const campaign = sessionCampaign(session, this.deps.campaigns);
     const utterances = listUtterances(this.deps.db, sessionId);
     const talk = computeTalkRatio(utterances, session.connected_at, this.deps.playbook);
     const state = this.sessions.get(sessionId);
@@ -142,7 +142,7 @@ export class CoachEngine {
     if (!row || row.status !== "in_progress") {
       return;
     }
-    const campaign = this.deps.campaigns.find((item) => item.id === row.campaign_id);
+    const campaign = sessionCampaign(row, this.deps.campaigns);
     if (!campaign) {
       return;
     }

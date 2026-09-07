@@ -1,6 +1,7 @@
 import type { BootstrapResponse, PublicLead } from "../../shared/contracts.js";
 import type { AppContext } from "../context.js";
 import type { LeadRecord } from "../../shared/types.js";
+import { skippedLeadKey } from "../campaigns/store.js";
 
 export function toPublicLead(lead: LeadRecord): PublicLead {
   return {
@@ -53,7 +54,9 @@ export async function loadNextLead(ctx: AppContext): Promise<{
   }
 
   const queue = await ctx.adapter.loadQueue();
-  const available = queue.leads.filter((lead) => !ctx.operator.skippedLeadIds.has(lead.leadId));
+  const campaignId = ctx.operator.selectedCampaignId;
+  const belongs = campaignId ? ctx.campaignStore.membership(campaignId) : () => false;
+  const available = queue.leads.filter((lead) => belongs(lead) && !ctx.operator.skippedLeadIds.has(skippedLeadKey(campaignId, lead.leadId)));
   const lead = available[0] ?? null;
 
   return {
@@ -61,7 +64,7 @@ export async function loadNextLead(ctx: AppContext): Promise<{
     diagnostics: queue.diagnostics,
     sheetStatus: {
       status: "ok",
-      message: lead ? "Sheet connected" : "No eligible leads",
+      message: lead ? "Sheet connected" : campaignId ? "No eligible leads assigned to this campaign" : "Create or select a campaign to choose leads",
       diagnostics: queue.diagnostics
     }
   };

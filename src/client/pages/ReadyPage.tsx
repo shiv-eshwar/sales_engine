@@ -3,6 +3,10 @@ import type { BootstrapResponse } from "../../shared/contracts";
 import { CallingPanel } from "../components/CallingPanel";
 import { DailySummaryPanel } from "../components/DailySummaryPanel";
 import { ReviewPanel } from "../components/ReviewPanel";
+import { CampaignEditor } from "../components/CampaignEditor";
+import { CampaignLeads } from "../components/CampaignLeads";
+import { ProspectBrief } from "../components/ProspectBrief";
+import type { ProspectPreparation } from "../../shared/campaigns";
 import {
   approveProposal,
   discardProposal,
@@ -14,7 +18,8 @@ import {
   retryProposalWrite,
   skipLead,
   skipProposal,
-  selectCampaign
+  selectCampaign,
+  prepareLead
 } from "../state/api";
 import {
   callDisabledReason,
@@ -59,6 +64,11 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
   const [deviceDetail, setDeviceDetail] = useState(data.twilio.message);
   const [call, setCall] = useState<CallSessionView | null>(null);
   const [review, setReview] = useState<PublicProposal | null>(data.pendingProposal);
+  const [editor, setEditor] = useState<"new" | "edit" | null>(data.campaigns.length ? null : "new");
+  const [campaignBusy, setCampaignBusy] = useState(false);
+  const [manageLeads, setManageLeads] = useState(false);
+  const [prepState, setPrepState] = useState<{ key: string; result: ProspectPreparation | null; error: string | null; loading: boolean } | null>(null);
+  const [prepRefresh, setPrepRefresh] = useState<{ key: string; attempt: number } | null>(null);
   const campaign = useMemo(
     () => data.campaigns.find((item) => item.id === data.selectedCampaignId) ?? data.campaigns[0],
     [data.campaigns, data.selectedCampaignId]
@@ -67,7 +77,14 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
   const twilioConfigured = data.twilio.status === "ok";
   const callActive = Boolean(call);
   const reviewing = Boolean(review) && !callActive;
-  const disabledReason = callDisabledReason({
+  const prepKey = campaign?.brief && lead ? JSON.stringify([campaign.id, campaign.version, lead.leadId, lead.company, lead.fullName, lead.role, lead.enrichment]) : "";
+  const preparation = prepState?.key === prepKey ? prepState.result : null;
+  const prepError = prepState?.key === prepKey ? prepState.error : null;
+  const preparing = Boolean(prepKey && (prepState?.key !== prepKey || prepState.loading));
+  const refreshAttempt = prepRefresh?.key === prepKey ? prepRefresh.attempt : 0;
+  const disabledReason = !campaign ? "Create a campaign first" : campaign.brief && (!preparation || preparing)
+    ? preparing ? "Preparing research and call brief…" : "Generate a call brief before calling"
+    : callDisabledReason({
     twilioConfigured,
     deviceStatus,
     lead,
@@ -75,6 +92,18 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
     sheetStatus: data.sheet.status
   });
   const sheetBlocking = data.sheet.status === "error" || data.sheet.status === "unconfigured";
+
+  useEffect(() => {
+    if (!prepKey || !campaign || !lead || callActive || reviewing) return;
+    const controller = new AbortController();
+    setPrepState({ key: prepKey, result: null, error: null, loading: true });
+    void prepareLead(campaign.id, lead.leadId, refreshAttempt > 0, controller.signal).then(result => {
+      if (!controller.signal.aborted) setPrepState({ key: prepKey, result, error: null, loading: false });
+    }).catch(err => {
+      if (!controller.signal.aborted) setPrepState({ key: prepKey, result: null, error: err instanceof Error ? err.message : "Preparation failed", loading: false });
+    });
+    return () => controller.abort();
+  }, [prepKey, refreshAttempt, callActive, reviewing]);
 
   useEffect(() => {
     if (!twilioConfigured) {
@@ -126,7 +155,7 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
     setPending(true);
     setError(null);
     try {
-      const session = await createCallSession(lead.leadId, data.selectedCampaignId);
+      const session = await createCallSession(lead.leadId, data.selectedCampaignId, preparation?.id);
       setCall(session);
       try {
         await connectTwilioCall(session.id);
@@ -201,13 +230,13 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
               ? "Stay on this page until the call ends."
               : reviewing
                 ? "Review the proposed Sheet update before anything is written."
-                : "Select a campaign and call the next eligible lead from the browser."}
+                : "Choose an offering, review your prospect brief, and call the next lead."}
           </p>
         </div>
         <button
           type="button"
           className="rounded-md border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
-          disabled={callActive || reviewing}
+          disabled={callActive || reviewing || campaignBusy}
           onClick={() => {
             void logout().then(onLoggedOut);
           }}
@@ -225,12 +254,14 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
             id="campaign"
             className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm"
             value={data.selectedCampaignId ?? ""}
-            disabled={pending || callActive || reviewing}
+            disabled={pending || campaignBusy || callActive || reviewing || Boolean(editor)}
             onChange={(event) => {
               const campaignId = event.target.value;
+              setManageLeads(false);
               void run(() => selectCampaign(campaignId));
             }}
           >
+            {!data.campaigns.length ? <option value="">Create your first campaign</option> : null}
             {data.campaigns.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
@@ -245,6 +276,26 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
           detail={deviceDetail}
         />
       </section>
+
+      {!callActive && !reviewing ? <>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button type="button" disabled={pending || campaignBusy || Boolean(editor)} className="rounded-md bg-indigo-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50" onClick={() => { setEditor("new"); setManageLeads(false); }}>New campaign</button>
+          {campaign?.brief ? <button type="button" disabled={pending || campaignBusy || Boolean(editor)} className="rounded-md border border-slate-300 px-3 py-2 text-sm disabled:opacity-50" onClick={() => { setEditor("edit"); setManageLeads(false); }}>Edit offering</button> : null}
+          {campaign ? <button type="button" disabled={pending || campaignBusy || Boolean(editor) || sheetBlocking} className="rounded-md border border-slate-300 px-3 py-2 text-sm disabled:opacity-50" onClick={() => setManageLeads(value => !value)}>{manageLeads ? "Close lead assignment" : "Assign leads"}</button> : null}
+          {campaign?.brief && !editor ? <p className="text-sm text-slate-600">Selling <strong>{campaign.brief.offeringName}</strong> · Strategy v{campaign.version}</p> : null}
+        </div>
+        {data.ai.status !== "ok" ? <p role="status" className="mt-3 text-sm text-amber-800">{data.ai.message}</p> : null}
+        {data.research.status !== "ok" && data.ai.status === "ok" ? <p className="mt-3 text-sm text-amber-800">{data.research.message}</p> : null}
+        {editor ? <CampaignEditor
+          key={editor === "edit" ? `${campaign?.id}-${campaign?.version}` : "new"}
+          campaign={editor === "edit" ? campaign : undefined}
+          onBusy={setCampaignBusy}
+          aiMessage={data.ai.status !== "ok" ? data.ai.message : undefined}
+          onCancel={() => setEditor(null)}
+          onSaved={async () => { onChange(await fetchBootstrap()); setEditor(null); }}
+        /> : null}
+        {manageLeads && campaign ? <CampaignLeads key={campaign.id} campaignId={campaign.id} onBusy={setCampaignBusy} onChanged={async () => { onChange(await fetchBootstrap()); }} /> : null}
+      </> : null}
 
       {data.sheet.diagnostics.length > 0 && !callActive && !reviewing ? (
         <section
@@ -351,7 +402,7 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
             })();
           }}
         />
-      ) : (
+      ) : !editor ? (
         <>
           <section className="mt-6 grid gap-6 lg:grid-cols-5">
             <article className="rounded-lg border border-slate-200 bg-white p-5 lg:col-span-3">
@@ -381,7 +432,7 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
                   </div>
                 </>
               ) : (
-                <p className="mt-3 text-slate-700">No eligible lead is available. Refresh after Gumloop adds Ready or Retry rows.</p>
+                <p className="mt-3 text-slate-700">{campaign ? "No eligible lead is assigned to this campaign. Use Assign leads or match a Sheet campaign tag." : "Create a campaign to start preparing calls."}</p>
               )}
             </article>
 
@@ -389,15 +440,17 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
               <section className="rounded-lg border border-slate-200 bg-white p-5">
                 <h2 className="text-sm font-medium uppercase tracking-wide text-slate-500">Campaign objective</h2>
                 <p className="mt-2 text-sm text-slate-800">{campaign?.objective ?? "No campaign loaded"}</p>
+                {campaign?.brief ? <p className="mt-3 text-sm text-slate-600"><strong>Target customer:</strong> {campaign.brief.targetCustomer}</p> : null}
+                {campaign?.strategy ? <p className="mt-3 text-sm text-slate-600">{campaign.strategy.positioning}</p> : null}
               </section>
               <section className="rounded-lg border border-slate-200 bg-white p-5">
                 <details>
-                  <summary className="cursor-pointer text-sm font-medium">Required questions</summary>
+                  <summary className="cursor-pointer text-sm font-medium">Campaign discovery approach</summary>
                   <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-800">
                     {(campaign?.requiredQuestions ?? []).map((question) => (
                       <li key={question.id}>
                         {question.prompt}
-                        {question.required ? " (required)" : ""}
+                        {question.required ? " (priority)" : ""}
                       </li>
                     ))}
                   </ul>
@@ -406,11 +459,18 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
             </aside>
           </section>
 
+          {campaign?.brief && lead ? <>
+            {preparing ? <section role="status" className="mt-5 rounded-lg border border-indigo-200 bg-indigo-50 p-5 text-sm text-indigo-900">Researching {lead.company || "the company"} and preparing questions for {lead.fullName || "this prospect"}… This can take a minute or two.</section> : null}
+            {prepError ? <p role="alert" className="mt-5 text-sm text-red-700">{prepError}</p> : null}
+            {preparation ? <ProspectBrief preparation={preparation} /> : null}
+            <button type="button" disabled={preparing || pending || campaignBusy} className="mt-3 rounded-md border border-slate-300 px-3 py-2 text-sm disabled:opacity-50" onClick={() => setPrepRefresh({ key: prepKey, attempt: refreshAttempt + 1 })}>{prepError ? "Retry preparation" : "Refresh research & brief"}</button>
+          </> : null}
+
           <div className="mt-8 flex flex-wrap items-center gap-3">
             {sheetBlocking ? null : (
               <button
                 type="button"
-                disabled={Boolean(disabledReason) || pending}
+                disabled={Boolean(disabledReason) || pending || campaignBusy}
                 title={disabledReason ?? "Start a call"}
                 className="rounded-md bg-emerald-700 px-4 py-2 font-medium text-white disabled:bg-slate-300 disabled:text-slate-600"
                 onClick={() => {
@@ -422,7 +482,7 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
             )}
             <button
               type="button"
-              disabled={pending || !lead}
+              disabled={pending || campaignBusy || !lead}
               className="rounded-md border border-slate-400 bg-white px-4 py-2 font-medium disabled:opacity-50"
               onClick={() => {
                 if (!lead) {
@@ -435,7 +495,7 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
             </button>
             <button
               type="button"
-              disabled={pending}
+              disabled={pending || campaignBusy}
               className="rounded-md border border-slate-400 bg-white px-4 py-2 font-medium disabled:opacity-50"
               onClick={() => {
                 void run(() => refreshLeads(data.selectedCampaignId));
@@ -447,7 +507,7 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
           </div>
           <DailySummaryPanel summary={data.summary} />
         </>
-      )}
+      ) : null}
     </main>
   );
 }

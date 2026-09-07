@@ -30,11 +30,19 @@ import formbody from "@fastify/formbody";
 import { SheetAdapter } from "./sheets/adapter.js";
 import { allowedCountriesFromEnv, createSheetStore } from "./sheets/createStore.js";
 import { beginDrain } from "./shutdown.js";
+import { CampaignStore } from "./campaigns/store.js";
+import { PreparationService } from "./research/preparation.js";
+import { createResearchClient, type ResearchClient } from "./research/client.js";
+import { registerCampaigns } from "./api/campaigns.js";
+import type { CampaignConfig } from "../shared/schemas.js";
 
 export type BuildAppOptions = {
   deepgramFactory?: DeepgramLiveFactory;
   llmClient?: LlmClient | null;
   disableLogger?: boolean;
+  initialCampaigns?: CampaignConfig[];
+  researchClient?: ResearchClient | null;
+  clientDir?: string;
 };
 
 export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = {}) {
@@ -70,11 +78,14 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
 
   let campaigns: AppContext["campaigns"] = [];
   try {
-    campaigns = loadCampaigns(resolve(env.CAMPAIGNS_DIR));
+    campaigns = options.initialCampaigns ?? loadCampaigns(resolve(env.CAMPAIGNS_DIR), { includeExamples: false, allowEmpty: true });
   } catch (error) {
     app.log.error({ err: error }, "Failed to load campaigns");
     throw error;
   }
+
+  const campaignStore = new CampaignStore(db);
+  campaigns.push(...campaignStore.list().map(item => item.config));
 
   let playbook = null;
   try {
@@ -108,6 +119,8 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
   const liveEvents = new LiveEventBus();
   const deepgramFactory = options.deepgramFactory ?? createDeepgramFactory(env);
   const llmClient = options.llmClient === undefined ? createLlmClient(env) : options.llmClient;
+  const researchClient = options.researchClient === undefined ? createResearchClient(env) : options.researchClient;
+  const preparation = new PreparationService({ db, llm: llmClient, research: researchClient, timeoutMs: env.AI_GENERATION_TIMEOUT_MS });
   const coachEngine = new CoachEngine({
     env,
     db,
@@ -141,6 +154,9 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
     env,
     db,
     campaigns,
+    campaignStore,
+    preparation,
+    researchClient,
     playbook,
     sheetsConfig,
     sheetsConfigError,
@@ -162,12 +178,13 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
   await registerHealth(app, ctx);
   await registerAuth(app, ctx);
   await registerLeads(app, ctx);
+  await registerCampaigns(app, ctx);
   await registerCallApi(app, ctx);
   await registerReviewApi(app, ctx);
   await registerTwilioWebhooks(app, ctx);
   await registerTwilioMedia(app, ctx);
 
-  const clientDir = resolve("dist/client");
+  const clientDir = resolve(options.clientDir ?? "dist/client");
   if (isProduction(env) && existsSync(clientDir)) {
     await app.register(fastifyStatic, {
       root: clientDir,

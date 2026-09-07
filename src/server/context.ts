@@ -9,6 +9,9 @@ import { SheetAdapter } from "./sheets/adapter.js";
 import type { LiveEventBus } from "./transcript/events.js";
 import type { MediaHub } from "./twilio/mediaHub.js";
 import type { StreamTokenStore } from "./twilio/streamTokens.js";
+import type { CampaignStore } from "./campaigns/store.js";
+import type { PreparationService } from "./research/preparation.js";
+import type { ResearchClient } from "./research/client.js";
 
 export type OperatorState = {
   skippedLeadIds: Set<string>;
@@ -19,6 +22,9 @@ export type AppContext = {
   env: Env;
   db: Database.Database;
   campaigns: CampaignConfig[];
+  campaignStore: CampaignStore;
+  preparation: PreparationService;
+  researchClient: ResearchClient | null;
   playbook: PlaybookConfig | null;
   sheetsConfig: SheetsConfig | null;
   sheetsConfigError: string | null;

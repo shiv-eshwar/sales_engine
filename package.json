@@ -13,10 +13,14 @@
     "build": "vite build",
     "start": "NODE_ENV=production tsx src/server/index.ts",
     "start:local": "./scripts/start-local.sh",
+    "proxy:setup": "node scripts/setup-proxy.mjs",
+    "proxy:up": "docker compose --env-file .env -f infra/litellm/compose.yaml up -d --wait",
+    "proxy:down": "docker compose --env-file .env -f infra/litellm/compose.yaml down",
+    "proxy:login": "bash scripts/login-proxy.sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "VITE_E2E=true vite build && playwright test",
+    "test:e2e": "VITE_E2E=true vite build --outDir dist/e2e-client && playwright test",
     "hash-password": "tsx scripts/hash-password.ts"
   },
   "devDependencies": {
@@ -54,5 +58,9 @@
     "ws": "^8.21.3",
     "yaml": "^2.9.0",
     "zod": "^4.5.4"
+  },
+  "allowScripts": {
+    "better-sqlite3@13.0.3": true,
+    "esbuild@0.28.2": true
   }
 }

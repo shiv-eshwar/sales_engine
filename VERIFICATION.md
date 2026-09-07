@@ -68,7 +68,7 @@ Source: `tests/integration/holdouts.test.ts`. Prompts send campaign config, not 
 
 ## Playwright E2E (faked providers)
 
-`VITE_E2E=true` replaces Twilio Voice SDK with an in-memory device. Playwright Node posts signed TwiML/status and opens `/twilio/media`.
+`npm run test:e2e` builds into `dist/e2e-client`; it does not overwrite the running production client in `dist/client`. In this isolated build, `VITE_E2E=true` replaces Twilio Voice SDK with an in-memory device. Playwright Node posts signed TwiML/status and opens `/twilio/media`.
 
 | # | Flow | Result |
 |---|---|---|
@@ -80,6 +80,36 @@ Source: `tests/integration/holdouts.test.ts`. Prompts send campaign config, not 
 | 6 | Approve & next → Jordan Chen (fixture L-101) | Pass |
 | 7 | Deepgram drop → “Transcription interrupted”; Mute/Hang Up enabled | Pass |
 | 8 | Invalid Sheet headers → blocking error, no Call button | Pass |
+
+## AI campaigns and prospect preparation — 2026-09-07
+
+`npm run typecheck`, all 89 Vitest tests (20 files), and all 5 Playwright tests passed. Desktop and 390px mobile layouts were rendered and inspected; the mobile campaign/brief flow has no horizontal overflow.
+
+| Behavior | Evidence |
+|---|---|
+| No example campaigns at production startup; create separate offerings | `tests/integration/ai-campaigns.test.ts`, `tests/e2e/campaigns.spec.ts` |
+| AI-generated names, strategies, questions and qualification; invalid JSON stays unsaved | Campaign API tests and browser failure/retry flow |
+| Explicit assignment or CRM tag filters leads; skips stay within the campaign; foreign-campaign calls blocked | Campaign integration tests |
+| Campaigns, assignments and briefs persist across server restart | SQLite restart test |
+| Per-campaign/prospect cache, in-flight deduplication and invalidation on context/version changes | Preparation integration tests |
+| Web search is required; only provider citations become source links; model-only/incomplete results rejected | `tests/unit/research.test.ts` |
+| Missing research produces labeled CRM-only content; invented citations are rejected | Preparation integration tests |
+| Exact generated plan frozen on the call; editing campaign cannot alter coaching/review criteria | Campaign integration test and browser call-preparation view |
+| Qualification uses generated criterion rules; missing evidence cannot mark a contact qualified; DNC is unconditional | Qualification and campaign integration tests |
+| Browser creation, assignment, switching, regeneration, cited sources and retained form input on failure | `tests/e2e/campaigns.spec.ts` |
+
+The live Google Sheet passed preflight and the local application responded successfully. The initial direct API connection returned HTTP 401. The dedicated subscription proxy verification below supersedes that connection failure. No live prospect calls or Sheet writes were made for this feature verification.
+
+### Dedicated ChatGPT subscription proxy — 2026-09-07
+
+- Separate `sales-engine-litellm-1` container is healthy on loopback port 4001; Software Factory remains healthy on port 4000. Version/digest pinned in `infra/litellm/compose.yaml`.
+- Independent OpenAI device login completed using the existing signed-in account. Confirmed same account and different refresh tokens without logging credentials; sales auth persists in its own Docker volume.
+- Proxy model inventory returns HTTP 200 with its dedicated key and exposes `sales-fast` / `sales-research`. Unauthenticated inventory requests return HTTP 401.
+- Live Responses request returned HTTP 200, `status: completed`, and valid JSON. Real campaign generation passed the application's schemas with 6 questions and 4 qualification criteria (smoke data was not saved).
+- Real research through the application client performed web search and returned a 6,524-character report with 11 provider-cited sources. Initial research failed with `Input must be a list`; switching to Responses message-array input fixed it and remains covered by a regression assertion.
+- Application restarted with the local proxy configuration. `/health/ready` returned HTTP 200 with LLM/research configured and the live Google Sheet schema valid.
+- Typecheck and all 93 tests passed; after the research input fix, typecheck and the 10 targeted LLM/research tests passed again. `git diff --check` passed.
+- This verifies campaign generation and cited research, not live PSTN calls or live-coaching latency. No outbound prospect calls or Sheet writes were performed.
 
 ## Live smoke (`whatthis.md` §19) — not run
 

@@ -19,11 +19,11 @@ export async function registerHealth(app: FastifyInstance, ctx: AppContext): Pro
     checks.database = { ok: true, message: "Migrations applied" };
 
     checks.campaigns = {
-      ok: ctx.campaigns.length > 0,
+      ok: true,
       message:
         ctx.campaigns.length > 0
           ? `${ctx.campaigns.length} campaign(s) loaded`
-          : "No valid campaign YAML files loaded"
+          : "Create your first campaign in the app"
     };
 
     if (ctx.sheetsConfigError) {
@@ -69,6 +69,10 @@ export async function registerHealth(app: FastifyInstance, ctx: AppContext): Pro
       message: llmConfigured
         ? "LLM is configured"
         : "LLM not configured; live coaching will be skipped"
+    };
+    checks.research = {
+      ok: true,
+      message: ctx.researchClient ? "Web research is configured" : "Web research unavailable; prospect briefs will use CRM context only"
     };
 
     const ready = Object.values(checks).every((check) => check.ok);

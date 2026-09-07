@@ -15,10 +15,12 @@ import { isTerminalStatus } from "../calls/state.js";
 import { listUtterances } from "../transcript/utterances.js";
 import { twilioVoiceConfigured } from "../twilio/config.js";
 import { createVoiceAccessToken } from "../twilio/token.js";
+import { toPublicLead } from "../leads/nextLead.js";
 
 const createSessionSchema = z.object({
   leadId: z.string().min(1),
-  campaignId: z.string().min(1)
+  campaignId: z.string().min(1),
+  preparationId: z.string().min(1).optional()
 });
 
 function serializeCall(ctx: AppContext, row: CallSessionRow) {
@@ -53,7 +55,7 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
     if (!ctx.adapter) {
       return reply.code(503).send({ error: "Sheet is not configured" });
     }
-    const campaign = ctx.campaigns.find((item) => item.id === parsed.data.campaignId);
+    let campaign = ctx.campaigns.find((item) => item.id === parsed.data.campaignId);
     if (!campaign) {
       return reply.code(400).send({ error: "Unknown campaign" });
     }
@@ -63,6 +65,21 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
     }
     if (!lead.dialable || !lead.phoneE164) {
       return reply.code(400).send({ error: "Lead phone is not dialable" });
+    }
+    if (!ctx.campaignStore.includes(campaign.id, lead)) {
+      return reply.code(409).send({ error: "Lead is not assigned to this campaign" });
+    }
+    const managed = ctx.campaignStore.get(campaign.id);
+    const preparation = parsed.data.preparationId ? ctx.preparation.get(parsed.data.preparationId) : null;
+    if (managed) {
+      if (!preparation || !ctx.preparation.matches(preparation, managed, toPublicLead(lead))) {
+        return reply.code(409).send({ error: "Prepare this lead for the current campaign before calling. Refresh the brief if the campaign or lead changed." });
+      }
+      campaign = {
+        ...managed.config,
+        opening_context: preparation.brief.opening,
+        required_questions: preparation.brief.questions.map(({ id, prompt, required }) => ({ id, prompt, required }))
+      };
     }
     try {
       const session = createCallSession(ctx.db, {
@@ -75,7 +92,10 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
           phone: lead.phone,
           phoneE164: lead.phoneE164,
           company: lead.company,
-          role: lead.role
+          role: lead.role,
+          enrichment: lead.enrichment,
+          campaign,
+          ...(managed ? { offering: managed.brief, preparation: preparation! } : {})
         }
       });
       return reply.code(201).send(serializeCall(ctx, session));

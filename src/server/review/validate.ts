@@ -58,5 +58,11 @@ export function validatePostCallOutcome(
       return { ok: false, reason: "evidence not in context" };
     }
   }
+  if (output.qualification === "qualified") {
+    const required = Object.entries(input.campaign.qualification.criteria).filter(([, spec]) => spec.required_for_qualified);
+    if (!required.length || required.some(([id]) => output.criteria[id]?.state !== "yes")) {
+      return { ok: false, reason: "missing required qualification evidence" };
+    }
+  }
   return { ok: true, output };
 }
