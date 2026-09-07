@@ -1,8 +1,8 @@
 # Verification
 
-Last automated run: 2026-09-02.
+Last automated run: 2026-09-07.
 
-**Commit under test:** `e03c2c8` (`Add Slice 6 verification: holdouts, Playwright E2E, drain, and docs.`).
+**Commit under test:** `1fd6139` (`Merge main and preserve open access in AI campaign flows`).
 
 No real lead PII, recordings, or provider credentials are copied here.
 
@@ -10,14 +10,14 @@ No real lead PII, recordings, or provider credentials are copied here.
 
 | Command | Result |
 |---|---|
-| `npx tsc --noEmit` | Pass |
-| `npm test` (Vitest) | 18 files, **74 passed** |
+| `npx tsc --noEmit` | Pass (2026-09-07) |
+| `npm test` (Vitest) | 21 files, **93 passed** (2026-09-07) |
 | `npx playwright install chromium` (once per machine) | Installed |
-| `npm run test:e2e` | Vite `VITE_E2E=true` build + Playwright **3 passed** (login→approve, Deepgram drop, invalid Sheet schema) |
+| `npm run test:e2e` | Vite `VITE_E2E=true` build + Playwright **5 passed** (campaign create/switch/regenerate ×2, operator login→approve, Deepgram drop, invalid Sheet schema) (2026-09-07) |
 | `docker build -t sales-engine .` | Pass (image `sales-engine:latest`) |
 | `NODE_ENV=production` `GET /health/live` | `{"status":"ok"}` |
-| `NODE_ENV=production` `GET /health/ready` | `status: ok`; Sheet memory schema valid; **Twilio / Deepgram / LLM not configured** |
-| Live PSTN / Google Sheet / paid LLM smoke (`whatthis.md` §19) | **Not run** — `.env` has no Twilio, Deepgram, LLM, or Google Sheets credentials |
+| `NODE_ENV=production` `GET /health/ready` | `status: ok` (2026-09-07); Sheet schema valid (**google**); Twilio Voice set; Deepgram key set; LLM + research configured; 0 campaigns (create first campaign in app) |
+| Live PSTN / Google Sheet / paid LLM smoke (`whatthis.md` §19) | **Partial** — see “Live Twilio E2E — 2026-09-07” below. Webhook path proven via public tunnel; PSTN ring to user-owned +91 test number blocked by Twilio Geo Permissions (error 21215). No Sheet writes made. |
 
 Default `npm test` does not start a browser and does not call paid APIs. Fakes cover Twilio webhooks/media, Deepgram, LLM, and an in-memory Sheet.
 
@@ -110,6 +110,26 @@ The live Google Sheet passed preflight and the local application responded succe
 - Application restarted with the local proxy configuration. `/health/ready` returned HTTP 200 with LLM/research configured and the live Google Sheet schema valid.
 - Typecheck and all 93 tests passed; after the research input fix, typecheck and the 10 targeted LLM/research tests passed again. `git diff --check` passed.
 - This verifies campaign generation and cited research, not live PSTN calls or live-coaching latency. No outbound prospect calls or Sheet writes were performed.
+
+## Live Twilio E2E — 2026-09-07 (test numbers + controlled PSTN attempt)
+
+Scope agreed with operator: free magic-number/API checks plus one live controlled ring to a user-owned +91 test number. No Sheet writes were made; no campaigns created (ledger untouched).
+
+| Check | Evidence | Result |
+|---|---|---|
+| Twilio magic numbers normalize | `normalizePhone` with allowlist: `+15005550006` → ok, `+15005550001` → ok (Twilio test-credential semantics: valid/invalid `From`; magic behavior itself requires separate test SID/token, which were not provided, so no Test-Credential REST calls were placed) | Pass (offline validation) |
+| User-owned +91 number dialable at app layer | Initially blocked: `Phone country IN is not in the allowlist` with `US,CA`; after adding `IN`, normalizes ok | Pass after config change (`TWILIO_ALLOWED_COUNTRIES=US,CA,IN`) |
+| Live account / API key / TwiML app / caller ID | Account `active`, type `Full`; Voice access token issues with correct TwiML App SID; TwiML App voice URL matches `APP_BASE_URL` + `/twilio/voice/outbound` (POST); caller ID matches one voice-capable number; balance $18.85 | Pass |
+| Webhook signature through public tunnel | Fresh `cloudflared` tunnel; SDK-generated `X-Twilio-Signature` POSTs to `/twilio/voice/status`, `/twilio/voice/number-status`, `/twilio/recording/status` via public URL → all `204`; token endpoint via public URL → `200` | Pass |
+| Stale-tunnel / stale-server trap | Old tunnel host no longer resolves; first restart hit `EADDRINUSE` (old process kept :3000 with old `APP_BASE_URL`, causing 403s). Killed stale process, restarted clean, re-verified 204s | Found and fixed during run |
+| Deepgram key | `GET /v1/projects` → `200` | Pass |
+| LLM / research proxy | `sales-engine-litellm-1` healthy on `127.0.0.1:4001`; model inventory exposes `sales-fast` / `sales-research` | Pass |
+| Live PSTN ring to user-owned +91 number | `Calls.create` (From caller ID, 25s timeout, short spoken test message) → Twilio `400` error **21215**: account not authorized to call the number; enable India under Voice Geo Permissions (low-risk) | **Blocked (Twilio account setting, not app)** |
+| Browser Voice-SDK call + speaker mapping (§19 steps 4–8) | Not attempted: no Sheet row exists for the +91 test number and no campaign/brief exists; both are operator inputs (Gumloop-owned lead columns must be added by hand, campaign created in app) | **Not run** |
+
+Config changes made during this run (local `.env` only, not committed): `APP_BASE_URL` → fresh tunnel URL; `TWILIO_ALLOWED_COUNTRIES` → `US,CA,IN`; TwiML App voice URL updated to match. Server left running on `:3000` behind the tunnel for the operator browser test.
+
+To finish §19: (1) enable India in Twilio Console → Voice → Calls → Geo Permissions; (2) add a test lead row carrying the +91 number to the `Leads` Sheet (20-column header already valid); (3) create a campaign in the app and prepare the brief; (4) click Call in desktop Chromium, verify speaker labels, objection cue, hang-up, review diff, then Approve. Retry the REST ring first to confirm PSTN routing before the browser call.
 
 ## Live smoke (`whatthis.md` §19) — not run
 
