@@ -52,16 +52,14 @@ describe("AI campaigns and prospect preparation", () => {
     expect((await app.inject({ url: "/health/ready" })).statusCode).toBe(200);
   });
 
-  it("requires authentication and keeps invalid generation out of saved campaigns", async () => {
+  it("supports open access and keeps invalid generation out of saved campaigns", async () => {
     const { app, llm, cookie, ctx } = await setup();
     const payload = { requestId: randomUUID(), brief: offering() };
-    expect((await app.inject({ method: "POST", url: "/api/campaigns", payload })).statusCode).toBe(401);
-    expect(llm.calls).toHaveLength(0);
     llm.enqueueRaw("not json");
     expect((await app.inject({ method: "POST", url: "/api/campaigns", headers: { cookie }, payload })).statusCode).toBe(502);
     expect(ctx.campaignStore.list()).toEqual([]);
     llm.enqueueJson(strategy());
-    const created = await app.inject({ method: "POST", url: "/api/campaigns", headers: { cookie }, payload });
+    const created = await app.inject({ method: "POST", url: "/api/campaigns", payload });
     expect(created.statusCode).toBe(201);
     const repeated = await app.inject({ method: "POST", url: "/api/campaigns", headers: { cookie }, payload });
     expect(repeated.json().id).toBe(created.json().id);

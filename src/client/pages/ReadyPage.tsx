@@ -12,7 +12,6 @@ import {
   discardProposal,
   fetchBootstrap,
   finalizeCall,
-  logout,
   refreshLeads,
   retryProposalProcessing,
   retryProposalWrite,
@@ -34,7 +33,6 @@ import type { PublicProposal, PublicWriteFields } from "../../shared/contracts";
 type ReadyPageProps = {
   data: BootstrapResponse;
   onChange: (next: BootstrapResponse) => void;
-  onLoggedOut: () => void;
 };
 
 function StatusText({
@@ -57,7 +55,7 @@ function StatusText({
   );
 }
 
-export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
+export function ReadyPage({ data, onChange }: ReadyPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>("offline");
@@ -233,16 +231,6 @@ export function ReadyPage({ data, onChange, onLoggedOut }: ReadyPageProps) {
                 : "Choose an offering, review your prospect brief, and call the next lead."}
           </p>
         </div>
-        <button
-          type="button"
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
-          disabled={callActive || reviewing || campaignBusy}
-          onClick={() => {
-            void logout().then(onLoggedOut);
-          }}
-        >
-          Sign out
-        </button>
       </header>
 
       <section className="mt-6 grid gap-3 sm:grid-cols-3" aria-label="System status">

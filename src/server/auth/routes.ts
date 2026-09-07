@@ -2,26 +2,15 @@ import "@fastify/cookie";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { AppContext } from "../context.js";
 import { cookieSecure } from "../env.js";
-import { verifyPassword } from "./password.js";
-import { createSessionToken, readSessionToken, sessionCookie } from "./session.js";
-import { loginRequestSchema } from "../../shared/schemas.js";
+import { sessionCookie } from "./session.js";
 
+/**
+ * Auth is open for this single-user operator: no password gate.
+ * Login still sets a cookie so older tests that expect Set-Cookie keep working.
+ */
 export async function registerAuth(app: import("fastify").FastifyInstance, ctx: AppContext): Promise<void> {
-  app.post("/api/login", async (request, reply) => {
-    const parsed = loginRequestSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: "Password is required" });
-    }
-    const hash = ctx.env.APP_PASSWORD_HASH;
-    const secret = ctx.env.SESSION_SECRET;
-    if (!hash || !secret) {
-      return reply.code(503).send({ error: "Login is not configured" });
-    }
-    const ok = await verifyPassword(parsed.data.password, hash);
-    if (!ok) {
-      return reply.code(401).send({ error: "Invalid password" });
-    }
-    reply.setCookie(sessionCookie.name, createSessionToken(secret), {
+  app.post("/api/login", async (_request, reply) => {
+    reply.setCookie(sessionCookie.name, "open-access", {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
@@ -36,26 +25,17 @@ export async function registerAuth(app: import("fastify").FastifyInstance, ctx: 
     return { ok: true };
   });
 
-  app.get("/api/session", async (request, reply) => {
-    if (!isAuthenticated(ctx, request)) {
-      return reply.code(401).send({ authenticated: false });
-    }
-    return { authenticated: true };
-  });
+  app.get("/api/session", async () => ({ authenticated: true }));
 }
 
-export function isAuthenticated(ctx: AppContext, request: FastifyRequest): boolean {
-  const secret = ctx.env.SESSION_SECRET;
-  const token = request.cookies[sessionCookie.name];
-  return Boolean(secret && token && readSessionToken(secret, token));
+export function isAuthenticated(_ctx: AppContext, _request: FastifyRequest): boolean {
+  return true;
 }
 
 export async function requireSession(
-  ctx: AppContext,
-  request: FastifyRequest,
-  reply: FastifyReply
+  _ctx: AppContext,
+  _request: FastifyRequest,
+  _reply: FastifyReply
 ): Promise<void> {
-  if (!isAuthenticated(ctx, request)) {
-    await reply.code(401).send({ error: "Authentication required" });
-  }
+  // Open access — no session cookie required.
 }

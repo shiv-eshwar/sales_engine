@@ -20,7 +20,7 @@ The application does **not**:
 ## Architecture
 
 ```
-Browser (React)  --session cookie-->  Fastify (Node 22)
+Browser (React)  --open access-->  Fastify (Node 22)
        |                                    |
        | Twilio Voice SDK                   | TwiML + status + recording webhooks
        |                                    | Media Streams WS -> Deepgram (caller + contact)
@@ -46,15 +46,13 @@ Copy `.env.example` to `.env` and fill values locally. Never commit `.env` or se
 ```bash
 cp .env.example .env
 npm install
-npm run hash-password -- "your-password"
-# paste the scrypt hash into APP_PASSWORD_HASH
 ```
 
-Set `SESSION_SECRET` to at least 32 random characters.
+Auth is **open access** for this single-user operator (no login password). Do not expose the host publicly without adding a gate or network restriction.
 
 ## Multiple offerings and AI campaigns
 
-After sign-in, use **New campaign** for each product, service, audience, or sales objective. Enter the offering, target customers, desired outcome, and factual product claims the caller may use. AI generates the campaign name, positioning, discovery questions, qualification criteria, likely objections, and next step. **Edit offering** saves a new version and regenerates the strategy. Example YAML campaigns are not loaded into the running app.
+Use **New campaign** for each product, service, audience, or sales objective. Enter the offering, target customers, desired outcome, and factual product claims the caller may use. AI generates the campaign name, positioning, discovery questions, qualification criteria, likely objections, and next step. **Edit offering** saves a new version and regenerates the strategy. Example YAML campaigns are not loaded into the running app.
 
 Use **Assign leads** to select eligible Sheet contacts for a campaign. Alternatively, set **Sheet campaign tag** to an existing value in the Sheet’s Campaign column. Assignment is stored locally and never writes that Gumloop-owned column. Campaign selection filters the queue; skipping a lead is scoped to the selected campaign. Sheet eligibility and do-not-contact status still apply globally to a contact, including when assigned to multiple campaigns.
 

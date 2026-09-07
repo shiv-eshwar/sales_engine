@@ -1,5 +1,5 @@
 import { expect, test as base } from "@playwright/test";
-import { startE2eServer, TEST_PASSWORD, type E2eServer } from "./server.js";
+import { startE2eServer, type E2eServer } from "./server.js";
 
 const test = base.extend<{ server: E2eServer }>({
   server: async ({}, use) => {
@@ -11,8 +11,6 @@ const test = base.extend<{ server: E2eServer }>({
 
 async function login(page: import("@playwright/test").Page, baseURL: string) {
   await page.goto(baseURL);
-  await page.getByLabel("Password").fill(TEST_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Ready to call" })).toBeVisible();
 }
 

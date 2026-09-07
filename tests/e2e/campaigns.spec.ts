@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { startE2eServer, TEST_PASSWORD } from "./server.js";
+import { startE2eServer } from "./server.js";
 import { fakeResearch, prospectBrief, strategy } from "../helpers/campaigns.js";
 
 async function fillOffering(page: Page, name: string, tag = "") {
@@ -16,8 +16,6 @@ test("create different offerings, assign leads, view cited preparation, switch a
   const server = await startE2eServer({ initialCampaigns: [], enqueueLlm: false, researchClient: fakeResearch });
   try {
     await page.goto(server.baseURL);
-    await page.getByLabel("Password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("heading", { name: "Create a campaign" })).toBeVisible();
     await expect(page.getByRole("option", { name: /Lamina/i })).toHaveCount(0);
 
@@ -72,8 +70,6 @@ test("generation failures retain the offering input and retry creates an AI camp
   const server = await startE2eServer({ initialCampaigns: [], enqueueLlm: false, researchClient: null });
   try {
     await page.goto(server.baseURL);
-    await page.getByLabel("Password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
     await fillOffering(page, "Invoice assistant");
     server.llm.enqueueRaw("invalid output");
     await page.getByRole("button", { name: "Generate campaign", exact: true }).click();
