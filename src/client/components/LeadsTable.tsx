@@ -34,7 +34,7 @@ export function filterLeads(
   });
 }
 
-export function LeadsTable({ leads, selectedLeadId }: { leads: PublicLead[]; selectedLeadId?: string | null }) {
+export function LeadsTable({ leads }: { leads: PublicLead[] }) {
   if (leads.length === 0) {
     return <p className="mt-3 text-sm text-slate-600">No leads match this filter.</p>;
   }
@@ -53,9 +53,8 @@ export function LeadsTable({ leads, selectedLeadId }: { leads: PublicLead[]; sel
         </thead>
         <tbody className="divide-y divide-slate-100">
           {leads.map((lead) => {
-            const selected = lead.leadId === selectedLeadId;
             return (
-              <tr key={lead.leadId} className={selected ? "bg-emerald-50" : "hover:bg-slate-50"}>
+              <tr key={lead.leadId} className="hover:bg-slate-50">
                 <td className="px-4 py-2.5">
                   <Link
                     to={`/leads/${encodeURIComponent(lead.leadId)}`}
@@ -64,11 +63,6 @@ export function LeadsTable({ leads, selectedLeadId }: { leads: PublicLead[]; sel
                   >
                     {lead.fullName || "Unnamed contact"}
                   </Link>
-                  {selected ? (
-                    <span className="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-                      Selected
-                    </span>
-                  ) : null}
                   {!lead.dialable ? (
                     <span className="ml-2 rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
                       Not dialable

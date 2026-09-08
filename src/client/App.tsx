@@ -7,6 +7,8 @@ import { AppLayout } from "./layout/AppLayout";
 import { LeadsPage } from "./pages/LeadsPage";
 import { LeadDetailPage } from "./pages/LeadDetailPage";
 import { ReviewPage } from "./pages/ReviewPage";
+import { DiagnosticsPage } from "./pages/DiagnosticsPage";
+import { LoadingSkeleton } from "./components/LoadingSkeleton";
 
 export function App() {
   const [bootstrap, setBootstrap] = useState<BootstrapResponse | null>(null);
@@ -43,9 +45,9 @@ export function App() {
 
   if (!bootstrap) {
     return (
-      <p className="p-8 text-sm text-slate-600" role="status">
-        Loading leads…
-      </p>
+      <main className="mx-auto max-w-6xl px-6 py-10">
+        <LoadingSkeleton title="Loading leads…" detail="Connecting to your queue and campaigns." lines={4} />
+      </main>
     );
   }
 
@@ -57,7 +59,9 @@ export function App() {
             <Route index element={<Navigate to="/leads" replace />} />
             <Route path="/leads" element={<LeadsPage />} />
             <Route path="/leads/:leadId" element={<LeadDetailPage />} />
-            <Route path="/review" element={<ReviewPage />} />
+            <Route path="/calls/:sessionId/review" element={<ReviewPage />} />
+            <Route path="/diagnostics" element={<DiagnosticsPage />} />
+            <Route path="/review" element={<Navigate to="/leads" replace />} />
             <Route path="*" element={<Navigate to="/leads" replace />} />
           </Route>
         </Routes>

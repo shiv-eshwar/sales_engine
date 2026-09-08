@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import type { ProspectPreparation } from "../../shared/campaigns";
 import { useSession } from "../state/session";
 import { finalizeCall, prepareLead, refreshLeads, selectLead } from "../state/api";
@@ -13,6 +13,8 @@ import {
 import { connectTwilioCall, hangUpTwilioCall } from "../twilio/device";
 import { CallingPanel } from "../components/CallingPanel";
 import { ProspectBrief } from "../components/ProspectBrief";
+import { Breadcrumbs } from "../components/Breadcrumbs";
+import { LoadingSkeleton } from "../components/LoadingSkeleton";
 
 export function LeadDetailPage() {
   const { leadId } = useParams();
@@ -105,7 +107,7 @@ export function LeadDetailPage() {
         await cancelCallSession(session.id);
         try {
           setReview(await finalizeCall(session.id));
-          navigate("/review");
+          navigate(`/calls/${session.id}/review`);
           return;
         } catch {
           setCall(null);
@@ -126,7 +128,7 @@ export function LeadDetailPage() {
       const proposal = await finalizeCall(sessionId);
       setReview(proposal);
       setCall(null);
-      navigate("/review");
+      navigate(`/calls/${sessionId}/review`);
     } catch (err) {
       setCallError(err instanceof Error ? err.message : "Could not prepare review");
       setCall(null);
@@ -145,7 +147,7 @@ export function LeadDetailPage() {
   if (!decodedId) {
     return (
       <div>
-        <Link to="/leads" className="text-sm text-indigo-700 underline">← Back to leads</Link>
+        <Breadcrumbs items={[{ label: "Leads", to: "/leads" }, { label: "Lead" }]} />
         <p className="mt-3 text-slate-700">No lead selected.</p>
       </div>
     );
@@ -154,7 +156,7 @@ export function LeadDetailPage() {
   if (!lead) {
     return (
       <div>
-        <Link to="/leads" className="text-sm text-indigo-700 underline">← Back to leads</Link>
+        <Breadcrumbs items={[{ label: "Leads", to: "/leads" }, { label: decodedId ?? "Lead" }]} />
         <h1 className="mt-3 text-2xl font-semibold">Lead not found</h1>
         <p className="mt-1 text-sm text-slate-600">
           {decodedId} is not in this campaign queue. It may have been called, skipped, or filtered by the campaign tag.
@@ -165,7 +167,7 @@ export function LeadDetailPage() {
 
   return (
     <div>
-      <Link to="/leads" className="text-sm text-indigo-700 underline">← Back to leads</Link>
+      <Breadcrumbs items={[{ label: "Leads", to: "/leads" }, { label: lead.fullName || lead.leadId }]} />
 
       {call ? (
         <div className="mt-4">
@@ -270,9 +272,13 @@ export function LeadDetailPage() {
           {campaign?.brief ? (
             <>
               {preparing ? (
-                <section role="status" className="mt-5 rounded-lg border border-indigo-200 bg-indigo-50 p-5 text-sm text-indigo-900">
-                  Researching {lead.company || "the company"} and preparing questions for {lead.fullName || "this prospect"}… This can take a minute or two.
-                </section>
+                <div className="mt-5">
+                  <LoadingSkeleton
+                    title={`Researching ${lead.company || "the company"}…`}
+                    detail={`Preparing questions for ${lead.fullName || "this prospect"}. This can take a minute or two.`}
+                    lines={4}
+                  />
+                </div>
               ) : null}
               {prepError ? <p role="alert" className="mt-5 text-sm text-red-700">{prepError}</p> : null}
               {preparation ? <ProspectBrief preparation={preparation} /> : null}

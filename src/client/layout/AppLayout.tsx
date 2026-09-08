@@ -24,7 +24,6 @@ export function AppLayout() {
     deviceStatus, deviceDetail, incoming, answerIncoming, declineIncoming,
     campaignBusy, setCampaignBusy, editor, setEditor
   } = useSession();
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [inboundCall, setInboundCall] = useState<CallSessionView | null>(null);
   const navigate = useNavigate();
   const twilioConfigured = data.twilio.status === "ok";
@@ -67,14 +66,6 @@ export function AppLayout() {
               }
             >
               Leads
-            </NavLink>
-            <NavLink
-              to="/review"
-              className={({ isActive }) =>
-                `rounded-md px-3 py-1.5 font-medium ${isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`
-              }
-            >
-              Review
             </NavLink>
           </nav>
           <div className="ml-auto flex flex-wrap items-center gap-3">
@@ -124,25 +115,16 @@ export function AppLayout() {
             {data.sheet.diagnostics.length > 0 ? (
               <>
                 {" · "}
-                <button
-                  type="button"
+                <Link
+                  to="/diagnostics"
                   className="underline"
-                  onClick={() => setShowDiagnostics((v) => !v)}
-                  aria-expanded={showDiagnostics}
                   aria-label={sheetBlocking ? "Sheet blocking error" : "Queue diagnostics"}
                 >
                   {sheetBlocking ? "Sheet needs attention" : "Queue diagnostics"} ({data.sheet.diagnostics.length})
-                </button>
+                </Link>
               </>
             ) : null}
           </p>
-          {showDiagnostics && data.sheet.diagnostics.length > 0 ? (
-            <ul className="mt-1 list-disc pl-5 text-xs text-amber-900">
-              {data.sheet.diagnostics.map((item, index) => (
-                <li key={`${item.code}-${index}`}>{item.message}</li>
-              ))}
-            </ul>
-          ) : null}
         </div>
       </header>
 

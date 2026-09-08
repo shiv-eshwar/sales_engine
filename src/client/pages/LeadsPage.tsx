@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useSession } from "../state/session";
 import { refreshLeads } from "../state/api";
 import { DailySummaryPanel } from "../components/DailySummaryPanel";
@@ -65,6 +66,17 @@ export function LeadsPage() {
 
       {data.ai.status !== "ok" ? <p role="status" className="mt-3 text-sm text-amber-800">{data.ai.message}</p> : null}
       {data.research.status !== "ok" && data.ai.status === "ok" ? <p className="mt-3 text-sm text-amber-800">{data.research.message}</p> : null}
+      {data.pendingProposal ? (
+        <p className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+          Review waiting for {data.pendingProposal.contactName || data.pendingProposal.leadId}.{" "}
+          <Link
+            to={`/calls/${encodeURIComponent(data.pendingProposal.sessionId)}/review`}
+            className="font-medium underline underline-offset-2"
+          >
+            Open review
+          </Link>
+        </p>
+      ) : null}
 
       <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4" aria-label="Find leads">
         <div className="flex flex-wrap items-center gap-3">
@@ -104,7 +116,7 @@ export function LeadsPage() {
         <p className="mt-2 text-xs text-slate-500" aria-live="polite">
           Showing {visible.length} of {data.leads.length} eligible leads. Select a row to open the brief and call.
         </p>
-        <LeadsTable leads={visible} selectedLeadId={data.lead?.leadId} />
+        <LeadsTable leads={visible} />
       </section>
 
       <DailySummaryPanel summary={data.summary} />

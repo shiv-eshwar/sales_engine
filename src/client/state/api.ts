@@ -118,6 +118,16 @@ export async function finalizeCall(sessionId: string): Promise<PublicProposal> {
   return (await response.json()) as PublicProposal;
 }
 
+export async function fetchProposalBySession(sessionId: string): Promise<PublicProposal> {
+  const response = await fetch(`/api/calls/${encodeURIComponent(sessionId)}/proposal`, {
+    credentials: "include"
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return (await response.json()) as PublicProposal;
+}
+
 export async function approveProposal(
   id: string,
   fields?: PublicWriteFields
