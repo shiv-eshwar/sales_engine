@@ -38,12 +38,16 @@ export async function approveProposal(
     throw new ReviewError("state", `Proposal cannot be approved in status ${row.status}`);
   }
   const body = parseBody(row);
+  const evidence = parseEvidence(row);
   const fields = applyFieldEdits(body.fields, edits);
   if (fields.call_outcome === "do_not_contact") {
     fields.call_status = DNC_CALL_STATUS;
     body.outcome = { ...body.outcome, semanticOutcome: "do_not_contact" };
   }
   body.fields = fields;
+  // Persist operator edits before touching the Sheet so a transient write
+  // failure (pending_retry) does not silently drop them on retry-write.
+  updateProposalBody(ctx.db, row.id, body, evidence, row.status);
   const write = writeFieldsFromProposed(fields, body.currentFields);
   const result = await ctx.adapter.applyApprovedWrite({
     leadId: body.leadId,

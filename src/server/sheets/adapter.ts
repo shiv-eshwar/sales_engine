@@ -11,6 +11,7 @@ import type { SheetStore } from "./store.js";
 
 export class SheetAdapter {
   private headerCache: { headers: string[]; index: HeaderIndex } | null = null;
+  private readonly maxAttempts = 3;
 
   constructor(
     readonly store: SheetStore,
@@ -20,7 +21,14 @@ export class SheetAdapter {
   ) {}
 
   async preflight(): Promise<{ ok: true } | { ok: false; errors: string[] }> {
-    const headers = await this.store.getHeaders();
+    let headers: string[];
+    try {
+      headers = await this.withSheetRetry("getHeaders", () => this.store.getHeaders());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.headerCache = null;
+      return { ok: false, errors: [`Sheet read failed during preflight: ${message}`] };
+    }
     const errors = preflightHeaders(this.config, headers);
     if (errors.length > 0) {
       this.headerCache = null;
@@ -32,7 +40,7 @@ export class SheetAdapter {
 
   async loadQueue(): Promise<QueueResult> {
     const ready = await this.ensureIndex();
-    const rows = await this.store.getDataRows();
+    const rows = await this.withSheetRetry("getDataRows", () => this.store.getDataRows());
     return buildQueue(this.config, ready.index, rows, this.allowedCountries);
   }
 
@@ -92,8 +100,8 @@ export class SheetAdapter {
     }
 
     try {
-      await this.store.batchUpdate(updates);
-      const readBack = await this.store.readRow(resolved.rowNumber);
+      await this.withSheetRetry("batchUpdate", () => this.store.batchUpdate(updates));
+      const readBack = await this.withSheetRetry("readRow", () => this.store.readRow(resolved.rowNumber));
       const verified: Record<string, string> = {};
       for (const entry of entries) {
         const column = resolved.index.get(entry.header);
@@ -154,7 +162,7 @@ export class SheetAdapter {
     index: HeaderIndex;
   } | null> {
     const { index } = await this.ensureIndex();
-    const rows = await this.store.getDataRows();
+    const rows = await this.withSheetRetry("getDataRows", () => this.store.getDataRows());
     const matches = rows.filter(
       (row) => cell(row.values, index, this.config.read_columns.lead_id) === leadId
     );
@@ -162,5 +170,36 @@ export class SheetAdapter {
       return null;
     }
     return { rowNumber: matches[0].rowNumber, values: matches[0].values, index };
+  }
+
+  private isRetryableSheetError(error: unknown): boolean {
+    const code = (error as { code?: number })?.code;
+    if (code === 429 || code === 500 || code === 502 || code === 503) {
+      return true;
+    }
+    const status = (error as { status?: number })?.status;
+    if (status === 429 || status === 500 || status === 502 || status === 503) {
+      return true;
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    return /429|500|502|503|rate.?limit|quota|exceeded|timeout|timed out|fetch failed|network|unavailable|internal error|bad gateway|service unavailable|gateway timeout|econnreset|econnrefused|socket hang up/i.test(message);
+  }
+
+  private async withSheetRetry<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        if (!this.isRetryableSheetError(error) || attempt === this.maxAttempts) {
+          throw error;
+        }
+        const backoffMs = 250 * 2 ** (attempt - 1) + Math.floor(Math.random() * 150);
+        console.warn(`[sheets] ${operation} attempt ${attempt}/${this.maxAttempts} failed; retrying in ${backoffMs}ms (${error instanceof Error ? error.message.slice(0, 140) : String(error).slice(0, 140)})`);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(`Sheet ${operation} failed`);
   }
 }

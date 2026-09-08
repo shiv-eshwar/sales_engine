@@ -35,7 +35,12 @@ describe("formula-safe sheet writes", () => {
     const db = openDatabase(":memory:");
     migrate(db, "migrations");
     const store = new MemorySheetStore(EXAMPLE_HEADERS, exampleFixtureRows());
-    store.failNextWrite();
+    // Persistent outage so all adapter retry attempts fail.
+    store.batchUpdate = async () => {
+      const error = new Error("Sheets API 503 Service Unavailable") as Error & { code?: number };
+      error.code = 503;
+      throw error;
+    };
     const adapter = new SheetAdapter(store, config, ["US"], db);
     const result = await adapter.applyApprovedWrite({
       leadId: "L-100",

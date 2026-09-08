@@ -233,7 +233,15 @@ describe("Post-call CRM update", () => {
       confidence: 0.9
     });
     const store = ctx.adapter?.store as MemorySheetStore;
-    store.failNextWrite();
+    // Simulate a persistent outage (all retry attempts fail) so the write
+    // stays pending_retry. A single transient blip is retried transparently
+    // by the adapter and would succeed.
+    const originalBatchUpdate = store.batchUpdate.bind(store);
+    store.batchUpdate = async () => {
+      const error = new Error("Sheets API 503 Service Unavailable") as Error & { code?: number };
+      error.code = 503;
+      throw error;
+    };
     const finalized = await app.inject({
       method: "POST",
       url: `/api/calls/${sessionId}/finalize`,
@@ -252,6 +260,7 @@ describe("Post-call CRM update", () => {
       n: number;
     };
     expect(count.n).toBe(1);
+    store.batchUpdate = originalBatchUpdate;
     const retried = await app.inject({
       method: "POST",
       url: `/api/proposals/${proposal.id}/retry-write`,

@@ -22,7 +22,7 @@ import {
   updateProposalBody,
   type ProposalRow
 } from "./store.js";
-import { validatePostCallOutcome } from "./validate.js";
+import { validatePostCallOutcome, sanitizePostCallOutcome } from "./validate.js";
 
 export class ReviewFinalizer {
   constructor(
@@ -73,9 +73,8 @@ export class ReviewFinalizer {
     if (!this.deps.sheetsConfig) {
       throw new Error("Sheet is not configured");
     }
-    const sheetValues = this.deps.adapter
-      ? await this.deps.adapter.readApplicationSnapshot(snapshot.leadId)
-      : null;
+    const preWarnings: string[] = [];
+    const sheetValues = await this.readSheetSnapshotSafe(snapshot.leadId, preWarnings);
     const current = currentWriteFields(this.deps.sheetsConfig, sheetValues?.cells ?? {});
 
     let body: StoredProposalBody;
@@ -91,6 +90,9 @@ export class ReviewFinalizer {
         twilioSid: session.twilio_parent_sid ?? session.twilio_child_sid,
         recordingSid: session.recording_sid
       });
+      if (preWarnings.length > 0) {
+        body = { ...body, warnings: [...preWarnings, ...body.warnings] };
+      }
     } else {
       const outcome = emptyPostCallOutcome({
         campaign,
@@ -117,7 +119,7 @@ export class ReviewFinalizer {
           recordingSid: session.recording_sid
         }),
         currentFields: current,
-        warnings: []
+        warnings: preWarnings
       };
     }
 
@@ -158,9 +160,16 @@ export class ReviewFinalizer {
 
   async refreshCurrent(row: ProposalRow): Promise<PublicProposal> {
     const body = JSON.parse(row.proposed_json) as StoredProposalBody;
-    const snapshot = this.deps.adapter
-      ? await this.deps.adapter.readApplicationSnapshot(body.leadId)
-      : null;
+    let snapshot: { phone: string; cells: Record<string, string> } | null = null;
+    if (this.deps.adapter) {
+      try {
+        snapshot = await this.deps.adapter.readApplicationSnapshot(body.leadId);
+      } catch (error) {
+        const cause = error instanceof Error ? error.message : String(error);
+        console.warn(`[review] Sheet snapshot refresh failed for ${body.leadId}; keeping stored current fields (${cause.slice(0, 160)})`);
+        snapshot = null;
+      }
+    }
     const current = snapshot && this.deps.sheetsConfig
       ? currentWriteFields(this.deps.sheetsConfig, snapshot.cells)
       : body.currentFields;
@@ -172,6 +181,23 @@ export class ReviewFinalizer {
       campaigns: this.deps.campaigns,
       currentFields: current
     });
+  }
+
+  private async readSheetSnapshotSafe(
+    leadId: string,
+    warnings: string[]
+  ): Promise<{ phone: string; cells: Record<string, string> } | null> {
+    if (!this.deps.adapter) {
+      return null;
+    }
+    try {
+      return await this.deps.adapter.readApplicationSnapshot(leadId);
+    } catch (error) {
+      const cause = error instanceof Error ? error.message : String(error);
+      warnings.push(`Live Sheet read failed (${cause.slice(0, 160)}). The proposal uses the call-time snapshot; Approve will re-read before writing.`);
+      console.warn(`[review] Sheet snapshot read failed for ${leadId}: ${cause}`);
+      return null;
+    }
   }
 
   private async connectedBody(input: {
@@ -245,7 +271,22 @@ export class ReviewFinalizer {
               warnings.push("Extraction confidence is low.");
             }
           } else {
-            warnings.push("Extraction output was invalid and was discarded.");
+            const salvaged = sanitizePostCallOutcome(parsed, {
+              campaign: input.campaign,
+              utterances: input.utterances,
+              snapshot: input.snapshot
+            });
+            if (salvaged) {
+              outcome = salvaged.output;
+              const detail = [
+                `validation: ${validated.reason}`,
+                salvaged.downgraded.length > 0 ? `criteria reset to unknown: ${salvaged.downgraded.join(", ")}` : null,
+                ...salvaged.notes
+              ].filter(Boolean).join("; ");
+              warnings.push(`Some extraction fields lacked grounded evidence and were reset to unknown (${detail.slice(0, 280)}). Review before approving.`);
+            } else {
+              warnings.push(`Extraction output was invalid and was discarded (validation: ${validated.reason}).`);
+            }
           }
         } else {
           warnings.push("Extraction output was not valid JSON.");

@@ -491,7 +491,14 @@ describe("Holdouts H1–H14", () => {
       confidence: 0.9
     });
     const store = started.ctx.adapter?.store as MemorySheetStore;
-    store.failNextWrite();
+    // Persistent outage: every retry attempt fails, so the proposal stays
+    // pending_retry (a single transient blip is retried transparently).
+    const originalBatchUpdate = store.batchUpdate.bind(store);
+    store.batchUpdate = async () => {
+      const error = new Error("Sheets API 503 Service Unavailable") as Error & { code?: number };
+      error.code = 503;
+      throw error;
+    };
     const finalized = await started.app.inject({
       method: "POST",
       url: `/api/calls/${started.sessionId}/finalize`,
@@ -505,6 +512,7 @@ describe("Holdouts H1–H14", () => {
       payload: {}
     });
     expect((failed.json() as { proposal: { status: string } }).proposal.status).toBe("pending_retry");
+    store.batchUpdate = originalBatchUpdate;
     const retried = await started.app.inject({
       method: "POST",
       url: `/api/proposals/${proposal.id}/retry-write`,
