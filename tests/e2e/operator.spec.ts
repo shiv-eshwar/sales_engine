@@ -11,12 +11,17 @@ const test = base.extend<{ server: E2eServer }>({
 
 async function login(page: import("@playwright/test").Page, baseURL: string) {
   await page.goto(baseURL);
-  await expect(page.getByRole("heading", { name: "Ready to call" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Leads" })).toBeVisible();
+}
+
+async function openLead(page: import("@playwright/test").Page, name: string) {
+  await page.getByRole("link", { name: new RegExp(`Open ${name}`) }).first().click();
+  await expect(page.getByRole("heading", { name })).toBeVisible();
 }
 
 async function connectLiveCall(page: import("@playwright/test").Page, server: E2eServer) {
   await expect(page.getByLabel("Twilio device registered")).toBeVisible();
-  await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
+  await expect(page.getByText("Alex Rivera", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Call" })).toBeEnabled();
   await page.getByRole("button", { name: "Call" }).click();
   await expect(page.getByLabel("Call state connecting")).toBeVisible();
@@ -48,7 +53,9 @@ async function connectLiveCall(page: import("@playwright/test").Page, server: E2
 test("login through approve loads the next lead", async ({ page, server }) => {
   await login(page, server.baseURL);
   await page.getByLabel("Campaign").selectOption("lamina-sales");
-  await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Leads" })).toContainText("Alex Rivera");
+
+  await openLead(page, "Alex Rivera");
 
   const live = await connectLiveCall(page, server);
   live.outbound?.emitFinal("we currently verify user-facing behavior by hand");
@@ -83,28 +90,36 @@ test("login through approve loads the next lead", async ({ page, server }) => {
   await expect(page.getByRole("table")).toContainText("Proposed");
 
   await page.getByRole("button", { name: "Approve & next" }).click();
-  await expect(page.getByRole("heading", { name: "Ready to call" })).toBeVisible();
-  await expect(page.getByText("Jordan Chen", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Lead queue", { exact: true })).toHaveValue("L-101");
+  await expect(page.getByRole("heading", { name: "Leads" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Leads" })).toContainText("Jordan Chen");
 });
 
-test("select a specific lead from the queue", async ({ page, server }) => {
+test("open a specific lead from the table, search and navigate", async ({ page, server }) => {
   await login(page, server.baseURL);
   await page.getByLabel("Campaign").selectOption("lamina-sales");
-  await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Lead queue", { exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Leads" })).toContainText("Alex Rivera");
 
-  await page.getByLabel("Lead queue", { exact: true }).selectOption("L-101");
-  await expect(page.getByText("Jordan Chen", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Lead queue", { exact: true })).toHaveValue("L-101");
+  // Search filters the table.
+  await page.getByLabel("Search leads").fill("Jordan");
+  await expect(page.getByRole("table", { name: "Leads" })).toContainText("Jordan Chen");
+  await expect(page.getByRole("table", { name: "Leads" })).not.toContainText("Alex Rivera");
+  await page.getByLabel("Search leads").fill("");
 
-  await page.getByRole("button", { name: "Select Alex Rivera" }).click();
-  await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Lead queue", { exact: true })).toHaveValue("L-100");
+  // Click into a lead detail page and back.
+  await openLead(page, "Jordan Chen");
+  await expect(page).toHaveURL(/\/leads\/L-101/);
+  await expect(page.getByRole("heading", { name: "Jordan Chen" })).toBeVisible();
+  await page.getByRole("link", { name: "← Back to leads" }).click();
+  await expect(page.getByRole("heading", { name: "Leads" })).toBeVisible();
+
+  await openLead(page, "Alex Rivera");
+  await expect(page).toHaveURL(/\/leads\/L-100/);
 });
 
 test("Deepgram drop shows interruption while Mute and Hang Up stay enabled", async ({ page, server }) => {
   await login(page, server.baseURL);
+  await page.getByLabel("Campaign").selectOption("lamina-sales");
+  await openLead(page, "Alex Rivera");
   const live = await connectLiveCall(page, server);
   live.outbound?.fail(new Error("deepgram drop"));
   await expect(page.getByText("Transcription interrupted")).toBeVisible();
@@ -126,6 +141,5 @@ const invalidSheet = base.extend<{ server: E2eServer }>({
 invalidSheet("invalid Sheet headers block Call", async ({ page, server }) => {
   await login(page, server.baseURL);
   await expect(page.getByLabel("Sheet blocking error")).toBeVisible();
-  await expect(page.getByLabel("Sheet blocking error")).toContainText("Phone Number");
-  await expect(page.getByRole("button", { name: "Call" })).toHaveCount(0);
+  await expect(page.getByLabel("Sheet blocking error")).toContainText("Sheet needs attention");
 });

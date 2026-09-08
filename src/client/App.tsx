@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import type { BootstrapResponse } from "../shared/contracts";
-import { ReadyPage } from "./pages/ReadyPage";
 import { fetchBootstrap } from "./state/api";
+import { SessionProvider } from "./state/session";
+import { AppLayout } from "./layout/AppLayout";
+import { LeadsPage } from "./pages/LeadsPage";
+import { LeadDetailPage } from "./pages/LeadDetailPage";
+import { ReviewPage } from "./pages/ReviewPage";
 
 export function App() {
   const [bootstrap, setBootstrap] = useState<BootstrapResponse | null>(null);
@@ -39,10 +44,26 @@ export function App() {
   if (!bootstrap) {
     return (
       <p className="p-8 text-sm text-slate-600" role="status">
-        Loading next lead…
+        Loading leads…
       </p>
     );
   }
 
-  return <ReadyPage data={bootstrap} onChange={setBootstrap} />;
+  return (
+    <BrowserRouter>
+      <SessionProvider initial={bootstrap}>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route index element={<Navigate to="/leads" replace />} />
+            <Route path="/leads" element={<LeadsPage />} />
+            <Route path="/leads/:leadId" element={<LeadDetailPage />} />
+            <Route path="/review" element={<ReviewPage />} />
+            <Route path="*" element={<Navigate to="/leads" replace />} />
+          </Route>
+        </Routes>
+      </SessionProvider>
+    </BrowserRouter>
+  );
 }
+
+// Keep setBootstrap available for future session refresh flows.

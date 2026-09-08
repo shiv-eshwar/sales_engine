@@ -12,10 +12,17 @@ async function fillOffering(page: Page, name: string, tag = "") {
   await page.getByLabel("Sheet campaign tag", { exact: false }).fill(tag);
 }
 
+async function openFirstLead(page: Page) {
+  await expect(page.getByRole("table", { name: "Leads" })).toContainText("Alex Rivera");
+  await page.getByRole("link", { name: /Open Alex Rivera/ }).first().click();
+  await expect(page.getByRole("heading", { name: "Alex Rivera" })).toBeVisible();
+}
+
 test("create different offerings, match leads by sheet tag, view cited preparation, switch and regenerate", async ({ page }) => {
   const server = await startE2eServer({ initialCampaigns: [], enqueueLlm: false, researchClient: fakeResearch });
   try {
     await page.goto(server.baseURL);
+    await expect(page.getByRole("heading", { name: "Leads" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Create a campaign" }).first()).toBeVisible();
     await expect(page.getByRole("option", { name: /Lamina/i })).toHaveCount(0);
 
@@ -23,11 +30,14 @@ test("create different offerings, match leads by sheet tag, view cited preparati
     server.llm.enqueueJson(prospectBrief());
     await fillOffering(page, "Invoice assistant", "lamina-sales");
     await page.getByRole("button", { name: "Generate campaign", exact: true }).click();
+    await openFirstLead(page);
     await expect(page.getByLabel("AI prospect brief")).toContainText("invoice follow-up");
     await expect(page.getByLabel("AI prospect brief").getByRole("link", { name: "[1]", exact: true })).toHaveAttribute("href", "https://example.com/company");
     await expect(page.getByRole("button", { name: "Call", exact: true })).toBeEnabled();
     await page.screenshot({ path: "test-results/ai-campaigns-desktop.png", fullPage: true });
 
+    await page.getByRole("link", { name: "← Back to leads" }).click();
+    await expect(page.getByRole("heading", { name: "Leads" })).toBeVisible();
     await page.getByRole("button", { name: "New campaign", exact: true }).click();
     server.llm.enqueueJson(strategy("Security awareness"));
     const securityBrief = prospectBrief();
@@ -36,11 +46,15 @@ test("create different offerings, match leads by sheet tag, view cited preparati
     server.llm.enqueueJson(securityBrief);
     await fillOffering(page, "Security training", "lamina-sales");
     await page.getByRole("button", { name: "Generate campaign", exact: true }).click();
+    await openFirstLead(page);
     await expect(page.getByLabel("AI prospect brief")).toContainText("recognize phishing");
+    await page.getByRole("link", { name: "← Back to leads" }).click();
     await page.getByLabel("Campaign", { exact: true }).selectOption({ label: "Invoice collections" });
+    await openFirstLead(page);
     await expect(page.getByLabel("AI prospect brief")).toContainText("invoice follow-up");
     await expect(page.getByLabel("AI prospect brief")).not.toContainText("recognize phishing");
 
+    await page.getByRole("link", { name: "← Back to leads" }).click();
     await page.getByRole("button", { name: "Edit offering" }).click();
     await page.getByLabel("Desired outcome of the call").fill("Learn about overdue collections and suggest a workflow review");
     server.llm.enqueueJson(strategy("Receivables workflow"));
@@ -48,6 +62,7 @@ test("create different offerings, match leads by sheet tag, view cited preparati
     regenerated.questions[0]!.prompt = "What slows down collecting overdue invoices?";
     server.llm.enqueueJson(regenerated);
     await page.getByRole("button", { name: "Save & regenerate" }).click();
+    await openFirstLead(page);
     await expect(page.getByLabel("AI prospect brief")).toContainText("collecting overdue invoices");
     await expect(page.getByText(/Strategy v2/)).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
