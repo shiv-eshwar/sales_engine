@@ -74,6 +74,147 @@ describe("Twilio call sessions and webhooks", () => {
     expect(response.statusCode).toBe(403);
   });
 
+  it("routes inbound callers to the operator client and tracks the dial leg", async () => {
+    const { app: inboundApp } = await startTestApp();
+    try {
+      const inboundCookie = await loginCookie(inboundApp);
+      const inbound = await inboundApp.inject({
+        method: "POST",
+        url: "/twilio/voice/inbound",
+        ...signedForm("/twilio/voice/inbound", {
+          From: "+14155550100",
+          To: "+14155550000",
+          CallSid: "CAinbound1",
+          CallStatus: "ringing"
+        })
+      });
+    expect(inbound.statusCode).toBe(200);
+    expect(inbound.body).toContain("<Client");
+    expect(inbound.body).toContain(">operator<");
+    expect(inbound.body).toContain('name="sessionId"');
+    expect(inbound.body).toContain("<Stream");
+
+    const listed = await inboundApp.inject({ method: "GET", url: "/api/calls/active", headers: { cookie: inboundCookie } });
+    const active = listed.json() as { call: { id: string; status: string; contactName: string } | null };
+    expect(active.call?.status).toBe("ringing");
+    // Known sheet number resolves to the lead name.
+    expect(active.call?.contactName).toBe("Alex Rivera");
+
+    const answered = await inboundApp.inject({
+      method: "POST",
+      url: "/twilio/voice/inbound-status",
+      ...signedForm("/twilio/voice/inbound-status", {
+        CallSid: "CAclientLeg1",
+        ParentCallSid: "CAinbound1",
+        CallStatus: "in-progress"
+      })
+    });
+    expect(answered.statusCode).toBe(204);
+    const connected = await inboundApp.inject({ method: "GET", url: "/api/calls/active", headers: { cookie: inboundCookie } });
+    expect((connected.json() as { call: { status: string } }).call.status).toBe("in_progress");
+
+    // A second caller hears the busy message while the operator is on the call.
+    const busy = await inboundApp.inject({
+      method: "POST",
+      url: "/twilio/voice/inbound",
+      ...signedForm("/twilio/voice/inbound", {
+        From: "+14155550999",
+        To: "+14155550000",
+        CallSid: "CAinbound2",
+        CallStatus: "ringing"
+      })
+    });
+    expect(busy.statusCode).toBe(200);
+    expect(busy.body).toContain("another call");
+    expect(busy.body).not.toContain("<Client>");
+
+    const done = await inboundApp.inject({
+      method: "POST",
+      url: "/twilio/voice/inbound-status",
+      ...signedForm("/twilio/voice/inbound-status", {
+        CallSid: "CAinbound1",
+        DialCallSid: "CAclientLeg1",
+        DialCallStatus: "completed"
+      })
+    });
+    expect(done.statusCode).toBe(204);
+    const idle = await inboundApp.inject({ method: "GET", url: "/api/calls/active", headers: { cookie: inboundCookie } });
+    expect((idle.json() as { call: null }).call).toBeNull();
+    } finally {
+      await inboundApp.close();
+    }
+  });
+
+  it("simultaneous-rings the forward number with the browser when configured", async () => {
+    const { app: fwdApp } = await startTestApp({ INBOUND_FORWARD_NUMBER: "+919876543210" });
+    try {
+      const inbound = await fwdApp.inject({
+        method: "POST",
+        url: "/twilio/voice/inbound",
+        ...signedForm("/twilio/voice/inbound", {
+          From: "+14155550100",
+          To: "+14155550000",
+          CallSid: "CAfwd1",
+          CallStatus: "ringing"
+        })
+      });
+      expect(inbound.statusCode).toBe(200);
+      expect(inbound.body).toContain(">operator<");
+      expect(inbound.body).toContain("+919876543210");
+
+      // Mobile answers: the PSTN leg steals the tracked leg and connects.
+      const answered = await fwdApp.inject({
+        method: "POST",
+        url: "/twilio/voice/inbound-status",
+        ...signedForm("/twilio/voice/inbound-status", {
+          CallSid: "CAfwdMobile",
+          ParentCallSid: "CAfwd1",
+          CallStatus: "in-progress"
+        })
+      });
+      expect(answered.statusCode).toBe(204);
+
+      // Losing browser leg hangs up: must not end the connected call.
+      const loser = await fwdApp.inject({
+        method: "POST",
+        url: "/twilio/voice/inbound-status",
+        ...signedForm("/twilio/voice/inbound-status", {
+          CallSid: "CAfwdBrowser",
+          ParentCallSid: "CAfwd1",
+          CallStatus: "completed"
+        })
+      });
+      expect(loser.statusCode).toBe(204);
+      const listed = await fwdApp.inject({ method: "GET", url: "/api/calls/active", headers: { cookie: await loginCookie(fwdApp) } });
+      expect((listed.json() as { call: { status: string } }).call.status).toBe("in_progress");
+    } finally {
+      await fwdApp.close();
+    }
+  });
+
+  it("ignores a missing or invalid forward number", async () => {
+    for (const override of [{}, { INBOUND_FORWARD_NUMBER: "not-a-number" }] as const) {
+      const { app: plainApp } = await startTestApp(override);
+      try {
+        const inbound = await plainApp.inject({
+          method: "POST",
+          url: "/twilio/voice/inbound",
+          ...signedForm("/twilio/voice/inbound", {
+            From: "+14155550100",
+            To: "+14155550000",
+            CallSid: `CAplain${Math.random()}`,
+            CallStatus: "ringing"
+          })
+        });
+        expect(inbound.statusCode).toBe(200);
+        expect(inbound.body).toContain(">operator<");
+        expect(inbound.body).not.toContain("<Number");
+      } finally {
+        await plainApp.close();
+      }
+    }
+  });
+
   it("is idempotent for duplicate status callbacks and ignores delayed in-progress after completed", async () => {
     const created = await app.inject({
       method: "POST",

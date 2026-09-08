@@ -1,5 +1,6 @@
 import { isPublicWebUrl, type ResearchSource } from "../../shared/campaigns.js";
 import type { Env } from "../env.js";
+import { createFirecrawlResearchClient } from "./firecrawl.js";
 
 export type ResearchInput = { company: string; fullName: string; role: string; enrichment: string };
 export type ResearchResult = { report: string; sources: ResearchSource[]; searchedAt: string };
@@ -44,6 +45,10 @@ export function parseResearchResponse(body: { status?: string; output?: Response
 }
 
 export function createResearchClient(env: Env): ResearchClient | null {
+  // Firecrawl is the preferred live-web path when its key is configured.
+  if (env.FIRECRAWL_API_KEY?.trim()) {
+    return createFirecrawlResearchClient({ apiKey: env.FIRECRAWL_API_KEY, timeoutMs: env.RESEARCH_TIMEOUT_MS });
+  }
   const llmBase = env.LLM_BASE_URL?.replace(/\/$/, "");
   const base = env.RESEARCH_BASE_URL?.replace(/\/$/, "") ??
     (llmBase && new URL(llmBase).hostname === "api.openai.com" ? llmBase : undefined);

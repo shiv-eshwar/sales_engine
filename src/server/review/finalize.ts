@@ -35,6 +35,7 @@ export class ReviewFinalizer {
       llm: LlmClient | null;
       coachEngine: CoachEngine;
       mediaHub: MediaHub;
+      extractionTimeoutMs: number;
     }
   ) {}
 
@@ -224,7 +225,7 @@ export class ReviewFinalizer {
         transcriptComplete: input.transcriptComplete
       });
       try {
-        const raw = await this.deps.llm.completeJson(prompt);
+        const raw = await this.deps.llm.completeJson({ ...prompt, timeoutMs: this.deps.extractionTimeoutMs });
         llmUsed = true;
         let parsed: unknown;
         try {
@@ -249,8 +250,9 @@ export class ReviewFinalizer {
         } else {
           warnings.push("Extraction output was not valid JSON.");
         }
-      } catch {
-        warnings.push("Post-call extraction failed. Review the conservative draft.");
+      } catch (error) {
+        const cause = error instanceof Error ? error.message : String(error);
+        warnings.push(`Post-call extraction failed (${cause.slice(0, 160)}). Review the conservative draft.`);
       }
     } else if (!this.deps.llm && !doNotContact) {
       warnings.push("LLM is not configured; connected extraction was skipped.");

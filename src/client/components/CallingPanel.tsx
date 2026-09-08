@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { ProspectBrief } from "./ProspectBrief";
 import type { CallLiveEvent, PublicUtterance, TranscriptionHealth } from "../../shared/contracts";
 import type { CallSessionView, CoachSnapshot } from "../state/calls";
-import { callEventsUrl, cancelCallSession, fetchCallSession } from "../state/calls";
-import { hangUpTwilioCall, setTwilioMuted } from "../twilio/device";
+import { callEventsUrl, cancelCallSession, fetchCallSession, sendCallDigits } from "../state/calls";
+import { hangUpTwilioCall, sendTwilioDigits, setTwilioMuted } from "../twilio/device";
 
 type CallingPanelProps = {
   session: CallSessionView;
@@ -73,8 +73,31 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
   const [utterances, setUtterances] = useState<PublicUtterance[]>(session.utterances ?? []);
   const [interims, setInterims] = useState<{ caller?: string; contact?: string }>({});
   const [coach, setCoach] = useState<CoachSnapshot | null>(session.coach ?? null);
+  const [sentDigits, setSentDigits] = useState("");
+  const [dtmfError, setDtmfError] = useState<string | null>(null);
+  const [dtmfPending, setDtmfPending] = useState<string | null>(null);
   const terminal = TERMINAL.has(session.status);
   const notifiedTerminal = useRef(false);
+  const canSendDigits = !terminal && session.status === "in_progress";
+
+  async function sendDigit(digit: string) {
+    if (terminal || dtmfPending) {
+      return;
+    }
+    setDtmfPending(digit);
+    setDtmfError(null);
+    try {
+      const viaSdk = sendTwilioDigits(digit);
+      if (!viaSdk) {
+        await sendCallDigits(session.id, digit);
+      }
+      setSentDigits((current) => (current + digit).slice(-32));
+    } catch (error) {
+      setDtmfError(error instanceof Error ? error.message : "Could not send digit");
+    } finally {
+      setDtmfPending(null);
+    }
+  }
 
   useEffect(() => {
     const timer = window.setInterval(() => setTick((value) => value + 1), 1000);
@@ -261,6 +284,40 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
           Hang Up
         </button>
       </div>
+      <details className="mt-4 rounded-md border border-slate-700 p-3" open={canSendDigits}>
+        <summary className="cursor-pointer text-sm font-medium">Keypad</summary>
+        <p className="mt-1 text-xs text-slate-400">
+          {canSendDigits
+            ? "Use when an IVR asks you to press a key."
+            : "Keypad is available once the call is connected."}
+        </p>
+        <div className="mt-3 grid max-w-[240px] grid-cols-3 gap-2" role="group" aria-label="Dialpad">
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((digit) => (
+            <button
+              key={digit}
+              type="button"
+              aria-label={`Send digit ${digit}`}
+              disabled={!canSendDigits || dtmfPending !== null}
+              onClick={() => {
+                void sendDigit(digit);
+              }}
+              className="rounded-md border border-slate-600 bg-slate-800 px-4 py-3 font-mono text-lg font-semibold text-slate-50 disabled:opacity-40"
+            >
+              {dtmfPending === digit ? "…" : digit}
+            </button>
+          ))}
+        </div>
+        {sentDigits ? (
+          <p className="mt-2 font-mono text-xs text-slate-400" aria-label="Sent digits">
+            Sent: {sentDigits}
+          </p>
+        ) : null}
+        {dtmfError ? (
+          <p className="mt-2 text-sm text-red-300" role="alert">
+            {dtmfError}
+          </p>
+        ) : null}
+      </details>
       {session.preparation ? <details className="mt-5">
         <summary className="cursor-pointer text-sm font-medium">Research & call preparation</summary>
         <div className="text-slate-900"><ProspectBrief preparation={session.preparation} /></div>

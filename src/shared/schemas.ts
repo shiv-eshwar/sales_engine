@@ -193,6 +193,11 @@ export const refreshLeadRequestSchema = z.object({
   campaignId: z.string().min(1).optional()
 });
 
+export const selectLeadRequestSchema = z.object({
+  leadId: z.string().min(1),
+  campaignId: z.string().min(1).optional()
+});
+
 export const writeFieldKeySchema = z.enum([
   "call_status",
   "call_attempts",

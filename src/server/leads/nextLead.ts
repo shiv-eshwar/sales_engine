@@ -22,12 +22,15 @@ export function toPublicLead(lead: LeadRecord): PublicLead {
 
 export async function loadNextLead(ctx: AppContext): Promise<{
   lead: PublicLead | null;
+  leads: PublicLead[];
   diagnostics: BootstrapResponse["sheet"]["diagnostics"];
   sheetStatus: BootstrapResponse["sheet"];
 }> {
   if (!ctx.adapter) {
+    ctx.operator.selectedLeadId = null;
     return {
       lead: null,
+      leads: [],
       diagnostics: [],
       sheetStatus: {
         status: "unconfigured",
@@ -39,8 +42,10 @@ export async function loadNextLead(ctx: AppContext): Promise<{
 
   const preflight = await ctx.adapter.preflight();
   if (!preflight.ok) {
+    ctx.operator.selectedLeadId = null;
     return {
       lead: null,
+      leads: [],
       diagnostics: [],
       sheetStatus: {
         status: "error",
@@ -57,10 +62,27 @@ export async function loadNextLead(ctx: AppContext): Promise<{
   const campaignId = ctx.operator.selectedCampaignId;
   const belongs = campaignId ? ctx.campaignStore.membership(campaignId) : () => false;
   const available = queue.leads.filter((lead) => belongs(lead) && !ctx.operator.skippedLeadIds.has(skippedLeadKey(campaignId, lead.leadId)));
-  const lead = available[0] ?? null;
+  const leads = available.map(toPublicLead);
+
+  // Keep an explicitly selected lead active as long as it is still eligible.
+  // Otherwise fall back to the head of the queue so Skip/Reload keep working.
+  let lead: LeadRecord | null = null;
+  if (ctx.operator.selectedLeadId) {
+    lead = available.find((item) => item.leadId === ctx.operator.selectedLeadId) ?? null;
+    if (!lead) {
+      ctx.operator.selectedLeadId = null;
+    }
+  }
+  lead ??= available[0] ?? null;
+  if (lead) {
+    ctx.operator.selectedLeadId = lead.leadId;
+  } else {
+    ctx.operator.selectedLeadId = null;
+  }
 
   return {
     lead: lead ? toPublicLead(lead) : null,
+    leads,
     diagnostics: queue.diagnostics,
     sheetStatus: {
       status: "ok",

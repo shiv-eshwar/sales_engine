@@ -21,3 +21,8 @@ export function publicUrl(env: Env, path: string): string {
 export function publicWsUrl(env: Env, path: string): string {
   return publicUrl(env, path).replace(/^https:/i, "wss:").replace(/^http:/i, "ws:");
 }
+
+export function inboundForwardNumber(env: Env): string | null {
+  const raw = env.INBOUND_FORWARD_NUMBER?.trim() ?? "";
+  return /^\+[1-9]\d{7,14}$/.test(raw) ? raw : null;
+}

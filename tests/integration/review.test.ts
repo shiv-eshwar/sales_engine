@@ -62,8 +62,7 @@ describe("Post-call CRM update", () => {
     return { app, cookie, ctx, sessionId, fakes, socket };
   }
 
-  it("does not invoke the LLM for no-answer, busy, or failed outcomes", async () => {
-    const llm = new FakeLlmClient();
+  it("does not invoke the LLM for no-answer, busy, or failed outcomes", async () => {    const llm = new FakeLlmClient();
     const { app, cookie, ctx, sessionId } = await startSession(llm);
     applyTransportStatus(ctx.db, sessionId, "no-answer");
     const before = llm.calls.length;
@@ -130,6 +129,33 @@ describe("Post-call CRM update", () => {
     const queue = await ctx.adapter?.loadQueue();
     expect(queue?.leads.some((lead) => lead.leadId === "L-100")).toBe(true);
     expect(proposal.proposedFields.call_summary).toContain("manual verification");
+    await app.close();
+  });
+
+  it("gives post-call extraction the generation timeout, not the live-coaching budget", async () => {
+    const llm = new FakeLlmClient();
+    llm.enqueueJson(postCallOutput());
+    const { app, cookie, ctx, sessionId } = await startSession(llm);
+    applyTransportStatus(ctx.db, sessionId, "in_progress");
+    applyTransportStatus(ctx.db, sessionId, "completed");
+    insertUtterance(ctx.db, {
+      sessionId,
+      speaker: "contact",
+      text: "we currently verify user-facing behavior by hand",
+      startMs: 0,
+      endMs: 1000,
+      confidence: 0.9
+    });
+    const finalized = await app.inject({
+      method: "POST",
+      url: `/api/calls/${sessionId}/finalize`,
+      headers: { cookie }
+    });
+    expect(finalized.statusCode).toBe(200);
+    expect(llm.calls).toHaveLength(1);
+    // Regression guard: extraction must use the generation timeout, not the
+    // short live-coaching budget that used to abort every real call.
+    expect(llm.calls[0]!.timeoutMs).toBe(ctx.env.AI_GENERATION_TIMEOUT_MS);
     await app.close();
   });
 

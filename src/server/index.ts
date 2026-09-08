@@ -34,6 +34,8 @@ import { CampaignStore } from "./campaigns/store.js";
 import { PreparationService } from "./research/preparation.js";
 import { createResearchClient, type ResearchClient } from "./research/client.js";
 import { registerCampaigns } from "./api/campaigns.js";
+import { createDtmfSender } from "./twilio/dtmf.js";
+import { inboundForwardNumber } from "./twilio/config.js";
 import type { CampaignConfig } from "../shared/schemas.js";
 
 export type BuildAppOptions = {
@@ -43,6 +45,7 @@ export type BuildAppOptions = {
   initialCampaigns?: CampaignConfig[];
   researchClient?: ResearchClient | null;
   clientDir?: string;
+  dtmfSender?: import("./twilio/dtmf.js").DtmfSender | null;
 };
 
 export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = {}) {
@@ -120,7 +123,7 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
   const deepgramFactory = options.deepgramFactory ?? createDeepgramFactory(env);
   const llmClient = options.llmClient === undefined ? createLlmClient(env) : options.llmClient;
   const researchClient = options.researchClient === undefined ? createResearchClient(env) : options.researchClient;
-  const preparation = new PreparationService({ db, llm: llmClient, research: researchClient, timeoutMs: env.AI_GENERATION_TIMEOUT_MS });
+  const preparation = new PreparationService({ db, llm: llmClient, research: researchClient, timeoutMs: env.AI_GENERATION_TIMEOUT_MS, researchCacheTtlMs: env.RESEARCH_CACHE_TTL_MS });
   const coachEngine = new CoachEngine({
     env,
     db,
@@ -146,9 +149,16 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
         adapter,
         llm: llmClient,
         coachEngine,
-        mediaHub
+        mediaHub,
+        extractionTimeoutMs: env.AI_GENERATION_TIMEOUT_MS
       })
     : null;
+  const dtmfSender =
+    options.dtmfSender === undefined
+      ? env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN
+        ? createDtmfSender(env)
+        : null
+      : options.dtmfSender;
 
   const ctx: AppContext = {
     env,
@@ -170,10 +180,15 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
     llmClient,
     coachEngine,
     finalizer,
+    dtmfSender,
     shuttingDown: false
   };
 
   app.decorate("appContext", ctx);
+
+  if (env.INBOUND_FORWARD_NUMBER?.trim() && !inboundForwardNumber(env)) {
+    app.log.warn("INBOUND_FORWARD_NUMBER is not valid E.164; inbound calls will ring the browser only");
+  }
 
   await registerHealth(app, ctx);
   await registerAuth(app, ctx);

@@ -20,6 +20,7 @@ const envSchema = z.object({
   TWILIO_TWIML_APP_SID: z.string().optional(),
   TWILIO_CALLER_ID: z.string().optional(),
   TWILIO_ALLOWED_COUNTRIES: z.string().default("US"),
+  INBOUND_FORWARD_NUMBER: z.string().optional(),
   RECORDING_NOTICE: z
     .string()
     .default(
@@ -43,6 +44,8 @@ const envSchema = z.object({
   RESEARCH_API_KEY: z.string().optional(),
   RESEARCH_MODEL: z.string().optional(),
   RESEARCH_TIMEOUT_MS: z.coerce.number().int().positive().default(60000),
+  RESEARCH_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(7 * 24 * 60 * 60 * 1000),
+  FIRECRAWL_API_KEY: z.string().optional(),
   COACH_RATE_LIMIT_MS: z.coerce.number().int().nonnegative().default(3000),
   DRAIN_TIMEOUT_MS: z.coerce.number().int().positive().default(30000)
 });

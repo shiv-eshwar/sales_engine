@@ -12,11 +12,11 @@ async function fillOffering(page: Page, name: string, tag = "") {
   await page.getByLabel("Sheet campaign tag", { exact: false }).fill(tag);
 }
 
-test("create different offerings, assign leads, view cited preparation, switch and regenerate", async ({ page }) => {
+test("create different offerings, match leads by sheet tag, view cited preparation, switch and regenerate", async ({ page }) => {
   const server = await startE2eServer({ initialCampaigns: [], enqueueLlm: false, researchClient: fakeResearch });
   try {
     await page.goto(server.baseURL);
-    await expect(page.getByRole("heading", { name: "Create a campaign" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Create a campaign" }).first()).toBeVisible();
     await expect(page.getByRole("option", { name: /Lamina/i })).toHaveCount(0);
 
     server.llm.enqueueJson(strategy("Invoice collections"));
@@ -30,18 +30,13 @@ test("create different offerings, assign leads, view cited preparation, switch a
 
     await page.getByRole("button", { name: "New campaign", exact: true }).click();
     server.llm.enqueueJson(strategy("Security awareness"));
-    await fillOffering(page, "Security training");
-    await page.getByRole("button", { name: "Generate campaign", exact: true }).click();
-    await expect(page.getByText("No eligible lead is assigned to this campaign.", { exact: false })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Call", exact: true })).toBeDisabled();
-    await page.getByRole("button", { name: "Assign leads", exact: true }).click();
     const securityBrief = prospectBrief();
     securityBrief.opening = "Alex, how does Northwind QA prepare staff to recognize security risks?";
     securityBrief.questions[0]!.prompt = "How do you train staff to recognize phishing?";
     server.llm.enqueueJson(securityBrief);
-    await page.getByRole("checkbox", { name: /Alex Rivera/ }).check();
+    await fillOffering(page, "Security training", "lamina-sales");
+    await page.getByRole("button", { name: "Generate campaign", exact: true }).click();
     await expect(page.getByLabel("AI prospect brief")).toContainText("recognize phishing");
-    await page.getByRole("button", { name: "Close lead assignment" }).click();
     await page.getByLabel("Campaign", { exact: true }).selectOption({ label: "Invoice collections" });
     await expect(page.getByLabel("AI prospect brief")).toContainText("invoice follow-up");
     await expect(page.getByLabel("AI prospect brief")).not.toContainText("recognize phishing");

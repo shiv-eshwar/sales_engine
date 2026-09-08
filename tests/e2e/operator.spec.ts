@@ -16,7 +16,7 @@ async function login(page: import("@playwright/test").Page, baseURL: string) {
 
 async function connectLiveCall(page: import("@playwright/test").Page, server: E2eServer) {
   await expect(page.getByLabel("Twilio device registered")).toBeVisible();
-  await expect(page.getByText("Alex Rivera")).toBeVisible();
+  await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Call" })).toBeEnabled();
   await page.getByRole("button", { name: "Call" }).click();
   await expect(page.getByLabel("Call state connecting")).toBeVisible();
@@ -48,7 +48,7 @@ async function connectLiveCall(page: import("@playwright/test").Page, server: E2
 test("login through approve loads the next lead", async ({ page, server }) => {
   await login(page, server.baseURL);
   await page.getByLabel("Campaign").selectOption("lamina-sales");
-  await expect(page.getByText("Alex Rivera")).toBeVisible();
+  await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
 
   const live = await connectLiveCall(page, server);
   live.outbound?.emitFinal("we currently verify user-facing behavior by hand");
@@ -84,8 +84,23 @@ test("login through approve loads the next lead", async ({ page, server }) => {
 
   await page.getByRole("button", { name: "Approve & next" }).click();
   await expect(page.getByRole("heading", { name: "Ready to call" })).toBeVisible();
-  await expect(page.getByText("Jordan Chen")).toBeVisible();
-  await expect(page.getByText("Blue Harbor")).toBeVisible();
+  await expect(page.getByText("Jordan Chen", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Lead queue", { exact: true })).toHaveValue("L-101");
+});
+
+test("select a specific lead from the queue", async ({ page, server }) => {
+  await login(page, server.baseURL);
+  await page.getByLabel("Campaign").selectOption("lamina-sales");
+  await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Lead queue", { exact: true })).toBeVisible();
+
+  await page.getByLabel("Lead queue", { exact: true }).selectOption("L-101");
+  await expect(page.getByText("Jordan Chen", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Lead queue", { exact: true })).toHaveValue("L-101");
+
+  await page.getByRole("button", { name: "Select Alex Rivera" }).click();
+  await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Lead queue", { exact: true })).toHaveValue("L-100");
 });
 
 test("Deepgram drop shows interruption while Mute and Hang Up stay enabled", async ({ page, server }) => {

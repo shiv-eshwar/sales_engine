@@ -7,6 +7,7 @@ import type { ManagedCampaign } from "../campaigns/store.js";
 import { renderAgentSystem } from "../agents/loader.js";
 import type { LlmClient } from "../llm/types.js";
 import type { ResearchClient, ResearchResult } from "./client.js";
+import { getCachedResearch, pruneStaleResearchCache, putCachedResearch } from "./cache.js";
 
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
@@ -21,7 +22,30 @@ export class PreparationService {
   private readonly pending = new Map<string, Promise<ProspectPreparation>>();
   constructor(private readonly deps: {
     db: Database.Database; llm: LlmClient | null; research: ResearchClient | null; timeoutMs: number;
+    researchCacheTtlMs?: number;
   }) {}
+
+  private researchInput(lead: PublicLead) {
+    return {
+      fullName: lead.fullName, company: lead.company, role: lead.role, enrichment: lead.enrichment.slice(0, 6000)
+    };
+  }
+
+  private async liveResearch(lead: PublicLead, force: boolean): Promise<{ research: ResearchResult; fromCache: boolean }> {
+    const input = this.researchInput(lead);
+    const ttlMs = this.deps.researchCacheTtlMs ?? 0;
+    if (!force) {
+      const cached = getCachedResearch(this.deps.db, input, ttlMs);
+      if (cached) return { research: cached, fromCache: true };
+    }
+    if (!this.deps.research) throw new Error("unconfigured");
+    const fresh = await this.deps.research.research(input);
+    if (ttlMs > 0) {
+      putCachedResearch(this.deps.db, input, fresh);
+      pruneStaleResearchCache(this.deps.db, ttlMs);
+    }
+    return { research: fresh, fromCache: false };
+  }
 
   get(id: string): ProspectPreparation | null {
     const row = this.deps.db.prepare("SELECT body_json FROM prospect_preparations WHERE id = ?").get(id) as { body_json: string } | undefined;
@@ -48,25 +72,26 @@ export class PreparationService {
     if (inFlight) return inFlight;
     const cached = !force ? this.cached(campaign, lead) : null;
     if (cached) return Promise.resolve(cached);
-    const promise = this.generate(campaign, lead).finally(() => this.pending.delete(key));
+    const promise = this.generate(campaign, lead, force).finally(() => this.pending.delete(key));
     this.pending.set(key, promise);
     return promise;
   }
 
-  private async generate(campaign: ManagedCampaign, lead: PublicLead): Promise<ProspectPreparation> {
+  private async generate(campaign: ManagedCampaign, lead: PublicLead, force = false): Promise<ProspectPreparation> {
     if (!this.deps.llm) throw new Error("Configure the LLM connection to generate a prospect brief.");
     let research: ResearchResult = { report: "", sources: [], searchedAt: new Date().toISOString() };
     let status: ProspectPreparation["research"]["status"] = "unavailable";
     const warnings: string[] = [];
     if (this.deps.research) {
       try {
-        research = await this.deps.research.research({
-          fullName: lead.fullName, company: lead.company, role: lead.role, enrichment: lead.enrichment.slice(0, 6000)
-        });
+        const { research: live, fromCache } = await this.liveResearch(lead, force);
+        research = live;
         status = research.sources.length ? "complete" : "no_sources";
+        if (fromCache) warnings.push(`Reused web research from ${research.searchedAt.slice(0, 10)}. Refresh the brief for a live re-search.`);
         if (!research.sources.length) warnings.push("Web research returned no cited sources. This brief uses CRM context only.");
-      } catch {
-        warnings.push("Web research failed. This brief uses CRM context only; retry research before relying on company or prospect facts.");
+      } catch (error) {
+        const cause = error instanceof Error ? error.message : String(error);
+        warnings.push(`Web research failed (${cause.slice(0, 160)}). This brief uses CRM context only; retry research before relying on company or prospect facts.`);
       }
     } else {
       warnings.push("Web research is not configured. This brief uses CRM context only.");

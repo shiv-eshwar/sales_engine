@@ -27,6 +27,7 @@ export async function makeTestEnv(overrides: Partial<Env> = {}): Promise<Env> {
     TWILIO_TWIML_APP_SID: "APaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     TWILIO_CALLER_ID: "+14155550000",
     TWILIO_ALLOWED_COUNTRIES: "US",
+    INBOUND_FORWARD_NUMBER: undefined,
     RECORDING_NOTICE: "Test recording notice. Not legal advice.",
     DEEPGRAM_API_KEY: undefined,
     DEEPGRAM_MODEL: "nova-3",
@@ -42,6 +43,7 @@ export async function makeTestEnv(overrides: Partial<Env> = {}): Promise<Env> {
     LLM_TIMEOUT_MS: 4000,
     AI_GENERATION_TIMEOUT_MS: 1000,
     RESEARCH_TIMEOUT_MS: 1000,
+    RESEARCH_CACHE_TTL_MS: 7 * 24 * 60 * 60 * 1000,
     COACH_RATE_LIMIT_MS: 0,
     DRAIN_TIMEOUT_MS: 200,
     ...overrides

@@ -41,6 +41,15 @@ export class SheetAdapter {
     return queue.leads.find((lead) => lead.leadId === leadId) ?? null;
   }
 
+  async findLeadByPhone(phoneE164: string): Promise<QueueResult["leads"][number] | null> {
+    const wanted = phoneE164.trim();
+    if (!wanted) {
+      return null;
+    }
+    const queue = await this.loadQueue();
+    return queue.leads.find((lead) => lead.phoneE164 === wanted) ?? null;
+  }
+
   async applyApprovedWrite(input: ApplyWriteInput): Promise<ApplyWriteResult> {
     const ready = await this.preflight();
     if (!ready.ok) {

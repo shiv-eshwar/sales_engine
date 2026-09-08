@@ -46,7 +46,7 @@ export function CampaignEditor({ campaign, onSaved, onCancel, onBusy, aiMessage 
     }
   }
   return (
-    <section className="mt-6 rounded-lg border border-indigo-200 bg-indigo-50/40 p-5" aria-label="Campaign setup">
+    <div aria-label="Campaign setup">
       <h2 className="text-lg font-semibold">{campaign ? "Edit offering & regenerate" : "Create a campaign"}</h2>
       <p className="mt-1 text-sm text-slate-600">Describe what you’re selling and to whom. AI will create the campaign name, approach, discovery questions, and qualification criteria.</p>
       <form className="mt-4" onSubmit={event => { void submit(event); }}>
@@ -90,6 +90,6 @@ export function CampaignEditor({ campaign, onSaved, onCancel, onBusy, aiMessage 
           {pending ? <p role="status" className="text-sm text-slate-600">Creating your strategy. This may take a minute.</p> : null}
         </div>
       </form>
-    </section>
+    </div>
   );
 }

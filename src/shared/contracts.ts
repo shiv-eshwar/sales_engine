@@ -38,6 +38,7 @@ export type PublicCampaign = {
 export type ProviderStatus = {
   status: "ok" | "not_configured" | "error";
   message: string;
+  callerId?: string | null;
 };
 
 export type BootstrapResponse = {
@@ -52,6 +53,7 @@ export type BootstrapResponse = {
   ai: ProviderStatus;
   research: ProviderStatus;
   lead: PublicLead | null;
+  leads: PublicLead[];
   recordingNotice: string;
   pendingProposal: PublicProposal | null;
   summary: DailySummary;

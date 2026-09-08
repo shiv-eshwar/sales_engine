@@ -16,6 +16,7 @@ export type CallSessionRow = {
   campaign_version: number;
   lead_snapshot_json: string;
   status: CallStatus;
+  direction: string;
   twilio_parent_sid: string | null;
   twilio_child_sid: string | null;
   recording_sid: string | null;
@@ -104,13 +105,50 @@ export function createCallSession(
   const created = nowIso();
   db.prepare(
     `INSERT INTO call_sessions (
-      id, lead_id, campaign_id, campaign_version, lead_snapshot_json, status,
+      id, lead_id, campaign_id, campaign_version, lead_snapshot_json, status, direction,
       started_at, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, 'created', ?, ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, 'created', 'outbound', ?, ?, ?)`
   ).run(id, input.leadId, input.campaignId, input.campaignVersion, JSON.stringify(input.snapshot), created, created, created);
   const row = getSession(db, id);
   if (!row) {
     throw new Error("Failed to load created call session");
+  }
+  return row;
+}
+
+export function createInboundSession(
+  db: Database.Database,
+  input: {
+    from: string;
+    contactName: string;
+    company: string;
+    parentSid: string;
+  }
+): CallSessionRow {
+  const existing = findActiveSession(db);
+  if (existing) {
+    throw new ActiveCallExistsError(existing.id);
+  }
+  const id = randomUUID();
+  const created = nowIso();
+  const snapshot: LeadSnapshot = {
+    leadId: `inbound:${input.from}`,
+    fullName: input.contactName,
+    phone: input.from,
+    phoneE164: input.from,
+    company: input.company,
+    role: "",
+    enrichment: `Inbound call from ${input.from}.`
+  };
+  db.prepare(
+    `INSERT INTO call_sessions (
+      id, lead_id, campaign_id, campaign_version, lead_snapshot_json, status, direction,
+      twilio_parent_sid, started_at, created_at, updated_at
+    ) VALUES (?, ?, 'inbound', 0, ?, 'ringing', 'inbound', ?, ?, ?, ?)`
+  ).run(id, snapshot.leadId, JSON.stringify(snapshot), input.parentSid, created, created, created);
+  const row = getSession(db, id);
+  if (!row) {
+    throw new Error("Failed to load created inbound session");
   }
   return row;
 }
@@ -133,15 +171,15 @@ export function attachParentSid(db: Database.Database, sessionId: string, sid: s
   return getSession(db, sessionId);
 }
 
-export function attachChildSid(db: Database.Database, sessionId: string, sid: string): CallSessionRow | null {
+export function attachChildSid(db: Database.Database, sessionId: string, sid: string, force = false): CallSessionRow | null {
   const session = getSession(db, sessionId);
   if (!session) {
     return null;
   }
-  if (session.twilio_child_sid && session.twilio_child_sid !== sid) {
+  if (session.twilio_child_sid && session.twilio_child_sid !== sid && !force) {
     return session;
   }
-  if (!session.twilio_child_sid) {
+  if (force || !session.twilio_child_sid) {
     db.prepare("UPDATE call_sessions SET twilio_child_sid = ?, updated_at = ? WHERE id = ?").run(
       sid,
       nowIso(),

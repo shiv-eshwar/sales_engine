@@ -22,7 +22,7 @@ export function createVoiceAccessToken(env: Env): string {
   token.addGrant(
     new VoiceGrant({
       outgoingApplicationSid: env.TWILIO_TWIML_APP_SID,
-      incomingAllow: false
+      incomingAllow: true
     })
   );
   return token.toJwt();

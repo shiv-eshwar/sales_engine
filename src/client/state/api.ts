@@ -39,7 +39,31 @@ export async function fetchBootstrap(): Promise<BootstrapResponse> {
   return (await response.json()) as BootstrapResponse;
 }
 
-export async function skipLead(leadId: string, campaignId: string | null): Promise<{ lead: PublicLead | null; sheet: BootstrapResponse["sheet"] }> {
+export type LeadQueueResponse = { lead: PublicLead | null; leads: PublicLead[]; sheet: BootstrapResponse["sheet"] };
+
+export async function fetchLeads(campaignId?: string | null, signal?: AbortSignal): Promise<LeadQueueResponse> {
+  const query = campaignId ? `?campaignId=${encodeURIComponent(campaignId)}` : "";
+  const response = await fetch(`/api/leads${query}`, { credentials: "include", signal });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return (await response.json()) as LeadQueueResponse;
+}
+
+export async function selectLead(leadId: string, campaignId: string | null): Promise<LeadQueueResponse> {
+  const response = await fetch("/api/leads/select", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ leadId, campaignId: campaignId ?? undefined })
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return (await response.json()) as LeadQueueResponse;
+}
+
+export async function skipLead(leadId: string, campaignId: string | null): Promise<LeadQueueResponse> {
   const response = await fetch("/api/leads/skip", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -49,10 +73,10 @@ export async function skipLead(leadId: string, campaignId: string | null): Promi
   if (!response.ok) {
     throw new Error(await parseError(response));
   }
-  return (await response.json()) as { lead: PublicLead | null; sheet: BootstrapResponse["sheet"] };
+  return (await response.json()) as LeadQueueResponse;
 }
 
-export async function refreshLeads(campaignId: string | null): Promise<{ lead: PublicLead | null; sheet: BootstrapResponse["sheet"] }> {
+export async function refreshLeads(campaignId: string | null): Promise<LeadQueueResponse> {
   const response = await fetch("/api/leads/refresh", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -62,10 +86,10 @@ export async function refreshLeads(campaignId: string | null): Promise<{ lead: P
   if (!response.ok) {
     throw new Error(await parseError(response));
   }
-  return (await response.json()) as { lead: PublicLead | null; sheet: BootstrapResponse["sheet"] };
+  return (await response.json()) as LeadQueueResponse;
 }
 
-export async function selectCampaign(campaignId: string): Promise<{ selectedCampaignId: string; lead: PublicLead | null; sheet: BootstrapResponse["sheet"] }> {
+export async function selectCampaign(campaignId: string): Promise<{ selectedCampaignId: string; lead: PublicLead | null; leads: PublicLead[]; sheet: BootstrapResponse["sheet"] }> {
   const response = await fetch("/api/campaigns/select", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -78,6 +102,7 @@ export async function selectCampaign(campaignId: string): Promise<{ selectedCamp
   return (await response.json()) as {
     selectedCampaignId: string;
     lead: PublicLead | null;
+    leads: PublicLead[];
     sheet: BootstrapResponse["sheet"];
   };
 }
@@ -96,7 +121,7 @@ export async function finalizeCall(sessionId: string): Promise<PublicProposal> {
 export async function approveProposal(
   id: string,
   fields?: PublicWriteFields
-): Promise<{ proposal: PublicProposal; lead: PublicLead | null; sheet: BootstrapResponse["sheet"] }> {
+): Promise<{ proposal: PublicProposal; lead: PublicLead | null; leads: PublicLead[]; sheet: BootstrapResponse["sheet"] }> {
   const response = await fetch(`/api/proposals/${id}/approve`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -109,13 +134,14 @@ export async function approveProposal(
   return (await response.json()) as {
     proposal: PublicProposal;
     lead: PublicLead | null;
+    leads: PublicLead[];
     sheet: BootstrapResponse["sheet"];
   };
 }
 
 export async function retryProposalWrite(
   id: string
-): Promise<{ proposal: PublicProposal; lead: PublicLead | null; sheet: BootstrapResponse["sheet"] }> {
+): Promise<{ proposal: PublicProposal; lead: PublicLead | null; leads: PublicLead[]; sheet: BootstrapResponse["sheet"] }> {
   const response = await fetch(`/api/proposals/${id}/retry-write`, {
     method: "POST",
     credentials: "include"
@@ -126,13 +152,14 @@ export async function retryProposalWrite(
   return (await response.json()) as {
     proposal: PublicProposal;
     lead: PublicLead | null;
+    leads: PublicLead[];
     sheet: BootstrapResponse["sheet"];
   };
 }
 
 export async function skipProposal(
   id: string
-): Promise<{ proposal: PublicProposal; lead: PublicLead | null; sheet: BootstrapResponse["sheet"] }> {
+): Promise<{ proposal: PublicProposal; lead: PublicLead | null; leads: PublicLead[]; sheet: BootstrapResponse["sheet"] }> {
   const response = await fetch(`/api/proposals/${id}/skip`, {
     method: "POST",
     credentials: "include"
@@ -143,6 +170,7 @@ export async function skipProposal(
   return (await response.json()) as {
     proposal: PublicProposal;
     lead: PublicLead | null;
+    leads: PublicLead[];
     sheet: BootstrapResponse["sheet"];
   };
 }

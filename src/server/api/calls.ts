@@ -14,6 +14,7 @@ import {
 import { isTerminalStatus } from "../calls/state.js";
 import { listUtterances } from "../transcript/utterances.js";
 import { twilioVoiceConfigured } from "../twilio/config.js";
+import { validateDtmfDigits } from "../twilio/dtmf.js";
 import { createVoiceAccessToken } from "../twilio/token.js";
 import { toPublicLead } from "../leads/nextLead.js";
 
@@ -21,6 +22,10 @@ const createSessionSchema = z.object({
   leadId: z.string().min(1),
   campaignId: z.string().min(1),
   preparationId: z.string().min(1).optional()
+});
+
+const dtmfSchema = z.object({
+  digits: z.string().min(1).max(32)
 });
 
 function serializeCall(ctx: AppContext, row: CallSessionRow) {
@@ -168,5 +173,37 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
       }
     }
     return updated ? serializeCall(ctx, updated) : reply.code(404).send({ error: "Call session not found" });
+  });
+
+  app.post("/api/calls/:id/dtmf", { preHandler: auth }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const row = getSession(ctx.db, id);
+    if (!row) {
+      return reply.code(404).send({ error: "Call session not found" });
+    }
+    if (isTerminalStatus(row.status)) {
+      return reply.code(409).send({ error: "Call already ended" });
+    }
+    if (!twilioVoiceConfigured(ctx.env)) {
+      return reply.code(503).send({ error: "Twilio Voice is not configured" });
+    }
+    if (!ctx.dtmfSender) {
+      return reply.code(503).send({ error: "DTMF sender is not configured" });
+    }
+    const parsed = dtmfSchema.safeParse(request.body);
+    if (!parsed.success || !validateDtmfDigits(parsed.data.digits)) {
+      return reply.code(400).send({ error: "digits must be 1-32 chars of 0-9 * # w W" });
+    }
+    const targetSid = row.twilio_child_sid ?? row.twilio_parent_sid;
+    if (!targetSid) {
+      return reply.code(409).send({ error: "Call is not connected yet" });
+    }
+    try {
+      await ctx.dtmfSender(targetSid, parsed.data.digits);
+    } catch (error) {
+      request.log.warn({ err: error }, "DTMF send failed");
+      return reply.code(502).send({ error: "Failed to send digits" });
+    }
+    return { ok: true, digits: parsed.data.digits, callSid: targetSid };
   });
 }

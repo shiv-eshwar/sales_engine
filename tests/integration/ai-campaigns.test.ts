@@ -96,6 +96,24 @@ describe("AI campaigns and prospect preparation", () => {
     expect(next.json().lead.leadId).not.toBe("L-100");
   });
 
+  it("selects a specific lead from the queue instead of only advancing", async () => {
+    const { app, cookie, create } = await setup();
+    const campaign = await create("Invoices", "lamina-sales");
+    const selected = await app.inject({ method: "POST", url: "/api/leads/select", headers: { cookie }, payload: { leadId: "L-101", campaignId: campaign.id } });
+    expect(selected.statusCode, selected.body).toBe(200);
+    expect(selected.json().lead.leadId).toBe("L-101");
+    expect(selected.json().leads.map((lead: { leadId: string }) => lead.leadId)).toEqual(["L-100", "L-101", "L-102"]);
+    const bootstrap = await app.inject({ url: "/api/bootstrap", headers: { cookie } });
+    expect(bootstrap.json().lead.leadId).toBe("L-101");
+    expect(bootstrap.json().leads).toHaveLength(3);
+    const missing = await app.inject({ method: "POST", url: "/api/leads/select", headers: { cookie }, payload: { leadId: "L-999", campaignId: campaign.id } });
+    expect(missing.statusCode).toBe(404);
+    const still = await app.inject({ url: "/api/leads/next", headers: { cookie } });
+    expect(still.json().lead.leadId).toBe("L-101");
+    const listed = await app.inject({ url: "/api/leads", headers: { cookie } });
+    expect(listed.json().leads.map((lead: { leadId: string }) => lead.leadId)).toEqual(["L-100", "L-101", "L-102"]);
+  });
+
   it("requires the correct fresh preparation, and freezes generated questions and criteria for coaching and review", async () => {
     const { app, cookie, ctx, create, prepare, llm } = await setup();
     const campaign = await create("Invoices", "lamina-sales");

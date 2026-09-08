@@ -29,7 +29,7 @@ export async function approveProposal(
   ctx: AppContext,
   proposalId: string,
   edits: WriteFields | undefined
-): Promise<{ proposal: PublicProposal; lead: PublicLead | null; sheet: BootstrapResponse["sheet"] }> {
+): Promise<{ proposal: PublicProposal; lead: PublicLead | null; leads: PublicLead[]; sheet: BootstrapResponse["sheet"] }> {
   if (!ctx.adapter || !ctx.sheetsConfig || !ctx.finalizer) {
     throw new ReviewError("unconfigured", "Sheet is not configured", 503);
   }
@@ -61,6 +61,7 @@ export async function approveProposal(
     return {
       proposal: ctx.finalizer.present(failed ?? row),
       lead: next.lead,
+      leads: next.leads,
       sheet: next.sheetStatus
     };
   }
@@ -70,6 +71,7 @@ export async function approveProposal(
   return {
     proposal: ctx.finalizer.present(applied),
     lead: next.lead,
+    leads: next.leads,
     sheet: next.sheetStatus
   };
 }

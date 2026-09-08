@@ -80,6 +80,18 @@ export async function cancelCallSession(id: string): Promise<CallSessionView> {
   return (await response.json()) as CallSessionView;
 }
 
+export async function sendCallDigits(id: string, digits: string): Promise<void> {
+  const response = await fetch(`/api/calls/${id}/dtmf`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ digits })
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+}
+
 export function callEventsUrl(sessionId: string): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}/api/calls/${sessionId}/events`;

@@ -40,6 +40,7 @@ export async function registerCampaigns(app: FastifyInstance, ctx: AppContext): 
       ctx.campaignStore.save(campaign);
       ctx.campaigns.push(campaign.config);
       ctx.operator.selectedCampaignId = campaign.config.id;
+      ctx.operator.selectedLeadId = null;
       return reply.code(201).send(toPublicCampaign(campaign.config, ctx));
     } catch (error) {
       return reply.code(502).send({ error: generationError(error) });

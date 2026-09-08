@@ -12,10 +12,12 @@ import type { StreamTokenStore } from "./twilio/streamTokens.js";
 import type { CampaignStore } from "./campaigns/store.js";
 import type { PreparationService } from "./research/preparation.js";
 import type { ResearchClient } from "./research/client.js";
+import type { DtmfSender } from "./twilio/dtmf.js";
 
 export type OperatorState = {
   skippedLeadIds: Set<string>;
   selectedCampaignId: string | null;
+  selectedLeadId: string | null;
 };
 
 export type AppContext = {
@@ -38,12 +40,14 @@ export type AppContext = {
   llmClient: LlmClient | null;
   coachEngine: CoachEngine;
   finalizer: ReviewFinalizer | null;
+  dtmfSender: DtmfSender | null;
   shuttingDown: boolean;
 };
 
 export function createOperatorState(): OperatorState {
   return {
     skippedLeadIds: new Set(),
-    selectedCampaignId: null
+    selectedCampaignId: null,
+    selectedLeadId: null
   };
 }

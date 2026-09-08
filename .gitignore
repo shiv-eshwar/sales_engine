@@ -38,3 +38,6 @@ transcripts/
 .idea/
 .vscode/
 *.log
+
+# Firecrawl search/scrape artifacts (may contain client prospect data)
+.firecrawl/
