@@ -1,4 +1,4 @@
-import type { BootstrapResponse, DailySummary, PublicCampaign, PublicLead, PublicProposal, PublicWriteFields } from "../../shared/contracts";
+import type { BootstrapResponse, DailySummary, PublicCampaign, PublicLead, PublicProposal, PublicWriteFields, SheetInfo } from "../../shared/contracts";
 import type { CampaignBrief, CampaignLead, ProspectPreparation } from "../../shared/campaigns";
 
 async function parseError(response: Response): Promise<string> {
@@ -243,6 +243,30 @@ export function interviewCampaign(input: {
       campaignId: input.campaignId
     }),
     signal: input.signal
+  });
+}
+
+export type SheetConnectResult = {
+  spreadsheetId: string;
+  url: string | null;
+  title?: string;
+  sheetName: string;
+  created: boolean;
+  initializedHeaders?: boolean;
+  sheet: SheetInfo;
+};
+
+export function createLeadsSheet(input: { title?: string; shareEmail?: string } = {}): Promise<SheetConnectResult> {
+  return campaignRequest("/api/sheets/create", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function linkLeadsSheet(spreadsheet: string): Promise<SheetConnectResult> {
+  return campaignRequest("/api/sheets/link", {
+    method: "POST",
+    body: JSON.stringify({ spreadsheet })
   });
 }
 

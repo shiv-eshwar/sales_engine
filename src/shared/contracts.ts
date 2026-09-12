@@ -1,6 +1,18 @@
 import type { CampaignBrief, CampaignStrategy } from "./campaigns.js";
 
 export type SheetStatus = "ok" | "unconfigured" | "error";
+export type SheetsBackend = "google" | "memory" | "none";
+
+export type SheetInfo = {
+  status: SheetStatus;
+  message: string;
+  diagnostics: SheetDiagnostic[];
+  backend: SheetsBackend;
+  spreadsheetId: string | null;
+  sheetName: string | null;
+  url: string | null;
+  manageable: boolean;
+};
 
 export type SheetDiagnostic = {
   code: "blank_lead_id" | "duplicate_lead_id" | "invalid_phone" | "missing_header" | "duplicate_header";
@@ -45,11 +57,7 @@ export type ProviderStatus = {
 export type BootstrapResponse = {
   campaigns: PublicCampaign[];
   selectedCampaignId: string | null;
-  sheet: {
-    status: SheetStatus;
-    message: string;
-    diagnostics: SheetDiagnostic[];
-  };
+  sheet: SheetInfo;
   twilio: ProviderStatus;
   ai: ProviderStatus;
   research: ProviderStatus;

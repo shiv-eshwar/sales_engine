@@ -9,6 +9,8 @@ import { LeadDetailPage } from "./pages/LeadDetailPage";
 import { ReviewPage } from "./pages/ReviewPage";
 import { DiagnosticsPage } from "./pages/DiagnosticsPage";
 import { LoadingSkeleton } from "./components/LoadingSkeleton";
+import { EmptyState } from "./components/EmptyState";
+import { EMPTY_COPY } from "./copy";
 
 export function App() {
   const [bootstrap, setBootstrap] = useState<BootstrapResponse | null>(null);
@@ -35,10 +37,13 @@ export function App() {
 
   if (error) {
     return (
-      <main className="p-8">
-        <p role="alert" className="text-red-700">
-          {error}
-        </p>
+      <main className="mx-auto flex min-h-screen max-w-6xl items-center px-6 py-10">
+        <EmptyState
+          icon="error"
+          role="alert"
+          title={EMPTY_COPY.bootstrap.title}
+          description={error || EMPTY_COPY.bootstrap.description}
+        />
       </main>
     );
   }

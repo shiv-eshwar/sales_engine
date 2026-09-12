@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   diagnosticCopy,
+  EMPTY_COPY,
   formatUtteranceText,
   outcomeLabel,
   qualificationLabel
@@ -21,5 +22,10 @@ describe("caller-facing copy", () => {
     expect(diagnosticCopy({ code: "blank_lead_id", message: "x", rowNumber: 6 })).toBe(
       "Row 6 has no Lead ID — skipped."
     );
+  });
+
+  it("keeps empty-state copy operator-facing", () => {
+    expect(EMPTY_COPY.campaign.title).toBe("Create a campaign");
+    expect(EMPTY_COPY.queue.title).toBe("No one is ready to call");
   });
 });

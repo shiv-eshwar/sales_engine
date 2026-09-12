@@ -2,6 +2,7 @@ import type { BootstrapResponse, PublicLead } from "../../shared/contracts.js";
 import type { AppContext } from "../context.js";
 import type { LeadRecord } from "../../shared/types.js";
 import { skippedLeadKey } from "../campaigns/store.js";
+import { withSheetBinding } from "../sheets/bind.js";
 
 export function toPublicLead(lead: LeadRecord): PublicLead {
   return {
@@ -32,11 +33,11 @@ export async function loadNextLead(ctx: AppContext): Promise<{
       lead: null,
       leads: [],
       diagnostics: [],
-      sheetStatus: {
+      sheetStatus: withSheetBinding(ctx, {
         status: "unconfigured",
         message: ctx.sheetMessage || "Google Sheets is not configured",
         diagnostics: []
-      }
+      })
     };
   }
 
@@ -47,14 +48,14 @@ export async function loadNextLead(ctx: AppContext): Promise<{
       lead: null,
       leads: [],
       diagnostics: [],
-      sheetStatus: {
+      sheetStatus: withSheetBinding(ctx, {
         status: "error",
         message: preflight.errors.join(" "),
         diagnostics: preflight.errors.map((message) => ({
           code: message.includes("more than once") ? "duplicate_header" : "missing_header",
           message
         }))
-      }
+      })
     };
   }
 
@@ -84,10 +85,10 @@ export async function loadNextLead(ctx: AppContext): Promise<{
     lead: lead ? toPublicLead(lead) : null,
     leads,
     diagnostics: queue.diagnostics,
-    sheetStatus: {
+    sheetStatus: withSheetBinding(ctx, {
       status: "ok",
       message: lead ? "Sheet connected" : campaignId ? "No eligible leads assigned to this campaign" : "Create or select a campaign to choose leads",
       diagnostics: queue.diagnostics
-    }
+    })
   };
 }

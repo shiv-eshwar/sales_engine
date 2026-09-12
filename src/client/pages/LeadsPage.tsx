@@ -3,11 +3,12 @@ import { Link } from "react-router-dom";
 import { Alert, Button, Card } from "@heroui/react";
 import { useSession } from "../state/session";
 import { DailySummaryPanel } from "../components/DailySummaryPanel";
+import { EmptyState } from "../components/EmptyState";
 import { LeadsTable, filterLeads, sortLeads, type LeadSortKey } from "../components/LeadsTable";
 import { ReadyContactCard } from "../components/ReadyContactCard";
 import { AssignLeads } from "../components/AssignLeads";
 import { CallingPanel } from "../components/CallingPanel";
-import { AI_DISCONNECTED_COPY } from "../copy";
+import { AI_DISCONNECTED_COPY, EMPTY_COPY } from "../copy";
 import { useLeadCall } from "../state/useLeadCall";
 
 export function LeadsPage() {
@@ -30,7 +31,14 @@ export function LeadsPage() {
   }, [data.leads, query, dialableOnly, sortKey, sortDir]);
 
   const undialableCount = data.leads.filter((lead) => !lead.dialable).length;
-  const hasFilter = query.trim().length > 0 || dialableOnly;
+  const sheetUnconfigured = data.sheet.status === "error" || data.sheet.status === "unconfigured";
+  const tableEmpty = visible.length === 0
+    ? query.trim()
+      ? EMPTY_COPY.search
+      : dialableOnly
+        ? EMPTY_COPY.dialableFilter
+        : EMPTY_COPY.assigned
+    : null;
 
   function toggleSort(key: LeadSortKey) {
     if (key === sortKey) {
@@ -54,51 +62,50 @@ export function LeadsPage() {
 
   return (
     <div>
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          {nextLead ? (
-            <p className="text-muted text-sm font-medium uppercase tracking-wide">Ready</p>
-          ) : (
-            <h1 className="text-2xl font-semibold tracking-tight">Ready</h1>
-          )}
-          <p className="text-muted text-sm">
-            {campaign ? (
-              <>Selling <strong className="text-foreground">{campaign.brief?.offeringName ?? campaign.name}</strong> · {data.leads.length} eligible</>
+      {campaign ? (
+        <header className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            {nextLead ? (
+              <p className="text-muted text-sm font-medium uppercase tracking-wide">Ready</p>
             ) : (
-              "Create a campaign to start calling — AI generation is optional."
+              <h1 className="text-2xl font-semibold tracking-tight">Ready</h1>
             )}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {campaign?.brief ? (
+            <p className="text-muted text-sm">
+              Selling <strong className="text-foreground">{campaign.brief?.offeringName ?? campaign.name}</strong>
+              {sheetUnconfigured ? "" : ` · ${data.leads.length} eligible`}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {campaign.brief ? (
+              <Button
+                variant="outline"
+                size="sm"
+                isDisabled={pending || campaignBusy}
+                onPress={() => setEditor("edit")}
+              >
+                Edit offering
+              </Button>
+            ) : null}
+            {data.leads.length > 0 ? (
+              <AssignLeads
+                campaignId={campaign.id}
+                disabled={pending || campaignBusy}
+                onAssigned={async () => {
+                  await refresh();
+                }}
+              />
+            ) : null}
             <Button
               variant="outline"
               size="sm"
               isDisabled={pending || campaignBusy}
-              onPress={() => setEditor("edit")}
+              onPress={onRefresh}
             >
-              Edit offering
+              Refresh
             </Button>
-          ) : null}
-          {campaign ? (
-            <AssignLeads
-              campaignId={campaign.id}
-              disabled={pending || campaignBusy}
-              onAssigned={async () => {
-                await refresh();
-              }}
-            />
-          ) : null}
-          <Button
-            variant="outline"
-            size="sm"
-            isDisabled={pending || campaignBusy}
-            onPress={onRefresh}
-          >
-            Refresh
-          </Button>
-        </div>
-      </header>
+          </div>
+        </header>
+      ) : null}
 
       {data.ai.status !== "ok" ? (
         <Alert status="warning" className="mt-3" role="status">
@@ -134,18 +141,27 @@ export function LeadsPage() {
       ) : null}
 
       {!campaign ? (
-        <Card className="mt-6 max-w-xl" aria-label="Create a campaign">
-          <Card.Header>
-            <h2 className="text-lg font-semibold tracking-tight">Create a campaign</h2>
-            <Card.Description>
-              Describe the offering in chat. The assistant interviews you and produces the campaign. You do not need AI
-              connected to call an existing campaign.
-            </Card.Description>
-          </Card.Header>
-          <Card.Footer>
-            <Button onPress={() => setEditor("new")}>Create a campaign</Button>
-          </Card.Footer>
-        </Card>
+        <div className="mt-10">
+          <EmptyState
+            icon="campaign"
+            title={EMPTY_COPY.campaign.title}
+            description={EMPTY_COPY.campaign.description}
+            action={<Button onPress={() => setEditor("new")}>Create a campaign</Button>}
+          />
+        </div>
+      ) : sheetUnconfigured ? (
+        <div className="mt-10">
+          <EmptyState
+            icon="sheet"
+            title={EMPTY_COPY.sheet.title}
+            description={data.sheet.message || EMPTY_COPY.sheet.description}
+            action={
+              <Button variant="outline" onPress={onRefresh}>
+                Refresh
+              </Button>
+            }
+          />
+        </div>
       ) : nextLead ? (
         <div className="mt-5">
           <ReadyContactCard
@@ -164,18 +180,26 @@ export function LeadsPage() {
             callButtonRef={callButtonRef}
           />
         </div>
-      ) : (
-        <Card className="mt-6 max-w-xl">
-          <Card.Header>
-            <Card.Title>No one is ready to call</Card.Title>
-            <Card.Description>
-              Assign eligible Sheet contacts to this campaign, or fix phone numbers that cannot be dialed.
-            </Card.Description>
-          </Card.Header>
-        </Card>
-      )}
+      ) : data.leads.length === 0 ? (
+        <div className="mt-10">
+          <EmptyState
+            icon="leads"
+            title={EMPTY_COPY.queue.title}
+            description={EMPTY_COPY.queue.description}
+            action={
+              <AssignLeads
+                campaignId={campaign.id}
+                disabled={pending || campaignBusy}
+                onAssigned={async () => {
+                  await refresh();
+                }}
+              />
+            }
+          />
+        </div>
+      ) : null}
 
-      {campaign ? (
+      {campaign && !sheetUnconfigured && data.leads.length > 0 ? (
         <Card className="mt-8" aria-label="All leads">
           <Card.Header>
             <p className="text-muted text-sm font-medium uppercase tracking-wide">All leads</p>
@@ -225,16 +249,27 @@ export function LeadsPage() {
             </p>
             <LeadsTable
               leads={visible}
-              emptyReason={
-                visible.length === 0
-                  ? query.trim()
-                    ? "No leads match this search."
-                    : dialableOnly
-                      ? "No dialable leads. Contacts that need a phone fix are hidden."
-                      : "No eligible leads assigned to this campaign."
-                  : null
+              empty={
+                tableEmpty ? (
+                  <EmptyState
+                    compact
+                    icon={query.trim() ? "search" : "leads"}
+                    title={tableEmpty.title}
+                    description={tableEmpty.description}
+                    action={
+                      query.trim() ? (
+                        <Button variant="outline" size="sm" onPress={() => setQuery("")}>
+                          Clear search
+                        </Button>
+                      ) : dialableOnly && undialableCount > 0 ? (
+                        <Button variant="outline" size="sm" onPress={() => setDialableOnly(false)}>
+                          Show contacts that need a phone fix
+                        </Button>
+                      ) : null
+                    }
+                  />
+                ) : null
               }
-              hasActiveFilter={hasFilter}
             />
           </Card.Content>
         </Card>

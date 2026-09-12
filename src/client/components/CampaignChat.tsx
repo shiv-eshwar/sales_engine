@@ -39,7 +39,7 @@ export function CampaignChat({
 
   const welcome = campaign
     ? `You're editing ${campaign.name}. What should change about the offering, audience, or call goal?`
-    : "What are you selling, who is it for, and what should this call achieve?";
+    : "Your leads Sheet is connected. What are you selling, who is it for, and what should this call achieve?";
 
   const adapter = useMemo<ChatModelAdapter>(() => ({
     async run({ messages, abortSignal }) {

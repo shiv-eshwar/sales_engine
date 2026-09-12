@@ -3,7 +3,7 @@ import type { SheetsConfig } from "../../shared/schemas.js";
 import { a1Cell } from "./a1.js";
 import type { SheetCellUpdate, SheetStore } from "./store.js";
 
-function credentialsFromBase64(raw: string): object {
+export function credentialsFromBase64(raw: string): object {
   try {
     return JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as object;
   } catch {

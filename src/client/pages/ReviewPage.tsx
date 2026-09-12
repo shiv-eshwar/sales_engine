@@ -4,8 +4,9 @@ import { useSession, discardProposal, retryProposalProcessing } from "../state/s
 import { approveProposal, fetchProposalBySession, skipProposal, retryProposalWrite } from "../state/api";
 import { ReviewPanel } from "../components/ReviewPanel";
 import { Breadcrumbs } from "../components/Breadcrumbs";
+import { EmptyState } from "../components/EmptyState";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
-import { nextLeadPath } from "../copy";
+import { EMPTY_COPY, nextLeadPath } from "../copy";
 import type { PublicProposal, PublicWriteFields } from "../../shared/contracts";
 
 export function ReviewPage() {
@@ -71,13 +72,18 @@ export function ReviewPage() {
     return (
       <div>
         <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: "Review" }]} />
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">Review</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Missing call session. Open a lead, finish a call, then review its CRM update here.
-        </p>
-        <Link to="/leads" className="mt-4 inline-block rounded-md border border-slate-300 px-4 py-2 text-sm font-medium">
-          Back to ready
-        </Link>
+        <div className="mt-8">
+          <EmptyState
+            icon="review"
+            title={EMPTY_COPY.reviewSession.title}
+            description={EMPTY_COPY.reviewSession.description}
+            action={
+              <Link to="/leads" className="text-sm font-medium underline underline-offset-2">
+                Back to ready
+              </Link>
+            }
+          />
+        </div>
       </div>
     );
   }
@@ -104,13 +110,18 @@ export function ReviewPage() {
     return (
       <div>
         <Breadcrumbs items={crumbs} />
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">Review not ready</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          {fetchError ?? "Nothing waiting for review for this call yet."}
-        </p>
-        <Link to="/leads" className="mt-4 inline-block rounded-md border border-slate-300 px-4 py-2 text-sm font-medium">
-          Back to ready
-        </Link>
+        <div className="mt-8">
+          <EmptyState
+            icon="review"
+            title={EMPTY_COPY.reviewMissing.title}
+            description={fetchError ?? EMPTY_COPY.reviewMissing.description}
+            action={
+              <Link to="/leads" className="text-sm font-medium underline underline-offset-2">
+                Back to ready
+              </Link>
+            }
+          />
+        </div>
       </div>
     );
   }

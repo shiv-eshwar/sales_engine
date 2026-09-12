@@ -16,6 +16,8 @@ function offeringMessage(name: string, tag = "") {
 
 async function openCampaignChat(page: Page, label: "Create a campaign" | "New campaign" = "Create a campaign") {
   await page.getByRole("button", { name: label, exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Connect a leads Sheet" })).toBeVisible();
+  await page.getByRole("button", { name: "Continue with this Sheet", exact: true }).click();
   await expect(page.getByLabel("Campaign chat")).toBeVisible();
   await expect(page.getByLabel("Campaign message")).toBeVisible();
 }
@@ -42,8 +44,10 @@ test("create different offerings, match leads by sheet tag, view cited preparati
   const server = await startE2eServer({ initialCampaigns: [], enqueueLlm: false, researchClient: fakeResearch });
   try {
     await page.goto(server.baseURL);
-    await expect(page.getByRole("heading", { name: "Ready" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Ready" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Create a campaign" }).first()).toBeVisible();
+    await expect(page.getByLabel("Campaign", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "New campaign", exact: true })).toBeVisible();
     await expect(page.getByRole("option", { name: /Lamina/i })).toHaveCount(0);
 
     server.llm.enqueueJson(interviewTurn({ ...offering("Invoice assistant"), sheetCampaignValue: "lamina-sales" }));
@@ -60,8 +64,7 @@ test("create different offerings, match leads by sheet tag, view cited preparati
 
     await page.getByRole("link", { name: "Back to ready" }).click();
     await expect(page.getByRole("table", { name: "Leads" })).toBeVisible();
-    await page.getByRole("button", { name: "New campaign", exact: true }).click();
-    await expect(page.getByLabel("Campaign chat")).toBeVisible();
+    await openCampaignChat(page, "New campaign");
     server.llm.enqueueJson(interviewTurn({ ...offering("Security training"), sheetCampaignValue: "lamina-sales" }));
     server.llm.enqueueJson(strategy("Security awareness"));
     const securityBrief = prospectBrief();

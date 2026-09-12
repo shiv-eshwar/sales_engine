@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import type { ReactNode } from "react";
 import type { PublicLead } from "../../shared/contracts";
 
 export type LeadSortKey = "name" | "company" | "status";
@@ -36,19 +37,13 @@ export function filterLeads(
 
 export function LeadsTable({
   leads,
-  emptyReason,
-  hasActiveFilter
+  empty
 }: {
   leads: PublicLead[];
-  emptyReason?: string | null;
-  hasActiveFilter?: boolean;
+  empty?: ReactNode;
 }) {
   if (leads.length === 0) {
-    return (
-      <p className="mt-3 text-sm text-slate-600">
-        {emptyReason ?? (hasActiveFilter ? "No leads match this filter." : "No eligible leads yet.")}
-      </p>
-    );
+    return <div className="mt-3">{empty}</div>;
   }
 
   return (

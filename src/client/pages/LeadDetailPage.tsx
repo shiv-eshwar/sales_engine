@@ -6,9 +6,11 @@ import { selectLead } from "../state/api";
 import { CallingPanel } from "../components/CallingPanel";
 import { ProspectBrief } from "../components/ProspectBrief";
 import { Breadcrumbs } from "../components/Breadcrumbs";
+import { EmptyState } from "../components/EmptyState";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { ReadyContactCard } from "../components/ReadyContactCard";
 import { useLeadCall } from "../state/useLeadCall";
+import { EMPTY_COPY } from "../copy";
 
 export function LeadDetailPage() {
   const { leadId } = useParams();
@@ -59,7 +61,18 @@ export function LeadDetailPage() {
     return (
       <div>
         <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: "Lead" }]} />
-        <p className="mt-3 text-slate-700">No lead selected.</p>
+        <div className="mt-8">
+          <EmptyState
+            icon="leads"
+            title={EMPTY_COPY.leadUnspecified.title}
+            description={EMPTY_COPY.leadUnspecified.description}
+            action={
+              <Link to="/leads" className="text-sm font-medium underline underline-offset-2">
+                Back to ready
+              </Link>
+            }
+          />
+        </div>
       </div>
     );
   }
@@ -68,10 +81,18 @@ export function LeadDetailPage() {
     return (
       <div>
         <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: decodedId }]} />
-        <h1 className="mt-3 text-2xl font-semibold">Lead not found</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          {decodedId} is not in this campaign queue. It may have been called, skipped, or filtered by the campaign tag.
-        </p>
+        <div className="mt-8">
+          <EmptyState
+            icon="leads"
+            title={EMPTY_COPY.leadMissing.title}
+            description={`${decodedId} is not in this campaign queue. It may have been called, skipped, or filtered by the campaign tag.`}
+            action={
+              <Link to="/leads" className="text-sm font-medium underline underline-offset-2">
+                Back to ready
+              </Link>
+            }
+          />
+        </div>
       </div>
     );
   }

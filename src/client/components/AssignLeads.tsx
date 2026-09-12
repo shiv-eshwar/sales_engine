@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Card } from "@heroui/react";
 import type { CampaignLead } from "../../shared/campaigns";
 import { assignCampaignLeads, fetchCampaignLeads } from "../state/api";
+import { EmptyState } from "./EmptyState";
+import { EMPTY_COPY } from "../copy";
 
 export function AssignLeads({
   campaignId,
@@ -83,7 +85,12 @@ export function AssignLeads({
             ) : null}
             {leads === null && !error ? <p className="text-muted mt-3 text-sm">Loading contacts…</p> : null}
             {leads && leads.length === 0 ? (
-              <p className="text-muted mt-3 text-sm">No eligible Sheet contacts to assign.</p>
+              <EmptyState
+                compact
+                icon="leads"
+                title={EMPTY_COPY.assign.title}
+                description={EMPTY_COPY.assign.description}
+              />
             ) : null}
             {leads && leads.length > 0 ? (
               <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm">

@@ -34,6 +34,7 @@ import { CampaignStore } from "./campaigns/store.js";
 import { PreparationService } from "./research/preparation.js";
 import { createResearchClient, type ResearchClient } from "./research/client.js";
 import { registerCampaigns } from "./api/campaigns.js";
+import { registerSheets } from "./api/sheets.js";
 import { createDtmfSender } from "./twilio/dtmf.js";
 import { inboundForwardNumber } from "./twilio/config.js";
 import type { CampaignConfig } from "../shared/schemas.js";
@@ -194,6 +195,7 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
   await registerAuth(app, ctx);
   await registerLeads(app, ctx);
   await registerCampaigns(app, ctx);
+  await registerSheets(app, ctx);
   await registerCallApi(app, ctx);
   await registerReviewApi(app, ctx);
   await registerTwilioWebhooks(app, ctx);

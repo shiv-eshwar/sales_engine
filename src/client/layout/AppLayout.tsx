@@ -74,26 +74,27 @@ export function AppLayout() {
             </NavLink>
           </nav>
           <div className="ml-auto flex flex-wrap items-center gap-3">
-            <label className="text-muted flex items-center gap-2 text-xs font-medium uppercase tracking-wide" htmlFor="campaign">
-              Campaign
-              <select
-                id="campaign"
-                aria-label="Campaign"
-                className="border-separator bg-surface text-foreground rounded-md border px-2 py-1.5 text-sm normal-case tracking-normal"
-                value={data.selectedCampaignId ?? ""}
-                disabled={pending || campaignBusy || Boolean(editor) || Boolean(liveCall)}
-                onChange={(event) => {
-                  void handleSelectCampaign(event.target.value);
-                }}
-              >
-                {!data.campaigns.length ? <option value="">Create your first campaign</option> : null}
-                {data.campaigns.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {data.campaigns.length > 0 ? (
+              <label className="text-muted flex items-center gap-2 text-xs font-medium uppercase tracking-wide" htmlFor="campaign">
+                Campaign
+                <select
+                  id="campaign"
+                  aria-label="Campaign"
+                  className="border-separator bg-surface text-foreground rounded-md border px-2 py-1.5 text-sm normal-case tracking-normal"
+                  value={data.selectedCampaignId ?? ""}
+                  disabled={pending || campaignBusy || Boolean(editor) || Boolean(liveCall)}
+                  onChange={(event) => {
+                    void handleSelectCampaign(event.target.value);
+                  }}
+                >
+                  {data.campaigns.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <ReadinessChip
               sheet={data.sheet}
               twilioConfigured={twilioConfigured}
@@ -102,7 +103,7 @@ export function AppLayout() {
             />
             {hideCampaignChrome ? null : (
               <Button
-                variant="outline"
+                variant={data.campaigns.length > 0 ? "outline" : "primary"}
                 size="sm"
                 onPress={() => setEditor("new")}
                 isDisabled={pending || campaignBusy || Boolean(editor)}
@@ -169,6 +170,7 @@ export function AppLayout() {
         <CampaignDrawer
           mode={editor}
           campaign={data.campaigns.find((item) => item.id === data.selectedCampaignId)}
+          sheet={data.sheet}
           onBusy={setCampaignBusy}
           aiMessage={data.ai.status !== "ok" ? data.ai.message : undefined}
           onClose={() => setEditor(null)}
@@ -176,6 +178,7 @@ export function AppLayout() {
             await refresh();
             setEditor(null);
           }}
+          onSheetBound={refresh}
         />
       )}
     </div>
