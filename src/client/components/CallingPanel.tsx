@@ -4,6 +4,7 @@ import type { CallLiveEvent, PublicUtterance, TranscriptionHealth } from "../../
 import type { CallSessionView, CoachSnapshot } from "../state/calls";
 import { callEventsUrl, cancelCallSession, fetchCallSession, sendCallDigits } from "../state/calls";
 import { hangUpTwilioCall, sendTwilioDigits, setTwilioMuted } from "../twilio/device";
+import { formatUtteranceText, humanizeId, isWarningCue } from "../copy";
 
 type CallingPanelProps = {
   session: CallSessionView;
@@ -28,13 +29,27 @@ function transportLabel(status: string): string {
   switch (status) {
     case "created":
     case "queued":
+      return "Connecting…";
+    case "ringing":
+      return "Ringing…";
+    case "in_progress":
+      return "Connected";
+    case "canceled":
+      return "Canceled";
+    default:
+      return humanizeId(status);
+  }
+}
+
+function transportAria(status: string): string {
+  switch (status) {
+    case "created":
+    case "queued":
       return "connecting";
     case "ringing":
       return "ringing";
     case "in_progress":
       return "connected";
-    case "canceled":
-      return "canceled";
     default:
       return status.replaceAll("_", " ");
   }
@@ -175,153 +190,226 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
     };
   }, [session.id, terminal]);
 
+  const connected = session.status === "in_progress";
+  const ringing = session.status === "ringing";
+  const warningCue = Boolean(
+    coach?.cue?.shouldShow && isWarningCue(coach.cue.cueType, coach.cue.text, coach.cue.reason)
+  );
+  const duration = formatDuration(session.connectedAt ?? session.startedAt);
+
   return (
-    <section className="mt-6 rounded-lg border border-slate-800 bg-slate-900 p-6 text-slate-50" aria-live="polite">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Live call</p>
-      <h2 className="mt-2 text-2xl font-semibold">{session.contactName || "Contact"}</h2>
-      {session.campaignName ? <p className="mt-1 text-sm text-indigo-200">{session.campaignName}</p> : null}
-      <p className="font-mono text-sm text-slate-300">{session.phoneE164}</p>
-      <p className="mt-3 text-lg" aria-label={`Call state ${transportLabel(session.status)}`}>
-        {transportLabel(session.status)} · {formatDuration(session.connectedAt ?? session.startedAt)}
-      </p>
-      <p className="mt-2 text-sm" aria-label={`Call stage ${coach?.stage ?? "opener"}`}>
-        Stage: {(coach?.stage ?? "opener").replaceAll("_", " ")}
-      </p>
-      {health !== "interrupted" && coach?.cue?.shouldShow ? (
-        <article className="mt-4 rounded-md border border-emerald-400/70 bg-emerald-950/40 p-4" aria-label="Live coaching cue">
-          <p className="text-xs font-medium uppercase tracking-wide text-emerald-200">{coach.cue.cueType}</p>
-          <p className="mt-1 text-xl font-semibold leading-snug">{coach.cue.text}</p>
-        </article>
-      ) : (
-        <article className="mt-4 rounded-md border border-slate-700 p-4" aria-label="Live coaching cue">
-          <p className="text-sm text-slate-400">
-            {health === "interrupted" ? "Cue hidden while transcription is interrupted." : "No cue right now."}
-          </p>
-        </article>
-      )}
-      <div className="mt-3 text-sm" aria-label="Talk ratio">
-        Talk ratio: {Math.round((coach?.talkRatio.callerShare ?? 0) * 100)}% caller /{" "}
-        {Math.round((coach?.talkRatio.contactShare ?? 0) * 100)}% contact
-        {coach?.talkRatio.warn ? (
-          <p className="mt-1 text-amber-200" role="status">
-            You are talking more than 40% after a minute. Let the contact speak.
-          </p>
-        ) : null}
-      </div>
-      {coach && coach.qualification.length > 0 ? (
-        <ul className="mt-3 flex flex-wrap gap-2" aria-label="Qualification criteria">
-          {coach.qualification.map((item) => (
-            <li
-              key={item.id}
-              className="rounded-md border border-slate-700 px-2 py-1 text-xs"
-              aria-label={`${item.id} ${item.state}`}
+    <section
+      className={`fixed inset-0 z-50 flex flex-col text-slate-50 ${muted ? "bg-amber-950" : "bg-slate-900"}`}
+      aria-live="polite"
+      aria-label="Live call"
+    >
+      <header className="sticky top-0 z-10 shrink-0 border-b border-white/10 bg-inherit px-4 py-3">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-lg font-semibold">{session.contactName || "Contact"}</h2>
+            <p className="truncate font-mono text-xs text-slate-300">{session.phoneE164}</p>
+            <p
+              className={`text-sm font-medium ${ringing ? "animate-pulse text-amber-200" : "text-slate-200"}`}
+              aria-label={`Call state ${transportAria(session.status)}`}
             >
-              {item.id.replaceAll("_", " ")}: {item.state}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <p className="mt-2 text-sm" aria-label={`Transcription health ${healthLabel(health)}`}>
-        Transcription health: {healthLabel(health)}
-      </p>
-      {health === "interrupted" ? (
-        <p className="mt-2 text-sm text-amber-200" role="status">
-          Transcription interrupted
-        </p>
-      ) : null}
-      <p className="mt-4 rounded-md border border-amber-400/60 bg-amber-950/40 p-3 text-sm text-amber-100" role="note">
-        {recordingNotice}
-      </p>
-      <details className="mt-4 rounded-md border border-slate-700 p-3" open>
-        <summary className="cursor-pointer text-sm font-medium">Live transcript</summary>
-        <ol className="mt-3 space-y-2 text-sm">
-          {utterances.map((utterance) => (
-            <li key={utterance.id}>
-              <span className="font-semibold">{speakerLabel(utterance.speaker)}: </span>
-              {utterance.text}
-            </li>
-          ))}
-          {interims.caller ? (
-            <li className="text-slate-400">
-              <span className="font-semibold">Caller (interim): </span>
-              {interims.caller}
-            </li>
-          ) : null}
-          {interims.contact ? (
-            <li className="text-slate-400">
-              <span className="font-semibold">Contact (interim): </span>
-              {interims.contact}
-            </li>
-          ) : null}
-          {utterances.length === 0 && !interims.caller && !interims.contact ? (
-            <li className="text-slate-500">Waiting for speech…</li>
-          ) : null}
-        </ol>
-      </details>
-      <div className="mt-6 flex flex-wrap gap-3">
-        <button
-          type="button"
-          className="rounded-md border border-slate-500 px-4 py-2 font-medium text-slate-100"
-          onClick={() => {
-            const next = !muted;
-            setTwilioMuted(next);
-            setMuted(next);
-          }}
-          disabled={terminal}
-        >
-          {muted ? "Unmute" : "Mute"}
-        </button>
-        <button
-          type="button"
-          className="rounded-md bg-red-700 px-4 py-2 font-medium text-white"
-          onClick={() => {
-            hangUpTwilioCall();
-            if (session.status !== "in_progress") {
-              void cancelCallSession(session.id);
-            }
-          }}
-        >
-          Hang Up
-        </button>
-      </div>
-      <details className="mt-4 rounded-md border border-slate-700 p-3" open={canSendDigits}>
-        <summary className="cursor-pointer text-sm font-medium">Keypad</summary>
-        <p className="mt-1 text-xs text-slate-400">
-          {canSendDigits
-            ? "Use when an IVR asks you to press a key."
-            : "Keypad is available once the call is connected."}
-        </p>
-        <div className="mt-3 grid max-w-[240px] grid-cols-3 gap-2" role="group" aria-label="Dialpad">
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((digit) => (
+              {transportLabel(session.status)} · {duration}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             <button
-              key={digit}
               type="button"
-              aria-label={`Send digit ${digit}`}
-              disabled={!canSendDigits || dtmfPending !== null}
+              className={`rounded-md px-4 py-3 font-semibold ${
+                muted
+                  ? "bg-amber-400 text-slate-950"
+                  : "border border-slate-500 bg-slate-800 text-slate-100"
+              }`}
               onClick={() => {
-                void sendDigit(digit);
+                const next = !muted;
+                setTwilioMuted(next);
+                setMuted(next);
               }}
-              className="rounded-md border border-slate-600 bg-slate-800 px-4 py-3 font-mono text-lg font-semibold text-slate-50 disabled:opacity-40"
+              disabled={terminal}
             >
-              {dtmfPending === digit ? "…" : digit}
+              {muted ? "Unmute" : "Mute"}
             </button>
-          ))}
+            <button
+              type="button"
+              className={`rounded-md bg-red-600 px-5 py-3 font-semibold text-white ${
+                warningCue ? "ring-2 ring-white ring-offset-2 ring-offset-red-700" : ""
+              }`}
+              onClick={() => {
+                hangUpTwilioCall();
+                if (session.status !== "in_progress") {
+                  void cancelCallSession(session.id);
+                }
+              }}
+            >
+              Hang Up
+            </button>
+          </div>
         </div>
-        {sentDigits ? (
-          <p className="mt-2 font-mono text-xs text-slate-400" aria-label="Sent digits">
-            Sent: {sentDigits}
+        {muted ? (
+          <p className="mx-auto mt-2 max-w-3xl text-sm font-medium text-amber-100" role="status">
+            They cannot hear you
           </p>
         ) : null}
-        {dtmfError ? (
-          <p className="mt-2 text-sm text-red-300" role="alert">
-            {dtmfError}
+        <p className="mx-auto mt-2 max-w-3xl text-xs text-amber-100/90" role="note">
+          {recordingNotice}
+        </p>
+      </header>
+
+      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-y-auto px-4 py-4">
+        {health === "interrupted" ? (
+          <p className="mb-3 rounded-md border border-amber-400 bg-amber-950/80 p-3 text-sm text-amber-100" role="status">
+            Transcription interrupted
           </p>
         ) : null}
-      </details>
-      {session.preparation ? <details className="mt-5">
-        <summary className="cursor-pointer text-sm font-medium">Research & call preparation</summary>
-        <div className="text-slate-900"><ProspectBrief preparation={session.preparation} /></div>
-      </details> : null}
+
+        {ringing && !connected ? (
+          <article
+            className="flex min-h-[40vh] items-center justify-center rounded-xl border border-amber-400/40 bg-amber-950/30 p-8"
+            aria-label="Live coaching cue"
+          >
+            <p className="animate-pulse text-center text-4xl font-semibold tracking-tight text-amber-100">Ringing…</p>
+          </article>
+        ) : warningCue && coach?.cue ? (
+          <article
+            className="rounded-xl border-2 border-red-500 bg-red-50 p-6 text-red-950"
+            aria-label="Live coaching cue"
+            role="alert"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide">End the call — do not contact</p>
+            <p className="mt-2 text-2xl font-semibold leading-snug">{coach.cue.text}</p>
+          </article>
+        ) : health !== "interrupted" && coach?.cue?.shouldShow ? (
+          <article
+            className="rounded-xl border border-emerald-400/70 bg-emerald-950/40 p-6"
+            aria-label="Live coaching cue"
+          >
+            <p className="text-xs font-medium uppercase tracking-wide text-emerald-200">
+              {humanizeId(coach.cue.cueType)}
+              <span className="ml-2 font-normal text-emerald-100/80">
+                Stage: {humanizeId(coach.stage ?? "opener")}
+              </span>
+            </p>
+            <p className="mt-2 text-3xl font-semibold leading-snug">{coach.cue.text}</p>
+          </article>
+        ) : (
+          <article className="rounded-xl border border-slate-700 p-6" aria-label="Live coaching cue">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              Stage: {humanizeId(coach?.stage ?? "opener")}
+            </p>
+            <p className="mt-2 text-xl text-slate-300">
+              {health === "interrupted" ? "Cue hidden while transcription is interrupted." : "No cue right now."}
+            </p>
+          </article>
+        )}
+
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-3 text-sm">
+          <div aria-label="Talk ratio">
+            Talk ratio: {Math.round((coach?.talkRatio.callerShare ?? 0) * 100)}% caller /{" "}
+            {Math.round((coach?.talkRatio.contactShare ?? 0) * 100)}% contact
+            {coach?.talkRatio.warn ? (
+              <p className="mt-1 text-amber-200" role="status">
+                You are talking more than 40% after a minute. Let the contact speak.
+              </p>
+            ) : null}
+          </div>
+          {health !== "interrupted" ? (
+            <p className="text-xs text-slate-400" aria-label={`Transcription health ${healthLabel(health)}`}>
+              Transcribing: {healthLabel(health)}
+            </p>
+          ) : null}
+        </div>
+
+        {coach && coach.qualification.length > 0 ? (
+          <ul className="mt-3 flex flex-wrap gap-2" aria-label="Qualification criteria">
+            {coach.qualification.map((item) => (
+              <li
+                key={item.id}
+                className="rounded-md border border-slate-700 px-2 py-1 text-xs"
+                aria-label={`${item.id} ${item.state}`}
+                title={item.prompt}
+              >
+                {humanizeId(item.id)}: {item.state}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <details className="mt-4 rounded-md border border-slate-700 p-3" open>
+          <summary className="cursor-pointer text-sm font-medium">Live transcript</summary>
+          <ol className="mt-3 space-y-2 text-sm">
+            {utterances.map((utterance) => (
+              <li key={utterance.id}>
+                <span className="font-semibold">{speakerLabel(utterance.speaker)}: </span>
+                {formatUtteranceText(utterance.text, utterance.startedAtMs, utterance.endedAtMs)}
+              </li>
+            ))}
+            {interims.caller ? (
+              <li className="text-slate-400">
+                <span className="font-semibold">Caller (interim): </span>
+                {interims.caller}
+              </li>
+            ) : null}
+            {interims.contact ? (
+              <li className="text-slate-400">
+                <span className="font-semibold">Contact (interim): </span>
+                {interims.contact}
+              </li>
+            ) : null}
+            {utterances.length === 0 && !interims.caller && !interims.contact ? (
+              <li className="text-slate-500">Waiting for speech…</li>
+            ) : null}
+          </ol>
+        </details>
+
+        {warningCue ? null : (
+          <details className="mt-4 rounded-md border border-slate-700 p-3">
+            <summary className="cursor-pointer text-sm font-medium">Need to press a key?</summary>
+            <p className="mt-1 text-xs text-slate-400">
+              {canSendDigits
+                ? "Use when an IVR asks you to press a key."
+                : "Keypad is available once the call is connected."}
+            </p>
+            <div className="mt-3 grid max-w-[240px] grid-cols-3 gap-2" role="group" aria-label="Dialpad">
+              {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((digit) => (
+                <button
+                  key={digit}
+                  type="button"
+                  aria-label={`Send digit ${digit}`}
+                  disabled={!canSendDigits || dtmfPending !== null}
+                  onClick={() => {
+                    void sendDigit(digit);
+                  }}
+                  className="rounded-md border border-slate-600 bg-slate-800 px-4 py-3 font-mono text-lg font-semibold text-slate-50 disabled:opacity-40"
+                >
+                  {dtmfPending === digit ? "…" : digit}
+                </button>
+              ))}
+            </div>
+            {sentDigits ? (
+              <p className="mt-2 font-mono text-xs text-slate-400" aria-label="Sent digits">
+                Sent: {sentDigits}
+              </p>
+            ) : null}
+            {dtmfError ? (
+              <p className="mt-2 text-sm text-red-300" role="alert">
+                {dtmfError}
+              </p>
+            ) : null}
+          </details>
+        )}
+
+        {session.preparation ? (
+          <details className="mt-5">
+            <summary className="cursor-pointer text-sm font-medium">Prep</summary>
+            <div className="text-slate-900">
+              <ProspectBrief preparation={session.preparation} />
+            </div>
+          </details>
+        ) : null}
+      </div>
     </section>
   );
 }

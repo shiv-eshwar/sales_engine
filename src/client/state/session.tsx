@@ -32,9 +32,9 @@ type SessionContextValue = {
   error: string | null;
   setError: (message: string | null) => void;
   refresh: () => Promise<void>;
-  runQueue: (action: () => Promise<LeadQueueResponse>) => Promise<void>;
+  runQueue: (action: () => Promise<LeadQueueResponse>) => Promise<LeadQueueResponse | null>;
   handleSelectCampaign: (campaignId: string) => Promise<void>;
-  handleSkipLead: (leadId: string) => Promise<void>;
+  handleSkipLead: (leadId: string) => Promise<LeadQueueResponse | null>;
   deviceStatus: DeviceStatus;
   deviceDetail: string;
   incoming: IncomingCall | null;
@@ -44,12 +44,14 @@ type SessionContextValue = {
   setIncoming: (next: IncomingCall | null) => void;
   review: PublicProposal | null;
   setReview: (next: PublicProposal | null) => void;
-  afterWrite: (result: { proposal: PublicProposal; lead: BootstrapResponse["lead"]; leads?: BootstrapResponse["leads"]; sheet: BootstrapResponse["sheet"] }) => Promise<void>;
+  afterWrite: (result: { proposal: PublicProposal; lead: BootstrapResponse["lead"]; leads?: BootstrapResponse["leads"]; sheet: BootstrapResponse["sheet"] }) => Promise<BootstrapResponse | null>;
   approveReview: (id: string, fields?: Parameters<typeof approveProposal>[1]) => Promise<void>;
   campaignBusy: boolean;
   setCampaignBusy: (busy: boolean) => void;
   editor: "new" | "edit" | null;
   setEditor: (mode: "new" | "edit" | null) => void;
+  liveCall: CallSessionView | null;
+  setLiveCall: (session: CallSessionView | null) => void;
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -78,7 +80,8 @@ export function SessionProvider({ initial, children }: { initial: BootstrapRespo
   const [incoming, setIncoming] = useState<IncomingCall | null>(null);
   const [review, setReview] = useState<PublicProposal | null>(initial.pendingProposal);
   const [campaignBusy, setCampaignBusy] = useState(false);
-  const [editor, setEditor] = useState<"new" | "edit" | null>(initial.campaigns.length ? null : "new");
+  const [editor, setEditor] = useState<"new" | "edit" | null>(null);
+  const [liveCall, setLiveCall] = useState<CallSessionView | null>(null);
 
   const twilioConfigured = data.twilio.status === "ok";
 
@@ -102,8 +105,10 @@ export function SessionProvider({ initial, children }: { initial: BootstrapRespo
     try {
       const result = await action();
       setData((current) => mergeQueue(current, result));
+      return result;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
+      return null;
     } finally {
       setPending(false);
     }
@@ -130,7 +135,7 @@ export function SessionProvider({ initial, children }: { initial: BootstrapRespo
 
   const handleSkipLead = useCallback(async (leadId: string) => {
     const campaignId = data.selectedCampaignId;
-    await runQueue(() => skipLead(leadId, campaignId));
+    return runQueue(() => skipLead(leadId, campaignId));
   }, [data.selectedCampaignId, runQueue]);
 
   // Lead selection for deep links is handled in LeadDetailPage via selectLead + runQueue.
@@ -211,7 +216,7 @@ export function SessionProvider({ initial, children }: { initial: BootstrapRespo
       setReview(null);
       const bootstrap = await fetchBootstrap();
       setData(bootstrap);
-      return;
+      return bootstrap;
     }
     setReview(result.proposal);
     setData((current) => ({
@@ -221,6 +226,7 @@ export function SessionProvider({ initial, children }: { initial: BootstrapRespo
       sheet: result.sheet,
       pendingProposal: result.proposal.status === "pending_retry" ? result.proposal : null
     }));
+    return null;
   }, []);
 
   const approveReview = useCallback(async (id: string, fields?: Parameters<typeof approveProposal>[1]) => {
@@ -258,11 +264,13 @@ export function SessionProvider({ initial, children }: { initial: BootstrapRespo
     campaignBusy,
     setCampaignBusy,
     editor,
-    setEditor
+    setEditor,
+    liveCall,
+    setLiveCall
   }), [
     data, pending, error, refresh, runQueue, handleSelectCampaign, handleSkipLead,
     deviceStatus, deviceDetail, incoming, answerIncoming, declineIncoming, clearIncoming,
-    review, afterWrite, approveReview, campaignBusy, editor
+    review, afterWrite, approveReview, campaignBusy, editor, liveCall
   ]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

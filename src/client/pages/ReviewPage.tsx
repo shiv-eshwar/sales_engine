@@ -5,6 +5,7 @@ import { approveProposal, fetchProposalBySession, skipProposal, retryProposalWri
 import { ReviewPanel } from "../components/ReviewPanel";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
+import { nextLeadPath } from "../copy";
 import type { PublicProposal, PublicWriteFields } from "../../shared/contracts";
 
 export function ReviewPage() {
@@ -60,21 +61,22 @@ export function ReviewPage() {
     if (!proposal) return;
     const proposalId = proposal.id;
     await withLocal(async () => {
-      await afterWrite(await approveProposal(proposalId, fields));
-      navigate("/leads");
+      const bootstrap = await afterWrite(await approveProposal(proposalId, fields));
+      const next = bootstrap?.leads.find((item) => item.dialable) ?? bootstrap?.lead ?? null;
+      navigate(nextLeadPath(next));
     });
   }
 
   if (!sessionId) {
     return (
       <div>
-        <Breadcrumbs items={[{ label: "Leads", to: "/leads" }, { label: "Review" }]} />
+        <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: "Review" }]} />
         <h1 className="mt-3 text-2xl font-semibold tracking-tight">Review</h1>
         <p className="mt-2 text-sm text-slate-600">
           Missing call session. Open a lead, finish a call, then review its CRM update here.
         </p>
         <Link to="/leads" className="mt-4 inline-block rounded-md border border-slate-300 px-4 py-2 text-sm font-medium">
-          Back to leads
+          Back to ready
         </Link>
       </div>
     );
@@ -82,9 +84,9 @@ export function ReviewPage() {
 
   const leadName = proposal?.contactName ?? data.leads.find((item) => item.leadId === proposal?.leadId)?.fullName;
   const crumbs = [
-    { label: "Leads", to: "/leads" },
+    { label: "Ready", to: "/leads" },
     ...(proposal ? [{ label: leadName || proposal.leadId, to: `/leads/${encodeURIComponent(proposal.leadId)}` }] : []),
-    { label: `Review ${sessionId.slice(0, 8)}` },
+    { label: "Review" },
   ];
 
   if (loading) {
@@ -107,7 +109,7 @@ export function ReviewPage() {
           {fetchError ?? "Nothing waiting for review for this call yet."}
         </p>
         <Link to="/leads" className="mt-4 inline-block rounded-md border border-slate-300 px-4 py-2 text-sm font-medium">
-          Back to leads
+          Back to ready
         </Link>
       </div>
     );
@@ -124,15 +126,19 @@ export function ReviewPage() {
         error={error}
         onApprove={(fields) => void onApprove(fields)}
         onRetryWrite={() => void withLocal(async () => {
-          await afterWrite(await retryProposalWrite(proposalValue.id));
-          navigate("/leads");
+          const bootstrap = await afterWrite(await retryProposalWrite(proposalValue.id));
+          if (bootstrap) {
+            const next = bootstrap.leads.find((item) => item.dialable) ?? bootstrap.lead;
+            navigate(nextLeadPath(next));
+          }
         })}
         onRetryProcessing={() => void withLocal(async () => {
           setProposal(await retryProposalProcessing(proposalValue.id));
         })}
         onSkip={() => void withLocal(async () => {
-          await afterWrite(await skipProposal(proposalValue.id));
-          navigate("/leads");
+          const bootstrap = await afterWrite(await skipProposal(proposalValue.id));
+          const next = bootstrap?.leads.find((item) => item.dialable) ?? bootstrap?.lead ?? null;
+          navigate(nextLeadPath(next));
         })}
         onDiscard={() => void withLocal(async () => {
           await discardProposal(proposalValue.id);

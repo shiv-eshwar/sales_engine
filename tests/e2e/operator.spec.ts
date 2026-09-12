@@ -11,7 +11,7 @@ const test = base.extend<{ server: E2eServer }>({
 
 async function login(page: import("@playwright/test").Page, baseURL: string) {
   await page.goto(baseURL);
-  await expect(page.getByRole("heading", { name: "Leads" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Sales Engine" })).toBeVisible();
 }
 
 async function openLead(page: import("@playwright/test").Page, name: string) {
@@ -90,8 +90,8 @@ test("login through approve loads the next lead", async ({ page, server }) => {
   await expect(page.getByRole("table")).toContainText("Proposed");
 
   await page.getByRole("button", { name: "Approve & next" }).click();
-  await expect(page.getByRole("heading", { name: "Leads" })).toBeVisible();
-  await expect(page.getByRole("table", { name: "Leads" })).toContainText("Jordan Chen");
+  await expect(page.getByRole("heading", { name: "Jordan Chen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Call" })).toBeVisible();
 });
 
 test("open a specific lead from the table, search and navigate", async ({ page, server }) => {
@@ -109,8 +109,8 @@ test("open a specific lead from the table, search and navigate", async ({ page, 
   await openLead(page, "Jordan Chen");
   await expect(page).toHaveURL(/\/leads\/L-101/);
   await expect(page.getByRole("heading", { name: "Jordan Chen" })).toBeVisible();
-  await page.getByRole("link", { name: "← Back to leads" }).click();
-  await expect(page.getByRole("heading", { name: "Leads" })).toBeVisible();
+  await page.getByRole("link", { name: "Back to ready" }).click();
+  await expect(page.getByRole("table", { name: "Leads" })).toBeVisible();
 
   await openLead(page, "Alex Rivera");
   await expect(page).toHaveURL(/\/leads\/L-100/);

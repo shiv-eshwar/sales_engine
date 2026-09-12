@@ -17,6 +17,7 @@ export function toPublicCampaign(campaign: AppContext["campaigns"][number], ctx:
     type: campaign.type,
     version: campaign.version,
     objective: campaign.objective,
+    openingContext: campaign.opening_context,
     requiredQuestions: campaign.required_questions,
     ...(managed ? { brief: managed.brief, strategy: managed.strategy } : {})
   };
@@ -76,7 +77,7 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
         : { status: "not_configured", message: "Twilio Voice is not configured", callerId: null },
       ai: ctx.llmClient
         ? { status: "ok", message: "AI generation configured" }
-        : { status: "not_configured", message: "Configure LLM_BASE_URL, LLM_API_KEY and LLM_MODEL to generate campaigns." },
+        : { status: "not_configured", message: "AI is not connected — ask whoever runs this box to finish setup." },
       research: ctx.researchClient
         ? { status: "ok", message: "Web research configured" }
         : { status: "not_configured", message: "Web research unavailable; preparation will use CRM context only." },

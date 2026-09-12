@@ -30,6 +30,7 @@ export type PublicCampaign = {
   type: "sales" | "research" | "networking";
   version: number;
   objective: string;
+  openingContext: string;
   requiredQuestions: Array<{ id: string; prompt: string; required: boolean }>;
   brief?: CampaignBrief;
   strategy?: CampaignStrategy;
