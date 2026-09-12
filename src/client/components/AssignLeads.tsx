@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Alert, Button, Card } from "@heroui/react";
 import type { CampaignLead } from "../../shared/campaigns";
 import { assignCampaignLeads, fetchCampaignLeads } from "../state/api";
 
@@ -55,76 +56,73 @@ export function AssignLeads({
 
   return (
     <div>
-      <button
-        type="button"
-        disabled={disabled || pending}
-        className="rounded-md border border-slate-400 bg-white px-3 py-2 text-sm font-medium disabled:opacity-50"
-        onClick={() => setOpen((value) => !value)}
+      <Button
+        variant="outline"
+        size="sm"
+        isDisabled={disabled || pending}
+        onPress={() => setOpen((value) => !value)}
       >
         {open ? "Hide assign leads" : "Assign leads"}
-      </button>
+      </Button>
       {open ? (
-        <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4" aria-label="Assign leads">
-          <p className="text-sm text-slate-600">
-            Choose eligible Sheet contacts for this campaign. Assignment stays in this app and does not change the
-            Sheet’s Campaign column.
-          </p>
-          {error ? (
-            <p role="alert" className="mt-2 text-sm text-red-700">
-              {error}
-            </p>
-          ) : null}
-          {leads === null && !error ? <p className="mt-3 text-sm text-slate-500">Loading contacts…</p> : null}
-          {leads && leads.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-600">No eligible Sheet contacts to assign.</p>
-          ) : null}
-          {leads && leads.length > 0 ? (
-            <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm">
-              {leads.map((lead) => (
-                <li key={lead.leadId}>
-                  <label className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(lead.leadId)}
-                      disabled={pending}
-                      onChange={() => {
-                        setSelected((current) => {
-                          const next = new Set(current);
-                          if (next.has(lead.leadId)) next.delete(lead.leadId);
-                          else next.add(lead.leadId);
-                          return next;
-                        });
-                      }}
-                    />
-                    <span>
-                      <span className="font-medium">{lead.fullName || lead.leadId}</span>
-                      {lead.company ? <span className="text-slate-600"> · {lead.company}</span> : null}
-                      {lead.role ? <span className="text-slate-500"> · {lead.role}</span> : null}
-                    </span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              disabled={pending || !leads}
-              className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={() => void save()}
-            >
+        <Card className="mt-3" aria-label="Assign leads">
+          <Card.Header>
+            <Card.Description>
+              Choose eligible Sheet contacts for this campaign. Assignment stays in this app and does not change the
+              Sheet’s Campaign column.
+            </Card.Description>
+          </Card.Header>
+          <Card.Content>
+            {error ? (
+              <Alert status="danger" role="alert">
+                <Alert.Indicator />
+                <Alert.Content>
+                  <Alert.Title>{error}</Alert.Title>
+                </Alert.Content>
+              </Alert>
+            ) : null}
+            {leads === null && !error ? <p className="text-muted mt-3 text-sm">Loading contacts…</p> : null}
+            {leads && leads.length === 0 ? (
+              <p className="text-muted mt-3 text-sm">No eligible Sheet contacts to assign.</p>
+            ) : null}
+            {leads && leads.length > 0 ? (
+              <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm">
+                {leads.map((lead) => (
+                  <li key={lead.leadId}>
+                    <label className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(lead.leadId)}
+                        disabled={pending}
+                        onChange={() => {
+                          setSelected((current) => {
+                            const next = new Set(current);
+                            if (next.has(lead.leadId)) next.delete(lead.leadId);
+                            else next.add(lead.leadId);
+                            return next;
+                          });
+                        }}
+                      />
+                      <span>
+                        <span className="font-medium">{lead.fullName || lead.leadId}</span>
+                        {lead.company ? <span className="text-muted"> · {lead.company}</span> : null}
+                        {lead.role ? <span className="text-muted"> · {lead.role}</span> : null}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </Card.Content>
+          <Card.Footer className="flex gap-2">
+            <Button isDisabled={pending || !leads} isPending={pending} onPress={() => void save()}>
               {pending ? "Saving…" : "Save assignments"}
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-              onClick={() => setOpen(false)}
-            >
+            </Button>
+            <Button variant="ghost" isDisabled={pending} onPress={() => setOpen(false)}>
               Done
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Card.Footer>
+        </Card>
       ) : null}
     </div>
   );

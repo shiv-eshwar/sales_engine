@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { BootstrapResponse } from "../../shared/contracts";
 import type { DeviceStatus } from "../state/calls";
+import { Chip } from "@heroui/react";
 
 export type ReadinessKind = "ready" | "twilio" | "sheet";
 
@@ -31,17 +32,15 @@ export function ReadinessChip({
 }) {
   const state = readinessState({ sheet, twilioConfigured, deviceStatus });
   const blocking = state.kind === "sheet";
-  const color = state.tone === "ok" ? "bg-emerald-500" : "bg-red-500";
 
   return (
     <div
-      className="flex flex-wrap items-center gap-2 text-xs text-slate-600"
+      className="text-muted flex flex-wrap items-center gap-2 text-xs"
       aria-label={blocking ? "Sheet blocking error" : state.kind === "ready" ? "Ready to call" : "Can't call — Twilio off"}
     >
-      <span className="inline-flex items-center gap-1.5">
-        <span className={`h-2 w-2 rounded-full ${color}`} aria-hidden="true" />
-        <strong className="font-semibold text-slate-800">{state.label}</strong>
-      </span>
+      <Chip color={state.tone === "ok" ? "success" : "danger"} variant="soft" size="sm">
+        <Chip.Label>{state.label}</Chip.Label>
+      </Chip>
       {twilioConfigured ? (
         <span className="sr-only" aria-label={`Twilio device ${deviceStatus}`}>
           Twilio device {deviceStatus}

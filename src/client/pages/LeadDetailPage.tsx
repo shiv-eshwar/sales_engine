@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Button } from "@heroui/react";
 import { useSession } from "../state/session";
 import { selectLead } from "../state/api";
 import { CallingPanel } from "../components/CallingPanel";
@@ -142,15 +143,15 @@ export function LeadDetailPage() {
           ) : null}
           {prepError ? <p role="alert" className="mt-3 text-sm text-red-700">{prepError}</p> : null}
           {preparation ? <ProspectBrief preparation={preparation} /> : null}
-          <button
-            type="button"
-            disabled={preparing || pending}
-            title="Run fresh web research and generate a new brief for this lead"
-            className="mt-3 rounded-md border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
-            onClick={regeneratePrep}
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            isDisabled={preparing || pending}
+            onPress={regeneratePrep}
           >
             {prepError ? "Retry preparation" : "Regenerate brief"}
-          </button>
+          </Button>
         </details>
       ) : null}
 

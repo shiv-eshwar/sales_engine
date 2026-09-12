@@ -3,12 +3,21 @@ import { z } from "zod";
 import { campaignBriefSchema } from "../../shared/campaigns.js";
 import { requireSession } from "../auth/routes.js";
 import { generateCampaign } from "../campaigns/generate.js";
+import { interviewCampaignTurn } from "../campaigns/interview.js";
 import type { AppContext } from "../context.js";
 import { toPublicLead } from "../leads/nextLead.js";
 import { toPublicCampaign } from "./leads.js";
 
 const createSchema = z.object({ brief: campaignBriefSchema, requestId: z.uuid() });
 const updateSchema = z.object({ brief: campaignBriefSchema, expectedVersion: z.number().int().positive() });
+const interviewSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant", "system"]),
+    content: z.string().trim().min(1).max(20000)
+  })).min(1).max(40),
+  requestId: z.uuid(),
+  campaignId: z.string().min(1).max(200).optional()
+});
 
 function generationError(error: unknown): string {
   if (error instanceof Error && error.message === "LLM HTTP 401") return "The AI provider rejected the API key. Update LLM_API_KEY and restart the server, then try again.";
@@ -21,6 +30,63 @@ export async function registerCampaigns(app: FastifyInstance, ctx: AppContext): 
     await requireSession(ctx, request, reply);
   };
   const generating = new Set<string>();
+
+  app.post("/api/campaigns/interview", { preHandler: auth }, async (request, reply) => {
+    const parsed = interviewSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Send the campaign conversation so far." });
+    if (!ctx.llmClient) return reply.code(503).send({ error: "Configure the LLM connection before creating a campaign." });
+    if (ctx.shuttingDown) return reply.code(503).send({ error: "Server is restarting. Try again shortly." });
+    const previous = parsed.data.campaignId ? ctx.campaignStore.get(parsed.data.campaignId) ?? undefined : undefined;
+    if (parsed.data.campaignId && !previous) return reply.code(404).send({ error: "Editable campaign not found" });
+    const lockKey = previous?.config.id ?? parsed.data.requestId;
+    if (generating.has(lockKey) || generating.size >= 2) {
+      return reply.code(409).send({ error: "Campaign generation is already in progress. Wait for it to finish." });
+    }
+    generating.add(lockKey);
+    try {
+      const turn = await interviewCampaignTurn(
+        ctx.llmClient,
+        parsed.data.messages,
+        ctx.env.AI_GENERATION_TIMEOUT_MS,
+        previous
+      );
+      if (!turn.brief) {
+        return { text: turn.message, campaign: null };
+      }
+      if (!previous) {
+        const existing = ctx.campaignStore.get(`campaign-${parsed.data.requestId}`);
+        if (existing) {
+          return { text: turn.message, campaign: toPublicCampaign(existing.config, ctx) };
+        }
+      }
+      const campaign = await generateCampaign(
+        ctx.llmClient,
+        turn.brief,
+        ctx.env.AI_GENERATION_TIMEOUT_MS,
+        previous,
+        previous ? undefined : parsed.data.requestId
+      );
+      if (previous) {
+        ctx.campaignStore.save(campaign, previous.config.version);
+        const index = ctx.campaigns.findIndex(item => item.id === previous.config.id);
+        ctx.campaigns.splice(index, 1, campaign.config);
+      } else {
+        ctx.campaignStore.save(campaign);
+        ctx.campaigns.push(campaign.config);
+        ctx.operator.selectedCampaignId = campaign.config.id;
+        ctx.operator.selectedLeadId = null;
+      }
+      const created = toPublicCampaign(campaign.config, ctx);
+      const suffix = previous
+        ? `Updated ${created.name} (strategy v${created.version}). You can keep calling.`
+        : `Created ${created.name}. Assign leads if you need to, then start calling.`;
+      return { text: `${turn.message}\n\n${suffix}`, campaign: created };
+    } catch (error) {
+      return reply.code(502).send({ error: generationError(error) });
+    } finally {
+      generating.delete(lockKey);
+    }
+  });
 
   app.post("/api/campaigns", { preHandler: auth }, async (request, reply) => {
     const parsed = createSchema.safeParse(request.body);

@@ -29,6 +29,17 @@ export const campaignBriefSchema = z.object({
   sheetCampaignValue: z.string().trim().max(160).default("")
 });
 
+export const campaignInterviewTurnSchema = z.object({
+  message: text.max(2000),
+  ready: z.boolean(),
+  brief: campaignBriefSchema.nullable()
+}).superRefine((value, ctx) => {
+  if (value.ready && value.brief === null) {
+    ctx.addIssue({ code: "custom", path: ["brief"], message: "Ready turns must include a campaign brief" });
+  }
+});
+
+
 export const discoveryQuestionSchema = z.object({
   id: identifier,
   prompt: text.max(350),
@@ -68,6 +79,7 @@ export const campaignStrategySchema = z.object({
 });
 
 export type CampaignBrief = z.infer<typeof campaignBriefSchema>;
+export type CampaignInterviewTurn = z.infer<typeof campaignInterviewTurnSchema>;
 export type CampaignStrategy = z.infer<typeof campaignStrategySchema>;
 
 export const researchSourceSchema = z.object({

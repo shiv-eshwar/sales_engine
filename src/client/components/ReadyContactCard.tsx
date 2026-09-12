@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from "react";
+import { Alert, Button, Card } from "@heroui/react";
 import type { PublicCampaign, PublicLead } from "../../shared/contracts";
 
 export function ReadyContactCard({
@@ -36,80 +37,80 @@ export function ReadyContactCard({
   }, [callButtonRef, disabledReason, sheetBlocking, starting, lead.leadId]);
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm" aria-label="Next contact">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Next up</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight">{lead.fullName || "Unnamed contact"}</h1>
-      <p className="text-sm text-slate-700">
-        {lead.role}
-        {lead.role && lead.company ? " · " : ""}
-        {lead.company}
-      </p>
-      <p className="mt-2 font-mono text-sm">
-        {lead.phoneE164 ?? lead.phone}
-        {lead.dialable ? "" : " — not dialable"}
-      </p>
-      {campaign ? (
-        <p className="mt-3 text-sm text-slate-800">
-          {campaign.objective}
-          {campaign.brief ? <span className="mt-1 block text-xs text-slate-500">Strategy v{campaign.version}</span> : null}
+    <Card aria-label="Next contact">
+      <Card.Header>
+        <p className="text-muted text-xs font-medium uppercase tracking-wide">Next up</p>
+        <Card.Title className="text-2xl tracking-tight">{lead.fullName || "Unnamed contact"}</Card.Title>
+        <Card.Description>
+          {lead.role}
+          {lead.role && lead.company ? " · " : ""}
+          {lead.company}
+        </Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <p className="font-mono text-sm">
+          {lead.phoneE164 ?? lead.phone}
+          {lead.dialable ? "" : " — not dialable"}
         </p>
-      ) : null}
-      {opening ? (
-        <div className="mt-4 rounded-md bg-slate-50 p-3">
-          <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">Opening</h2>
-          <p className="mt-1 text-sm leading-relaxed text-slate-800">{opening}</p>
-        </div>
-      ) : null}
-      {firstQuestion ? (
-        <p className="mt-3 text-sm text-slate-800">
-          <span className="font-medium">First question: </span>
-          {firstQuestion}
-        </p>
-      ) : null}
-      {lead.issues.length > 0 ? (
-        <ul className="mt-3 text-sm text-red-700">
-          {lead.issues.map((issue) => (
-            <li key={issue}>{issue}</li>
-          ))}
-        </ul>
-      ) : null}
-      {callError ? (
-        <p role="alert" className="mt-3 text-sm text-red-700">
-          {callError}
-        </p>
-      ) : null}
-      <div className="mt-5 flex flex-wrap items-center gap-3">
+        {campaign ? (
+          <p className="mt-3 text-sm">
+            {campaign.objective}
+            {campaign.brief ? <span className="text-muted mt-1 block text-xs">Strategy v{campaign.version}</span> : null}
+          </p>
+        ) : null}
+        {opening ? (
+          <div className="bg-surface-secondary mt-4 rounded-md p-3">
+            <h2 className="text-muted text-xs font-medium uppercase tracking-wide">Opening</h2>
+            <p className="mt-1 text-sm leading-relaxed">{opening}</p>
+          </div>
+        ) : null}
+        {firstQuestion ? (
+          <p className="mt-3 text-sm">
+            <span className="font-medium">First question: </span>
+            {firstQuestion}
+          </p>
+        ) : null}
+        {lead.issues.length > 0 ? (
+          <ul className="text-danger mt-3 text-sm">
+            {lead.issues.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+        ) : null}
+        {callError ? (
+          <Alert status="danger" className="mt-3" role="alert">
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Title>{callError}</Alert.Title>
+            </Alert.Content>
+          </Alert>
+        ) : null}
+      </Card.Content>
+      <Card.Footer className="flex flex-wrap items-center gap-3">
         {sheetBlocking ? null : (
-          <button
+          <Button
             ref={callButtonRef}
-            type="button"
-            disabled={Boolean(disabledReason) || pending || starting}
-            title={disabledReason ?? "Start a call"}
-            className="rounded-md bg-emerald-700 px-8 py-3 text-lg font-semibold text-white disabled:bg-slate-300 disabled:text-slate-600"
-            onClick={onCall}
+            size="lg"
+            className="px-8 text-lg font-semibold"
+            isDisabled={Boolean(disabledReason) || pending || starting}
+            isPending={starting}
+            onPress={onCall}
           >
             {starting ? "Calling…" : "Call"}
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          disabled={pending || starting}
-          className="rounded-md border border-slate-400 bg-white px-4 py-2 font-medium disabled:opacity-50"
-          onClick={onSkip}
-        >
+        <Button variant="outline" isDisabled={pending || starting} onPress={onSkip}>
           Skip
-        </button>
-        <button
-          type="button"
-          disabled={pending || starting}
-          title="Re-read the lead queue from the sheet"
-          className="rounded-md border border-slate-400 bg-white px-4 py-2 font-medium disabled:opacity-50"
-          onClick={onRefresh}
+        </Button>
+        <Button
+          variant="outline"
+          isDisabled={pending || starting}
+          onPress={onRefresh}
         >
           Refresh
-        </button>
-      </div>
-      {disabledReason ? <p className="mt-2 text-sm text-slate-600">{disabledReason}</p> : null}
-    </section>
+        </Button>
+        {disabledReason ? <p className="text-muted text-sm">{disabledReason}</p> : null}
+      </Card.Footer>
+    </Card>
   );
 }
