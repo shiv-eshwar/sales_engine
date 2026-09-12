@@ -47,8 +47,7 @@ export function CampaignEditor({ campaign, onSaved, onCancel, onBusy, aiMessage 
   }
   return (
     <div aria-label="Campaign setup">
-      <h2 className="text-lg font-semibold">{campaign ? "Edit offering & regenerate" : "Create a campaign"}</h2>
-      <p className="mt-1 text-sm text-slate-600">Describe what you’re selling and to whom. AI will create the campaign name, approach, discovery questions, and qualification criteria.</p>
+      <p className="text-sm text-slate-600">Describe what you’re selling and to whom. AI will create the campaign name, approach, discovery questions, and qualification criteria.</p>
       <form className="mt-4" onSubmit={event => { void submit(event); }}>
         <fieldset disabled={pending} className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-medium">Product or service
@@ -77,13 +76,18 @@ export function CampaignEditor({ campaign, onSaved, onCancel, onBusy, aiMessage 
           </label>
           <label className="text-sm font-medium">Sheet campaign tag (optional)
             <input maxLength={160} className={fieldClass} value={brief.sheetCampaignValue} onChange={e => change("sheetCampaignValue", e.target.value)} />
-            <span className="mt-1 block text-xs font-normal text-slate-600">Match an existing Campaign value in your Sheet, or assign leads after creating the campaign.</span>
+            <span className="mt-1 block text-xs font-normal text-slate-600">Match an existing Campaign value in your Sheet, or use Assign leads after creating the campaign.</span>
           </label>
         </fieldset>
         {aiMessage ? <p className="mt-3 text-sm text-amber-800">{aiMessage}</p> : null}
         {error ? <p role="alert" className="mt-3 text-sm text-red-700">{error}</p> : null}
         <div className="mt-4 flex items-center gap-3">
-          <button disabled={pending || Boolean(aiMessage)} className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50" type="submit">
+          <button
+            disabled={pending || Boolean(aiMessage)}
+            aria-disabled={pending || Boolean(aiMessage)}
+            className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-medium text-white disabled:bg-slate-300 disabled:text-slate-500 disabled:opacity-100"
+            type="submit"
+          >
             {pending ? "Generating campaign…" : campaign ? "Save & regenerate" : "Generate campaign"}
           </button>
           <button disabled={pending} className="rounded-md border border-slate-300 px-3 py-2 text-sm" type="button" onClick={onCancel}>Cancel</button>

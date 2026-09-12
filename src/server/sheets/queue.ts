@@ -75,7 +75,7 @@ export function buildQueue(
     if (leadId === "") {
       diagnostics.push({
         code: "blank_lead_id",
-        message: `Row ${data.rowNumber} has a blank Lead ID and will be skipped.`,
+        message: `Row ${data.rowNumber} has no Lead ID — skipped.`,
         rowNumber: data.rowNumber
       });
       continue;
@@ -113,7 +113,7 @@ export function buildQueue(
       issues.push("Phone is not dialable");
       diagnostics.push({
         code: "invalid_phone",
-        message: `Lead ${parsed.rawLeadId} has an invalid phone number.`,
+        message: `${parsed.rawLeadId} has a phone that cannot be dialed.`,
         leadId: parsed.rawLeadId,
         rowNumber: data.rowNumber
       });

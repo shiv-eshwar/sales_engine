@@ -26,7 +26,7 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <h1 className="text-2xl font-semibold tracking-tight">AI Call Operator</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Sales Engine</h1>
       <p className="mt-2 text-sm text-slate-600">Single-user internal tool. Sign in to load the next eligible lead.</p>
       <form className="mt-8 space-y-4" onSubmit={(event) => void onSubmit(event)}>
         <label className="block text-sm font-medium" htmlFor="password">

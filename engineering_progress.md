@@ -245,6 +245,24 @@ Source: `whatthis.md` §18–22, §20 Slice 6.
 - [x] Operator runbook section
 - [ ] Controlled live smoke test on a user-owned number (`whatthis.md` §19)
 
+### Caller UX pass (audit P0 / scoped P1)
+
+Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` (6/6) and Vitest including `tests/unit/ui-copy.test.ts`. No power dialer, auto-dial, or extra dashboards.
+
+- [x] Ready shows a next-up contact card with Call as the primary action; table is secondary (`All leads`)
+- [x] First-run is an empty-state card, not an auto-opened campaign drawer
+- [x] Assign leads checkbox list for eligible Sheet contacts
+- [x] Disabled Generate looks disabled; AI copy does not name env vars
+- [x] Live HUD: sticky Mute/Hang Up, large cue, keypad collapsed behind “Need to press a key?”
+- [x] Live call hides New campaign, disables campaign switching, intercepts Ready navigation
+- [x] Approve & next opens the next dialable lead’s Ready panel with Call
+- [x] Queue defaults to dialable (`Ready to call`); undialable split via “need a phone fix”
+- [x] One product name (Sales Engine); one readiness chip
+- [x] Call is large; opening + first question on Ready; long brief behind Prep
+- [x] Ringing / muted / interrupted / DNC live treatments
+- [x] Review: human labels, technical details collapsed, enum dropdowns, pinned Approve & next
+- [x] Narrow queue uses stacked cards, not a 720px table
+
 ---
 
 ## Holdouts (`whatthis.md` §18)
@@ -328,3 +346,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-06 | Removed password login gate: open access to API and UI; Sign out removed; e2e opens Ready page directly. | Open access; PSTN smoke still gated |
 | 2026-09-07 | Live Twilio E2E: fresh tunnel, TwiML app rewired, allowlist +IN, webhooks 204 via public URL; PSTN ring to user-owned +91 blocked by Twilio Geo Permissions (21215); evidence in VERIFICATION.md (commit `c8b4716` on main). | Slice 6 code complete; live smoke blocked on geo-permission + Sheet test row |
 | 2026-09-07 | Adopted Vercel eve for AI: `agents/` holds live-coach, post-call, campaign-generation, prospect-research (`agent.ts` + `instructions.md`); `src/server/agents/loader.ts` renders prompts for the existing LLM transport. Typecheck + 98 Vitest + 5 Playwright pass; prompts byte-identical. | Slice 6 code complete; live smoke blocked on geo-permission + Sheet test row |
+| 2026-09-12 | Caller UX P0 + scoped P1 from the visual audit: Ready next-up card, assign leads, live three-zone HUD, Approve & next to the next Ready panel. Typecheck + 127 Vitest + 6 Playwright. No §4 non-goals. | Slice 6 code complete; live smoke still blocked |

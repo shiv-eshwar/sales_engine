@@ -1,6 +1,10 @@
 import type { DailySummary } from "../../shared/contracts";
 
 export function DailySummaryPanel({ summary }: { summary: DailySummary }) {
+  if (summary.attempts === 0) {
+    return null;
+  }
+
   return (
     <section className="mt-8 rounded-lg border border-slate-200 bg-white p-4" aria-label="Daily summary">
       <h2 className="text-sm font-medium uppercase tracking-wide text-slate-500">Today</h2>
@@ -26,9 +30,7 @@ export function DailySummaryPanel({ summary }: { summary: DailySummary }) {
       </dl>
       {summary.coachingObservation ? (
         <p className="mt-3 text-sm text-slate-700">Observation: {summary.coachingObservation}</p>
-      ) : (
-        <p className="mt-3 text-sm text-slate-500">No coaching observation yet today.</p>
-      )}
+      ) : null}
     </section>
   );
 }

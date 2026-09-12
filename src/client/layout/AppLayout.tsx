@@ -1,33 +1,36 @@
 import { useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSession } from "../state/session";
 import { fetchBootstrap } from "../state/api";
 import { fetchCallSession } from "../state/calls";
 import { hangUpTwilioCall } from "../twilio/device";
 import { CampaignDrawer } from "../components/CampaignDrawer";
 import { CallingPanel } from "../components/CallingPanel";
+import { ReadinessChip } from "../components/ReadinessChip";
+import { PRODUCT_NAME } from "../copy";
 import type { CallSessionView } from "../state/calls";
-
-function StatusDot({ tone, label, value }: { tone: "ok" | "warn" | "bad"; label: string; value: string }) {
-  const color = tone === "ok" ? "bg-emerald-500" : tone === "warn" ? "bg-amber-500" : "bg-red-500";
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-slate-600" aria-label={`${label} ${value}`}>
-      <span className={`h-2 w-2 rounded-full ${color}`} aria-hidden="true" />
-      {label}: <strong className="font-semibold text-slate-800">{value}</strong>
-    </span>
-  );
-}
 
 export function AppLayout() {
   const {
     data, pending, error, handleSelectCampaign, refresh,
     deviceStatus, deviceDetail, incoming, answerIncoming, declineIncoming,
-    campaignBusy, setCampaignBusy, editor, setEditor
+    campaignBusy, setCampaignBusy, editor, setEditor, liveCall
   } = useSession();
   const [inboundCall, setInboundCall] = useState<CallSessionView | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const twilioConfigured = data.twilio.status === "ok";
-  const sheetBlocking = data.sheet.status === "error" || data.sheet.status === "unconfigured";
+  const onReview = location.pathname.includes("/calls/") && location.pathname.endsWith("/review");
+  const hideCampaignChrome = Boolean(liveCall) || onReview;
+
+  function guardLeadsNav(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (!liveCall) return;
+    event.preventDefault();
+    if (window.confirm("You are on a live call. Leave this call?")) {
+      hangUpTwilioCall();
+      navigate("/leads");
+    }
+  }
 
   async function onAnswer() {
     const session = await answerIncoming();
@@ -53,19 +56,20 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <header className={`sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur ${liveCall ? "hidden" : ""}`}>
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-6 py-3">
-          <Link to="/leads" className="text-base font-semibold tracking-tight text-slate-900">
-            Hammerhead
+          <Link to="/leads" className="text-base font-semibold tracking-tight text-slate-900" onClick={guardLeadsNav}>
+            {PRODUCT_NAME}
           </Link>
           <nav className="flex items-center gap-1 text-sm" aria-label="Primary">
             <NavLink
               to="/leads"
+              onClick={guardLeadsNav}
               className={({ isActive }) =>
                 `rounded-md px-3 py-1.5 font-medium ${isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`
               }
             >
-              Leads
+              Ready
             </NavLink>
           </nav>
           <div className="ml-auto flex flex-wrap items-center gap-3">
@@ -76,7 +80,7 @@ export function AppLayout() {
                 aria-label="Campaign"
                 className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm normal-case tracking-normal text-slate-900"
                 value={data.selectedCampaignId ?? ""}
-                disabled={pending || campaignBusy || Boolean(editor)}
+                disabled={pending || campaignBusy || Boolean(editor) || Boolean(liveCall)}
                 onChange={(event) => {
                   void handleSelectCampaign(event.target.value);
                 }}
@@ -89,41 +93,27 @@ export function AppLayout() {
                 ))}
               </select>
             </label>
-            <StatusDot
-              tone={data.sheet.status === "ok" ? "ok" : "bad"}
-              label="Sheet"
-              value={data.sheet.status}
+            <ReadinessChip
+              sheet={data.sheet}
+              twilioConfigured={twilioConfigured}
+              deviceStatus={deviceStatus}
+              diagnosticCount={data.sheet.diagnostics.length}
             />
-            <StatusDot
-              tone={!twilioConfigured ? "bad" : deviceStatus === "registered" ? "ok" : deviceStatus === "error" ? "bad" : "warn"}
-              label="Twilio device"
-              value={twilioConfigured ? deviceStatus : data.twilio.status.replaceAll("_", " ")}
-            />
-            <button
-              type="button"
-              onClick={() => setEditor("new")}
-              disabled={pending || campaignBusy || Boolean(editor)}
-              className="rounded-md bg-indigo-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-            >
-              New campaign
-            </button>
+            {hideCampaignChrome ? null : (
+              <button
+                type="button"
+                onClick={() => setEditor("new")}
+                disabled={pending || campaignBusy || Boolean(editor)}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 disabled:opacity-50"
+              >
+                New campaign
+              </button>
+            )}
           </div>
         </div>
         <div className="mx-auto max-w-6xl px-6 pb-2">
           <p className="text-xs text-slate-500">
             {data.twilio.callerId ? `Calling from ${data.twilio.callerId} · ` : ""}{deviceDetail}
-            {data.sheet.diagnostics.length > 0 ? (
-              <>
-                {" · "}
-                <Link
-                  to="/diagnostics"
-                  className="underline"
-                  aria-label={sheetBlocking ? "Sheet blocking error" : "Queue diagnostics"}
-                >
-                  {sheetBlocking ? "Sheet needs attention" : "Queue diagnostics"} ({data.sheet.diagnostics.length})
-                </Link>
-              </>
-            ) : null}
           </p>
         </div>
       </header>
@@ -175,17 +165,19 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      <CampaignDrawer
-        mode={editor}
-        campaign={data.campaigns.find((item) => item.id === data.selectedCampaignId)}
-        onBusy={setCampaignBusy}
-        aiMessage={data.ai.status !== "ok" ? data.ai.message : undefined}
-        onClose={() => setEditor(null)}
-        onSaved={async () => {
-          await refresh();
-          setEditor(null);
-        }}
-      />
+      {liveCall ? null : (
+        <CampaignDrawer
+          mode={editor}
+          campaign={data.campaigns.find((item) => item.id === data.selectedCampaignId)}
+          onBusy={setCampaignBusy}
+          aiMessage={data.ai.status !== "ok" ? data.ai.message : undefined}
+          onClose={() => setEditor(null)}
+          onSaved={async () => {
+            await refresh();
+            setEditor(null);
+          }}
+        />
+      )}
     </div>
   );
 }
