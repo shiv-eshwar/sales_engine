@@ -229,6 +229,23 @@ export function saveCampaign(brief: CampaignBrief, requestId: string, previous?:
   });
 }
 
+export function interviewCampaign(input: {
+  messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
+  requestId: string;
+  campaignId?: string;
+  signal?: AbortSignal;
+}): Promise<{ text: string; campaign: PublicCampaign | null }> {
+  return campaignRequest("/api/campaigns/interview", {
+    method: "POST",
+    body: JSON.stringify({
+      messages: input.messages,
+      requestId: input.requestId,
+      campaignId: input.campaignId
+    }),
+    signal: input.signal
+  });
+}
+
 export function fetchCampaignLeads(campaignId: string, signal?: AbortSignal): Promise<{ leads: CampaignLead[] }> {
   return campaignRequest(`/api/campaigns/${encodeURIComponent(campaignId)}/leads`, { signal });
 }

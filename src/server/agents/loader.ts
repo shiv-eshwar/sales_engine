@@ -10,12 +10,18 @@ import { fileURLToPath } from "node:url";
 // latency budgets, validators, and holdout behavior are unchanged.
 const AGENTS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "agents");
 
-export type AgentName = "live-coach" | "post-call" | "campaign-generation" | "prospect-research";
+export type AgentName =
+  | "live-coach"
+  | "post-call"
+  | "campaign-generation"
+  | "campaign-interview"
+  | "prospect-research";
 
 const SEPARATORS: Record<AgentName, " " | "\n"> = {
   "live-coach": " ",
   "post-call": " ",
   "campaign-generation": "\n",
+  "campaign-interview": "\n",
   "prospect-research": "\n"
 };
 

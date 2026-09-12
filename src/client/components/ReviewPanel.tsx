@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Alert, Button, Card } from "@heroui/react";
 import type { PublicProposal, PublicWriteFields, WriteFieldKey } from "../../shared/contracts";
 import {
   CALL_STATUS_OPTIONS,
@@ -75,13 +76,12 @@ export function ReviewPanel({
       </header>
 
       {dnc ? (
-        <p
-          role="alert"
-          className="rounded-md border-2 border-red-700 bg-red-50 p-4 text-sm font-semibold text-red-950"
-        >
-          Do not contact. Approving this proposal writes a suppression status so this lead will not
-          return to the eligible queue.
-        </p>
+        <Alert status="danger" role="alert">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>Do not contact. Approving this proposal writes a suppression status so this lead will not return to the eligible queue.</Alert.Title>
+          </Alert.Content>
+        </Alert>
       ) : null}
 
       {proposal.warnings.length > 0 ? (
@@ -91,62 +91,65 @@ export function ReviewPanel({
           ))}
           {proposal.kind === "connected" ? (
             <li>
-              <button
-                type="button"
-                className="mt-1 text-sm text-amber-950 underline disabled:opacity-50"
-                disabled={pending}
-                onClick={onRetryProcessing}
-              >
-                Retry processing
-              </button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  isDisabled={pending}
+                  onPress={onRetryProcessing}
+                >
+                  Retry processing
+                </Button>
             </li>
           ) : null}
         </ul>
       ) : proposal.kind === "connected" ? (
         <p>
-          <button
-            type="button"
-            className="text-sm text-slate-600 underline disabled:opacity-50"
-            disabled={pending}
-            onClick={onRetryProcessing}
-          >
+          <Button variant="ghost" size="sm" isDisabled={pending} onPress={onRetryProcessing}>
             Retry processing
-          </button>
+          </Button>
         </p>
       ) : null}
 
       {failedWrite ? (
-        <p role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900">
-          Sheet write failed and is waiting for retry. {proposal.lastError}
-        </p>
+        <Alert status="danger" role="alert">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>Sheet write failed and is waiting for retry. {proposal.lastError}</Alert.Title>
+          </Alert.Content>
+        </Alert>
       ) : null}
 
       {error ? (
-        <p role="alert" className="text-sm text-red-700">
-          {error}
-        </p>
+        <Alert status="danger" role="alert">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>{error}</Alert.Title>
+          </Alert.Content>
+        </Alert>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <article className="rounded-lg border border-slate-200 bg-white p-4">
-          <h3 className="text-sm font-medium uppercase tracking-wide text-slate-500">Outcomes</h3>
-          <p className="mt-2 text-sm">
-            Transport: <span className="font-medium">{proposal.transportOutcome ?? "unknown"}</span>
-          </p>
-          <p className="mt-1 text-sm">
-            Semantic: <span className="font-medium">{outcomeLabel(proposal.semanticOutcome)}</span>
-          </p>
-          <p className="mt-1 text-sm">
-            Qualification: <span className="font-medium">{qualificationLabel(proposal.qualification)}</span>
-          </p>
-          <p className="mt-2 text-sm text-slate-700">{proposal.qualificationReason}</p>
-        </article>
-        <article className="rounded-lg border border-slate-200 bg-white p-4">
-          <h3 className="text-sm font-medium uppercase tracking-wide text-slate-500">Next step</h3>
-          <p className="mt-2 text-sm text-slate-800">{proposal.nextStep || "None proposed"}</p>
-          <p className="mt-2 text-sm text-slate-600">Follow-up: {formatDisplayDate(proposal.followUpAt)}</p>
-          <p className="mt-2 text-sm text-slate-800">{proposal.summary}</p>
-        </article>
+        <Card>
+          <Card.Header>
+            <p className="text-muted text-sm font-medium uppercase tracking-wide">Outcomes</p>
+          </Card.Header>
+          <Card.Content className="text-sm">
+            <p>Transport: <span className="font-medium">{proposal.transportOutcome ?? "unknown"}</span></p>
+            <p className="mt-1">Semantic: <span className="font-medium">{outcomeLabel(proposal.semanticOutcome)}</span></p>
+            <p className="mt-1">Qualification: <span className="font-medium">{qualificationLabel(proposal.qualification)}</span></p>
+            <p className="mt-2 text-muted">{proposal.qualificationReason}</p>
+          </Card.Content>
+        </Card>
+        <Card>
+          <Card.Header>
+            <p className="text-muted text-sm font-medium uppercase tracking-wide">Next step</p>
+          </Card.Header>
+          <Card.Content className="text-sm">
+            <p>{proposal.nextStep || "None proposed"}</p>
+            <p className="text-muted mt-2">Follow-up: {formatDisplayDate(proposal.followUpAt)}</p>
+            <p className="mt-2">{proposal.summary}</p>
+          </Card.Content>
+        </Card>
       </div>
 
       {proposal.criteria.length > 0 ? (
@@ -295,67 +298,41 @@ export function ReviewPanel({
         </details>
       ) : null}
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
+      <div className="border-separator bg-surface/95 fixed inset-x-0 bottom-0 z-30 border-t px-6 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap gap-3">
           {failedWrite ? (
-            <button
-              type="button"
-              className="rounded-md bg-emerald-700 px-4 py-2 font-medium text-white disabled:opacity-50"
-              disabled={pending}
-              onClick={onRetryWrite}
-            >
+            <Button isDisabled={pending} onPress={onRetryWrite}>
               Retry write
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              className="rounded-md bg-emerald-700 px-4 py-2 font-medium text-white disabled:opacity-50"
-              disabled={pending}
-              onClick={() => onApprove(editing ? draft : undefined)}
-            >
+            <Button isDisabled={pending} onPress={() => onApprove(editing ? draft : undefined)}>
               Approve & next
-            </button>
+            </Button>
           )}
           {proposal.kind === "non_connect" && !failedWrite ? (
             <>
-              <button
-                type="button"
-                className="rounded-md border border-slate-400 bg-white px-4 py-2 font-medium disabled:opacity-50"
-                disabled={pending}
-                onClick={() => onApprove({ ...proposal.proposedFields, call_status: "Retry" })}
-              >
+              <Button variant="outline" isDisabled={pending} onPress={() => onApprove({ ...proposal.proposedFields, call_status: "Retry" })}>
                 Retry
-              </button>
-              <button
-                type="button"
-                className="rounded-md border border-slate-400 bg-white px-4 py-2 font-medium disabled:opacity-50"
-                disabled={pending}
-                onClick={onSkip}
-              >
+              </Button>
+              <Button variant="outline" isDisabled={pending} onPress={onSkip}>
                 Skip
-              </button>
+              </Button>
             </>
           ) : null}
-          <button
-            type="button"
-            className="rounded-md border border-slate-400 bg-white px-4 py-2 font-medium disabled:opacity-50"
-            disabled={pending}
-            onClick={() => setEditing((value) => !value)}
-          >
+          <Button variant="outline" isDisabled={pending} onPress={() => setEditing((value) => !value)}>
             {editing ? "Hide edit" : "Edit"}
-          </button>
-          <button
-            type="button"
-            className="rounded-md border border-red-300 bg-white px-4 py-2 font-medium text-red-800 disabled:opacity-50"
-            disabled={pending}
-            onClick={() => {
+          </Button>
+          <Button
+            variant="danger"
+            isDisabled={pending}
+            onPress={() => {
               if (window.confirm("Discard this proposal without writing to the Sheet?")) {
                 onDiscard();
               }
             }}
           >
             Discard proposal
-          </button>
+          </Button>
         </div>
       </div>
     </section>

@@ -4,12 +4,13 @@ import { renderAgentSystem, type AgentName } from "../../src/server/agents/loade
 import liveCoachAgent from "../../agents/live-coach/agent.js";
 import postCallAgent from "../../agents/post-call/agent.js";
 import campaignAgent from "../../agents/campaign-generation/agent.js";
+import interviewAgent from "../../agents/campaign-interview/agent.js";
 import researchAgent from "../../agents/prospect-research/agent.js";
 import { liveCoachOutputSchema } from "../../src/server/coach/schema.js";
 import { postCallOutcomeSchema } from "../../src/shared/schemas.js";
-import { campaignStrategySchema, prospectBriefSchema } from "../../src/shared/campaigns.js";
+import { campaignInterviewTurnSchema, campaignStrategySchema, prospectBriefSchema } from "../../src/shared/campaigns.js";
 
-const agents: AgentName[] = ["live-coach", "post-call", "campaign-generation", "prospect-research"];
+const agents: AgentName[] = ["live-coach", "post-call", "campaign-generation", "campaign-interview", "prospect-research"];
 
 describe("eve agent instructions", () => {
   it("renders every agent with its schema slotted in and no placeholder left", () => {
@@ -28,6 +29,7 @@ describe("eve agent instructions", () => {
 
   it("keeps multi-line systems for generation agents", () => {
     expect(renderAgentSystem("campaign-generation", "S")).toContain("\n");
+    expect(renderAgentSystem("campaign-interview", "S")).toContain("\n");
     expect(renderAgentSystem("prospect-research", "S")).toContain("\n");
   });
 
@@ -40,6 +42,9 @@ describe("eve agent instructions", () => {
     );
     expect(renderAgentSystem("campaign-generation", "S")).toContain(
       "Create a campaign strategy for exactly the offering supplied. Return JSON matching this schema:"
+    );
+    expect(renderAgentSystem("campaign-interview", "S")).toContain(
+      "You interview one human operator to collect a campaign offering brief. Return JSON matching this schema:"
     );
     expect(renderAgentSystem("prospect-research", "S")).toContain(
       "Prepare one human-led call for this campaign and prospect. Return JSON matching this schema:"
@@ -59,6 +64,7 @@ describe("eve agent definitions", () => {
       { agent: liveCoachAgent, schema: liveCoachOutputSchema },
       { agent: postCallAgent, schema: postCallOutcomeSchema },
       { agent: campaignAgent, schema: campaignStrategySchema },
+      { agent: interviewAgent, schema: campaignInterviewTurnSchema },
       { agent: researchAgent, schema: prospectBriefSchema }
     ];
     for (const { agent, schema } of cases) {

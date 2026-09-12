@@ -263,6 +263,15 @@ Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` (6/6) and V
 - [x] Review: human labels, technical details collapsed, enum dropdowns, pinned Approve & next
 - [x] Narrow queue uses stacked cards, not a 720px table
 
+### HeroUI + campaign chat
+
+Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` and Vitest including interview + eve agent tests. No §4 non-goals.
+
+- [x] Caller-facing Ready / live HUD / review chrome uses HeroUI (Button, Card, Alert, Chip, Modal)
+- [x] Campaign creation is an in-app interview chat (assistant-ui + `campaign-interview` agent), not a form
+- [x] Campaign form/drawer fields removed; POST `/api/campaigns` remains for tests and internal use
+- [x] Merged P0/P1 caller workflow kept: next-up Ready, pinned live HUD, Approve → next contact
+
 ---
 
 ## Holdouts (`whatthis.md` §18)
@@ -347,3 +356,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-07 | Live Twilio E2E: fresh tunnel, TwiML app rewired, allowlist +IN, webhooks 204 via public URL; PSTN ring to user-owned +91 blocked by Twilio Geo Permissions (21215); evidence in VERIFICATION.md (commit `c8b4716` on main). | Slice 6 code complete; live smoke blocked on geo-permission + Sheet test row |
 | 2026-09-07 | Adopted Vercel eve for AI: `agents/` holds live-coach, post-call, campaign-generation, prospect-research (`agent.ts` + `instructions.md`); `src/server/agents/loader.ts` renders prompts for the existing LLM transport. Typecheck + 98 Vitest + 5 Playwright pass; prompts byte-identical. | Slice 6 code complete; live smoke blocked on geo-permission + Sheet test row |
 | 2026-09-12 | Caller UX P0 + scoped P1 from the visual audit: Ready next-up card, assign leads, live three-zone HUD, Approve & next to the next Ready panel. Typecheck + 127 Vitest + 6 Playwright. No §4 non-goals. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-12 | HeroUI on caller surfaces; campaign creation is assistant-ui chat plus an interview agent (`POST /api/campaigns/interview`). Form editor removed. P0/P1 Ready / live HUD / Approve kept. | Slice 6 code complete; live smoke still blocked |

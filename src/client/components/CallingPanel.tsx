@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Alert, Button, Chip } from "@heroui/react";
 import { ProspectBrief } from "./ProspectBrief";
 import type { CallLiveEvent, PublicUtterance, TranscriptionHealth } from "../../shared/contracts";
 import type { CallSessionView, CoachSnapshot } from "../state/calls";
@@ -199,9 +200,10 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
 
   return (
     <section
-      className={`fixed inset-0 z-50 flex flex-col text-slate-50 ${muted ? "bg-amber-950" : "bg-slate-900"}`}
+      className={`dark text-foreground fixed inset-0 z-50 flex flex-col ${muted ? "bg-warning-soft" : "bg-background"}`}
       aria-live="polite"
       aria-label="Live call"
+      style={{ backgroundColor: muted ? "#451a03" : "#0f172a", color: "#f8fafc" }}
     >
       <header className="sticky top-0 z-10 shrink-0 border-b border-white/10 bg-inherit px-4 py-3">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
@@ -216,28 +218,22 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              className={`rounded-md px-4 py-3 font-semibold ${
-                muted
-                  ? "bg-amber-400 text-slate-950"
-                  : "border border-slate-500 bg-slate-800 text-slate-100"
-              }`}
-              onClick={() => {
+            <Button
+              variant={muted ? "primary" : "outline"}
+              className={muted ? "bg-amber-400 text-slate-950" : "border-slate-500 bg-slate-800 text-slate-100"}
+              onPress={() => {
                 const next = !muted;
                 setTwilioMuted(next);
                 setMuted(next);
               }}
-              disabled={terminal}
+              isDisabled={terminal}
             >
               {muted ? "Unmute" : "Mute"}
-            </button>
-            <button
-              type="button"
-              className={`rounded-md bg-red-600 px-5 py-3 font-semibold text-white ${
-                warningCue ? "ring-2 ring-white ring-offset-2 ring-offset-red-700" : ""
-              }`}
-              onClick={() => {
+            </Button>
+            <Button
+              variant="danger"
+              className={warningCue ? "ring-2 ring-white ring-offset-2 ring-offset-red-700" : ""}
+              onPress={() => {
                 hangUpTwilioCall();
                 if (session.status !== "in_progress") {
                   void cancelCallSession(session.id);
@@ -245,7 +241,7 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
               }}
             >
               Hang Up
-            </button>
+            </Button>
           </div>
         </div>
         {muted ? (
@@ -260,9 +256,12 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
 
       <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-y-auto px-4 py-4">
         {health === "interrupted" ? (
-          <p className="mb-3 rounded-md border border-amber-400 bg-amber-950/80 p-3 text-sm text-amber-100" role="status">
-            Transcription interrupted
-          </p>
+          <Alert status="warning" className="mb-3" role="status">
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Title>Transcription interrupted</Alert.Title>
+            </Alert.Content>
+          </Alert>
         ) : null}
 
         {ringing && !connected ? (
@@ -325,13 +324,10 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
         {coach && coach.qualification.length > 0 ? (
           <ul className="mt-3 flex flex-wrap gap-2" aria-label="Qualification criteria">
             {coach.qualification.map((item) => (
-              <li
-                key={item.id}
-                className="rounded-md border border-slate-700 px-2 py-1 text-xs"
-                aria-label={`${item.id} ${item.state}`}
-                title={item.prompt}
-              >
-                {humanizeId(item.id)}: {item.state}
+              <li key={item.id} aria-label={`${item.id} ${item.state}`} title={item.prompt}>
+                <Chip size="sm" variant="soft" color={item.state === "yes" ? "success" : item.state === "no" ? "danger" : "default"}>
+                  <Chip.Label>{humanizeId(item.id)}: {item.state}</Chip.Label>
+                </Chip>
               </li>
             ))}
           </ul>
@@ -374,18 +370,18 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
             </p>
             <div className="mt-3 grid max-w-[240px] grid-cols-3 gap-2" role="group" aria-label="Dialpad">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((digit) => (
-                <button
+                <Button
                   key={digit}
-                  type="button"
+                  variant="outline"
                   aria-label={`Send digit ${digit}`}
-                  disabled={!canSendDigits || dtmfPending !== null}
-                  onClick={() => {
+                  isDisabled={!canSendDigits || dtmfPending !== null}
+                  onPress={() => {
                     void sendDigit(digit);
                   }}
-                  className="rounded-md border border-slate-600 bg-slate-800 px-4 py-3 font-mono text-lg font-semibold text-slate-50 disabled:opacity-40"
+                  className="font-mono text-lg font-semibold"
                 >
                   {dtmfPending === digit ? "…" : digit}
-                </button>
+                </Button>
               ))}
             </div>
             {sentDigits ? (

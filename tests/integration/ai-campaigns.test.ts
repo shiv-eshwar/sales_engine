@@ -13,7 +13,7 @@ import type { PublicCampaign } from "../../src/shared/contracts.js";
 import type { ProspectPreparation } from "../../src/shared/campaigns.js";
 import { getAppContext, loginCookie, makeTestEnv, startTestApp } from "../helpers/app.js";
 import { FakeLlmClient, postCallOutput } from "../helpers/llm.js";
-import { offering, strategy, prospectBrief, fakeResearch } from "../helpers/campaigns.js";
+import { offering, strategy, prospectBrief, fakeResearch, interviewAsk, interviewTurn } from "../helpers/campaigns.js";
 
 const apps: Awaited<ReturnType<typeof buildApp>>[] = [];
 afterEach(async () => { await Promise.all(apps.splice(0).map(app => app.close())); });
@@ -182,6 +182,40 @@ describe("AI campaigns and prospect preparation", () => {
     expect(llm.calls[1]!.user).not.toContain("phone");
     llm.enqueueJson(prospectBrief(true));
     await expect(ctx.preparation.prepare(ctx.campaignStore.get(campaign.id)!, (await ctx.adapter!.findLeadById("L-100"))!, true)).rejects.toThrow("unknown source");
+  });
+
+  it("creates a campaign from an interview turn when the assistant is ready", async () => {
+    const { app, llm, cookie, ctx } = await setup();
+    llm.enqueueJson(interviewAsk("What are you selling?"));
+    const first = await app.inject({
+      method: "POST",
+      url: "/api/campaigns/interview",
+      headers: { cookie },
+      payload: { requestId: randomUUID(), messages: [{ role: "user", content: "A workflow tool" }] }
+    });
+    expect(first.statusCode, first.body).toBe(200);
+    expect(first.json().campaign).toBeNull();
+    expect(first.json().text).toContain("What are you selling");
+    expect(ctx.campaignStore.list()).toEqual([]);
+
+    llm.enqueueJson(interviewTurn({ ...offering(), sheetCampaignValue: "lamina-sales" }));
+    llm.enqueueJson(strategy("Invoice collections"));
+    const second = await app.inject({
+      method: "POST",
+      url: "/api/campaigns/interview",
+      headers: { cookie },
+      payload: {
+        requestId: randomUUID(),
+        messages: [
+          { role: "user", content: "A workflow tool" },
+          { role: "assistant", content: "What are you selling?" },
+          { role: "user", content: "Invoice assistant for finance teams" }
+        ]
+      }
+    });
+    expect(second.statusCode, second.body).toBe(200);
+    expect(second.json().campaign.name).toBe("Invoice collections");
+    expect(ctx.campaignStore.list()).toHaveLength(1);
   });
 
   it("persists campaigns, lead assignments and briefs across app restarts", async () => {

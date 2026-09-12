@@ -1,4 +1,4 @@
-import type { CampaignBrief, CampaignStrategy } from "../../src/shared/campaigns.js";
+import type { CampaignBrief, CampaignInterviewTurn, CampaignStrategy } from "../../src/shared/campaigns.js";
 import type { ResearchClient } from "../../src/server/research/client.js";
 
 export function offering(name = "Invoice assistant"): CampaignBrief {
@@ -9,6 +9,14 @@ export function offering(name = "Invoice assistant"): CampaignBrief {
     objective: "Understand collections workflow and agree on a relevant follow-up",
     type: "sales", website: "https://example.com", approvedFacts: ["Shows unpaid invoices in one place."], sheetCampaignValue: ""
   };
+}
+
+export function interviewTurn(brief: CampaignBrief, message = "I have enough to create this campaign."): CampaignInterviewTurn {
+  return { message, ready: true, brief };
+}
+
+export function interviewAsk(message: string): CampaignInterviewTurn {
+  return { message, ready: false, brief: null };
 }
 
 export function strategy(name = "Invoice discovery"): CampaignStrategy {
