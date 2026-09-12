@@ -37,7 +37,7 @@ export function App() {
 
   if (error) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-6xl items-center px-6 py-10">
+      <main className="mx-auto flex min-h-screen max-w-6xl items-center px-6 py-8">
         <EmptyState
           icon="error"
           role="alert"
@@ -50,7 +50,7 @@ export function App() {
 
   if (!bootstrap) {
     return (
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main className="mx-auto max-w-6xl px-6 py-8">
         <LoadingSkeleton title="Loading leads…" detail="Connecting to your queue and campaigns." lines={4} />
       </main>
     );

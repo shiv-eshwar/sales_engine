@@ -21,20 +21,18 @@ export function EmptyState({
     <div
       role={role}
       aria-label={title}
-      className={
-        compact
-          ? "border-separator bg-surface-secondary/40 flex flex-col items-center rounded-xl border border-dashed px-6 py-10 text-center"
-          : "border-separator bg-surface mx-auto flex max-w-lg flex-col items-center rounded-2xl border px-8 py-14 text-center shadow-sm"
-      }
+      className={`mx-auto flex max-w-md flex-col items-center text-center ${compact ? "py-8" : "py-16"}`}
     >
       <div
         aria-hidden="true"
-        className="bg-surface-secondary text-muted mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
+        className={`mb-4 flex h-12 w-12 items-center justify-center rounded-lg ${
+          icon === "error" ? "bg-danger-soft text-danger" : "bg-accent-soft text-accent"
+        }`}
       >
         <EmptyIcon kind={icon} />
       </div>
-      <h2 className="text-foreground text-lg font-semibold tracking-tight">{title}</h2>
-      <p className="text-muted mt-2 max-w-sm text-sm leading-relaxed">{description}</p>
+      <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+      <p className="mt-2 max-w-[32em] text-sm leading-relaxed text-muted">{description}</p>
       {action ? <div className="mt-6 flex flex-wrap items-center justify-center gap-2">{action}</div> : null}
     </div>
   );

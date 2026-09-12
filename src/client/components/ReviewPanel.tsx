@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, Button, Card } from "@heroui/react";
+import { Alert, Button } from "@heroui/react";
 import type { PublicProposal, PublicWriteFields, WriteFieldKey } from "../../shared/contracts";
 import {
   CALL_STATUS_OPTIONS,
@@ -67,10 +67,11 @@ export function ReviewPanel({
   }
 
   return (
-    <section className="mt-6 space-y-4 pb-28" aria-label="Call review">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Review CRM update</h2>
-        <p className="text-sm text-slate-600">
+    <section className="space-y-8 pb-28" aria-label="Call review">
+      <header className="max-w-xl">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Review</p>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight">Review CRM update</h2>
+        <p className="mt-2 text-sm text-muted">
           {proposal.contactName}. Nothing is written until you approve.
         </p>
       </header>
@@ -85,26 +86,21 @@ export function ReviewPanel({
       ) : null}
 
       {proposal.warnings.length > 0 ? (
-        <ul className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" aria-label="Warnings">
+        <ul className="rounded-lg bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" aria-label="Warnings">
           {proposal.warnings.map((warning) => (
             <li key={warning}>{warning}</li>
           ))}
           {proposal.kind === "connected" ? (
-            <li>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  isDisabled={pending}
-                  onPress={onRetryProcessing}
-                >
-                  Retry processing
-                </Button>
+            <li className="mt-2">
+              <Button variant="ghost" size="sm" className="rounded-lg!" isDisabled={pending} onPress={onRetryProcessing}>
+                Retry processing
+              </Button>
             </li>
           ) : null}
         </ul>
       ) : proposal.kind === "connected" ? (
         <p>
-          <Button variant="ghost" size="sm" isDisabled={pending} onPress={onRetryProcessing}>
+          <Button variant="ghost" size="sm" className="rounded-lg!" isDisabled={pending} onPress={onRetryProcessing}>
             Retry processing
           </Button>
         </p>
@@ -128,38 +124,39 @@ export function ReviewPanel({
         </Alert>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <Card.Header>
-            <p className="text-muted text-sm font-medium uppercase tracking-wide">Outcomes</p>
-          </Card.Header>
-          <Card.Content className="text-sm">
-            <p>Transport: <span className="font-medium">{proposal.transportOutcome ?? "unknown"}</span></p>
-            <p className="mt-1">Semantic: <span className="font-medium">{outcomeLabel(proposal.semanticOutcome)}</span></p>
-            <p className="mt-1">Qualification: <span className="font-medium">{qualificationLabel(proposal.qualification)}</span></p>
-            <p className="mt-2 text-muted">{proposal.qualificationReason}</p>
-          </Card.Content>
-        </Card>
-        <Card>
-          <Card.Header>
-            <p className="text-muted text-sm font-medium uppercase tracking-wide">Next step</p>
-          </Card.Header>
-          <Card.Content className="text-sm">
-            <p>{proposal.nextStep || "None proposed"}</p>
-            <p className="text-muted mt-2">Follow-up: {formatDisplayDate(proposal.followUpAt)}</p>
-            <p className="mt-2">{proposal.summary}</p>
-          </Card.Content>
-        </Card>
+      <div className="grid gap-8 lg:grid-cols-2">
+        <section className="max-w-xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Outcomes</p>
+          <p className="mt-2 text-xl font-semibold tracking-tight">
+            {outcomeLabel(proposal.semanticOutcome)}
+          </p>
+          <p className="mt-2 text-sm text-muted">
+            {qualificationLabel(proposal.qualification)}
+            {proposal.transportOutcome ? ` · ${proposal.transportOutcome.replaceAll("_", " ")}` : ""}
+          </p>
+          {proposal.qualificationReason ? (
+            <p className="mt-3 max-w-[32em] text-sm leading-relaxed text-muted">{proposal.qualificationReason}</p>
+          ) : null}
+        </section>
+        <section className="max-w-xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Next step</p>
+          <p className="mt-2 text-lg font-semibold leading-snug">
+            {proposal.nextStep || "None proposed"}
+          </p>
+          <p className="mt-2 text-sm text-muted">Follow-up {formatDisplayDate(proposal.followUpAt)}</p>
+          {proposal.summary ? <p className="mt-3 max-w-[32em] text-sm leading-relaxed text-muted">{proposal.summary}</p> : null}
+        </section>
       </div>
 
       {proposal.criteria.length > 0 ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <h3 className="text-sm font-medium uppercase tracking-wide text-slate-500">Qualification evidence</h3>
-          <ul className="mt-3 space-y-2 text-sm">
+        <section>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Qualification evidence</p>
+          <ul className="mt-3 max-w-2xl space-y-3 text-sm">
             {proposal.criteria.map((item) => (
               <li key={item.id}>
-                <span className="font-medium">{item.prompt || item.id.replaceAll("_", " ")}</span>: {item.state}
-                {item.evidence ? <span className="text-slate-600"> — {item.evidence}</span> : null}
+                <span className="font-semibold">{item.prompt || item.id.replaceAll("_", " ")}</span>
+                <span className="text-sm text-muted"> · {item.state}</span>
+                {item.evidence ? <p className="mt-1 text-sm text-muted">{item.evidence}</p> : null}
               </li>
             ))}
           </ul>
@@ -167,50 +164,54 @@ export function ReviewPanel({
       ) : null}
 
       {(proposal.objections.length > 0 || proposal.painOrResearchFindings.length > 0) && (
-        <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm">
+        <section className="max-w-2xl text-sm">
           {proposal.objections.length > 0 ? (
             <p>
-              <span className="font-medium">Objections:</span> {proposal.objections.join("; ")}
+              <span className="font-semibold">Objections. </span>
+              {proposal.objections.join("; ")}
             </p>
           ) : null}
           {proposal.painOrResearchFindings.length > 0 ? (
-            <p className="mt-2">
-              <span className="font-medium">Findings:</span> {proposal.painOrResearchFindings.join("; ")}
+            <p className={proposal.objections.length > 0 ? "mt-3" : undefined}>
+              <span className="font-semibold">Findings. </span>
+              {proposal.painOrResearchFindings.join("; ")}
             </p>
           ) : null}
         </section>
       )}
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <h3 className="text-sm font-medium uppercase tracking-wide text-slate-500">Sheet diff</h3>
-        <table className="mt-3 w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-slate-500">
-              <th className="py-1 pr-2 font-medium">Field</th>
-              <th className="py-1 pr-2 font-medium">Current</th>
-              <th className="py-1 font-medium">Proposed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleDiff.map((row) => (
-              <tr key={row.key} className={row.changed ? "bg-amber-50" : undefined}>
-                <td className="py-1 pr-2 align-top">{fieldLabel(row.key, row.header)}</td>
-                <td className="py-1 pr-2 align-top text-slate-600">{displayValue(row.key, row.current)}</td>
-                <td className="py-1 align-top">{displayValue(row.key, row.proposed)}</td>
+      <section>
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Sheet diff</p>
+        <div className="mt-3 overflow-hidden rounded-lg bg-surface shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-separator">
+                <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Field</th>
+                <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Current</th>
+                <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Proposed</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {visibleDiff.map((row) => (
+                <tr key={row.key} className={`border-b border-separator last:border-0 ${row.changed ? "bg-accent-soft" : ""}`}>
+                  <td className="px-4 py-3">{fieldLabel(row.key, row.header)}</td>
+                  <td className="px-4 py-3 text-muted">{displayValue(row.key, row.current)}</td>
+                  <td className="px-4 py-3 font-medium">{displayValue(row.key, row.proposed)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {technicalDiff.length > 0 ? (
           <details className="mt-3">
-            <summary className="cursor-pointer text-sm font-medium text-slate-600">Technical details</summary>
+            <summary className="cursor-pointer text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4">Technical details</summary>
             <table className="mt-2 w-full text-left text-sm">
               <tbody>
                 {technicalDiff.map((row) => (
-                  <tr key={row.key}>
-                    <td className="py-1 pr-2 align-top">{FIELD_LABELS[row.key]}</td>
-                    <td className="py-1 pr-2 align-top text-slate-600">{row.current || "—"}</td>
-                    <td className="py-1 align-top font-mono text-xs">{row.proposed || "—"}</td>
+                  <tr key={row.key} className="border-b border-separator last:border-0">
+                    <td className="px-4 py-3">{FIELD_LABELS[row.key]}</td>
+                    <td className="px-4 py-3 text-muted">{row.current || "—"}</td>
+                    <td className="px-4 py-3 font-mono text-xs">{row.proposed || "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -220,15 +221,15 @@ export function ReviewPanel({
       </section>
 
       {editing ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <h3 className="text-sm font-medium uppercase tracking-wide text-slate-500">Edit proposed values</h3>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <section>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Edit proposed values</p>
+          <div className="mt-4 flex max-w-2xl flex-col gap-6 sm:grid sm:grid-cols-2 sm:gap-5">
             {EDITABLE.map((key) => (
-              <label key={key} className="text-sm">
-                <span className="block text-slate-600">{FIELD_LABELS[key]}</span>
+              <label key={key} className="flex flex-col gap-2 text-sm">
+                <span className="text-sm text-muted">{FIELD_LABELS[key]}</span>
                 {key === "call_outcome" ? (
                   <select
-                    className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1"
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
                     value={draft[key] ?? ""}
                     onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
                   >
@@ -238,7 +239,7 @@ export function ReviewPanel({
                   </select>
                 ) : key === "qualification" ? (
                   <select
-                    className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1"
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
                     value={draft[key] ?? ""}
                     onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
                   >
@@ -248,7 +249,7 @@ export function ReviewPanel({
                   </select>
                 ) : key === "call_status" ? (
                   <select
-                    className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1"
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
                     value={draft[key] ?? ""}
                     onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
                   >
@@ -258,7 +259,7 @@ export function ReviewPanel({
                   </select>
                 ) : (
                   <input
-                    className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1"
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
                     value={draft[key] ?? ""}
                     onChange={(event) => {
                       setDraft((current) => ({ ...current, [key]: event.target.value }));
@@ -272,9 +273,9 @@ export function ReviewPanel({
       ) : null}
 
       {proposal.utterances.length > 0 ? (
-        <details className="rounded-lg border border-slate-200 bg-white p-4">
-          <summary className="cursor-pointer text-sm font-medium">Transcript</summary>
-          <ol className="mt-3 space-y-2 text-sm">
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold">Transcript</summary>
+          <ol className="mt-3 max-w-2xl space-y-2 text-sm">
             {proposal.utterances.map((utterance) => (
               <li key={utterance.id}>
                 <span className="font-semibold">{utterance.speaker === "contact" ? "Contact" : "Caller"}: </span>
@@ -286,9 +287,9 @@ export function ReviewPanel({
       ) : null}
 
       {proposal.coachingReplay.length > 0 ? (
-        <details className="rounded-lg border border-slate-200 bg-white p-4">
-          <summary className="cursor-pointer text-sm font-medium">Coaching replay</summary>
-          <ol className="mt-3 space-y-2 text-sm">
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold">Coaching replay</summary>
+          <ol className="mt-3 max-w-2xl space-y-2 text-sm">
             {proposal.coachingReplay.map((event, index) => (
               <li key={`${event.stage}-${index}`}>
                 {event.stage}: {event.cue ?? "(hidden)"} {event.reason ? `— ${event.reason}` : ""}
@@ -298,41 +299,42 @@ export function ReviewPanel({
         </details>
       ) : null}
 
-      <div className="border-separator bg-surface/95 fixed inset-x-0 bottom-0 z-30 border-t px-6 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap gap-3">
+      <div className="fixed inset-x-0 bottom-0 z-30 bg-background px-6 py-3 shadow-lg">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
           {failedWrite ? (
-            <Button isDisabled={pending} onPress={onRetryWrite}>
+            <Button className="rounded-lg!" isDisabled={pending} onPress={onRetryWrite}>
               Retry write
             </Button>
           ) : (
-            <Button isDisabled={pending} onPress={() => onApprove(editing ? draft : undefined)}>
+            <Button className="rounded-lg!" isDisabled={pending} onPress={() => onApprove(editing ? draft : undefined)}>
               Approve & next
             </Button>
           )}
           {proposal.kind === "non_connect" && !failedWrite ? (
             <>
-              <Button variant="outline" isDisabled={pending} onPress={() => onApprove({ ...proposal.proposedFields, call_status: "Retry" })}>
+              <Button variant="outline" className="rounded-lg!" isDisabled={pending} onPress={() => onApprove({ ...proposal.proposedFields, call_status: "Retry" })}>
                 Retry
               </Button>
-              <Button variant="outline" isDisabled={pending} onPress={onSkip}>
+              <Button variant="outline" className="rounded-lg!" isDisabled={pending} onPress={onSkip}>
                 Skip
               </Button>
             </>
           ) : null}
-          <Button variant="outline" isDisabled={pending} onPress={() => setEditing((value) => !value)}>
+          <Button variant="ghost" className="rounded-lg!" isDisabled={pending} onPress={() => setEditing((value) => !value)}>
             {editing ? "Hide edit" : "Edit"}
           </Button>
-          <Button
-            variant="danger"
-            isDisabled={pending}
-            onPress={() => {
+          <button
+            type="button"
+            className="ml-auto text-sm font-semibold text-danger hover:underline hover:underline-offset-4"
+            disabled={pending}
+            onClick={() => {
               if (window.confirm("Discard this proposal without writing to the Sheet?")) {
                 onDiscard();
               }
             }}
           >
             Discard proposal
-          </Button>
+          </button>
         </div>
       </div>
     </section>

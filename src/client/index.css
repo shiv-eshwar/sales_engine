@@ -1,10 +1,88 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 
+@theme inline {
+  --radius-3xl: var(--radius);
+  --radius-4xl: var(--radius);
+}
+
+:root {
+  --radius: 8px;
+  --field-radius: 8px;
+
+  --gray-50: hsl(220 22% 98%);
+  --gray-100: hsl(220 18% 96%);
+  --gray-200: hsl(220 14% 91%);
+  --gray-300: hsl(220 12% 82%);
+  --gray-400: hsl(220 10% 62%);
+  --gray-500: hsl(220 10% 46%);
+  --gray-900: hsl(220 20% 12%);
+
+  --blue-100: hsl(214 92% 95%);
+  --blue-400: hsl(217 72% 56%);
+  --blue-500: hsl(221 62% 38%);
+  --blue-700: hsl(223 66% 26%);
+
+  --red-100: hsl(4 86% 96%);
+  --red-500: hsl(4 72% 42%);
+  --amber-100: hsl(40 92% 94%);
+  --amber-500: hsl(34 90% 42%);
+  --green-500: hsl(154 48% 32%);
+
+  --background: var(--gray-50);
+  --foreground: var(--gray-900);
+  --surface: hsl(0 0% 100%);
+  --surface-foreground: var(--gray-900);
+  --surface-secondary: var(--gray-100);
+  --overlay: hsl(0 0% 100%);
+  --muted: var(--gray-500);
+  --accent: var(--blue-500);
+  --accent-foreground: hsl(0 0% 100%);
+  --success: var(--green-500);
+  --success-foreground: hsl(0 0% 100%);
+  --warning: var(--amber-500);
+  --warning-foreground: hsl(0 0% 100%);
+  --danger: var(--red-500);
+  --danger-foreground: hsl(0 0% 100%);
+  --border: var(--gray-200);
+  --separator: var(--gray-200);
+  --focus: var(--blue-500);
+  --link: var(--blue-700);
+  --default: var(--gray-100);
+  --default-foreground: var(--gray-900);
+  --field-background: hsl(0 0% 100%);
+  --field-foreground: var(--gray-900);
+  --field-placeholder: var(--gray-400);
+  --field-border: var(--gray-300);
+  --field-border-width: 1px;
+}
+
 html,
 body,
 #root {
   min-height: 100%;
+}
+
+html {
+  font-family:
+    Inter,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Noto Sans",
+    Ubuntu,
+    Cantarell,
+    "Helvetica Neue",
+    sans-serif;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 480px at 50% -80px, hsl(214 60% 94% / 0.7), transparent 70%),
+    linear-gradient(180deg, hsl(220 22% 97%), hsl(200 18% 96%));
+  color: var(--foreground);
+  line-height: 1.5;
 }
 
 button:focus-visible,
@@ -12,6 +90,6 @@ select:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 a:focus-visible {
-  outline: 2px solid var(--accent, #0f172a);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

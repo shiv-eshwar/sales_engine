@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from "react";
+import { Button } from "@heroui/react";
 import { login } from "../state/api";
 
 type LoginPageProps = {
@@ -26,34 +27,31 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Sales Engine</h1>
-      <p className="mt-2 text-sm text-slate-600">Single-user internal tool. Sign in to load the next eligible lead.</p>
-      <form className="mt-8 space-y-4" onSubmit={(event) => void onSubmit(event)}>
-        <label className="block text-sm font-medium" htmlFor="password">
-          Password
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Sales Engine</p>
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight">Sign in</h1>
+      <p className="mt-2 max-w-[32em] text-sm leading-relaxed text-muted">Single-user internal tool. Sign in to load the next eligible lead.</p>
+      <form className="mt-8 flex flex-col gap-6" onSubmit={(event) => void onSubmit(event)}>
+        <label className="flex flex-col gap-2" htmlFor="password">
+          <span className="text-sm font-semibold">Password</span>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
+          />
         </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-base"
-        />
         {error ? (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         ) : null}
-        <button
-          type="submit"
-          disabled={pending}
-          className="w-full rounded-md bg-slate-900 px-4 py-2 font-medium text-white disabled:opacity-50"
-        >
+        <Button type="submit" size="lg" className="w-full rounded-lg!" isDisabled={pending} isPending={pending}>
           {pending ? "Signing in…" : "Sign in"}
-        </button>
+        </Button>
       </form>
     </main>
   );

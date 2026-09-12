@@ -20,15 +20,12 @@ import { registerHealth } from "./api/health.js";
 import { registerLeads } from "./api/leads.js";
 import { registerCallApi } from "./api/calls.js";
 import { registerReviewApi } from "./api/review.js";
-import { ReviewFinalizer } from "./review/finalize.js";
 import { registerTwilioWebhooks } from "./twilio/webhooks.js";
 import { registerTwilioMedia } from "./twilio/media.js";
 import { LiveEventBus } from "./transcript/events.js";
 import { MediaHub } from "./twilio/mediaHub.js";
 import { StreamTokenStore } from "./twilio/streamTokens.js";
 import formbody from "@fastify/formbody";
-import { SheetAdapter } from "./sheets/adapter.js";
-import { allowedCountriesFromEnv, createSheetStore } from "./sheets/createStore.js";
 import { beginDrain } from "./shutdown.js";
 import { CampaignStore } from "./campaigns/store.js";
 import { PreparationService } from "./research/preparation.js";
@@ -38,6 +35,7 @@ import { registerSheets } from "./api/sheets.js";
 import { createDtmfSender } from "./twilio/dtmf.js";
 import { inboundForwardNumber } from "./twilio/config.js";
 import type { CampaignConfig } from "../shared/schemas.js";
+import { activateCampaignSheet, backfillCampaignSheets, bindFileCampaignSheets } from "./sheets/bind.js";
 
 export type BuildAppOptions = {
   deepgramFactory?: DeepgramLiveFactory;
@@ -98,25 +96,12 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
     app.log.warn({ err: error }, "Playbook failed to load; continuing without it");
   }
 
-  let sheetsConfig = null;
+  let sheetsTemplate = null;
   let sheetsConfigError: string | null = null;
   try {
-    sheetsConfig = loadSheetsConfig(resolve(env.SHEETS_CONFIG_PATH));
+    sheetsTemplate = loadSheetsConfig(resolve(env.SHEETS_CONFIG_PATH));
   } catch (error) {
     sheetsConfigError = error instanceof Error ? error.message : String(error);
-  }
-
-  let adapter: SheetAdapter | null = null;
-  let sheetMessage = "Sheet backend is unconfigured";
-  if (sheetsConfig) {
-    const store = createSheetStore(env, sheetsConfig);
-    if (store) {
-      adapter = new SheetAdapter(store, sheetsConfig, allowedCountriesFromEnv(env), db);
-      const preflight = await adapter.preflight();
-      sheetMessage = preflight.ok
-        ? `Sheet ready (${store.kind})`
-        : preflight.errors.join(" ");
-    }
   }
 
   const streamTokens = new StreamTokenStore();
@@ -141,19 +126,6 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
     deepgramFactory,
     onUtterance: (utterance) => coachEngine.consider(utterance)
   });
-  const finalizer = adapter
-    ? new ReviewFinalizer({
-        db,
-        campaigns,
-        playbook,
-        sheetsConfig,
-        adapter,
-        llm: llmClient,
-        coachEngine,
-        mediaHub,
-        extractionTimeoutMs: env.AI_GENERATION_TIMEOUT_MS
-      })
-    : null;
   const dtmfSender =
     options.dtmfSender === undefined
       ? env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN
@@ -169,10 +141,14 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
     preparation,
     researchClient,
     playbook,
-    sheetsConfig,
+    sheetsTemplate,
+    sheetsConfig: null,
     sheetsConfigError,
-    adapter,
-    sheetMessage,
+    adapter: null,
+    sheetMessage: "Connect a unique leads Sheet when you create a campaign.",
+    memorySheets: new Map(),
+    pendingSheets: new Map(),
+    fileSheetIds: new Map(),
     operator: createOperatorState(),
     streamTokens,
     liveEvents,
@@ -180,10 +156,17 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
     mediaHub,
     llmClient,
     coachEngine,
-    finalizer,
+    finalizer: null,
     dtmfSender,
     shuttingDown: false
   };
+
+  bindFileCampaignSheets(ctx);
+  backfillCampaignSheets(ctx);
+  if (ctx.campaigns[0]) {
+    ctx.operator.selectedCampaignId = ctx.campaigns[0].id;
+    await activateCampaignSheet(ctx, ctx.campaigns[0].id);
+  }
 
   app.decorate("appContext", ctx);
 

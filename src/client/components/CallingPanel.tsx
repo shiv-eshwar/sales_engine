@@ -200,18 +200,17 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
 
   return (
     <section
-      className={`dark text-foreground fixed inset-0 z-50 flex flex-col ${muted ? "bg-warning-soft" : "bg-background"}`}
+      className={`fixed inset-0 z-50 flex flex-col text-[hsl(214_40%_96%)] ${muted ? "bg-[hsl(28_42%_12%)]" : "bg-[hsl(222_36%_8%)]"}`}
       aria-live="polite"
       aria-label="Live call"
-      style={{ backgroundColor: muted ? "#451a03" : "#0f172a", color: "#f8fafc" }}
     >
-      <header className="sticky top-0 z-10 shrink-0 border-b border-white/10 bg-inherit px-4 py-3">
+      <header className="sticky top-0 z-10 shrink-0 bg-inherit px-4 py-3">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-lg font-semibold">{session.contactName || "Contact"}</h2>
-            <p className="truncate font-mono text-xs text-slate-300">{session.phoneE164}</p>
+            <h2 className="truncate text-lg font-semibold tracking-tight">{session.contactName || "Contact"}</h2>
+            <p className="truncate font-mono text-xs text-[hsl(214_24%_68%)]">{session.phoneE164}</p>
             <p
-              className={`text-sm font-medium ${ringing ? "animate-pulse text-amber-200" : "text-slate-200"}`}
+              className={`text-sm font-medium ${ringing ? "text-[hsl(38_90%_72%)]" : "text-[hsl(214_24%_68%)]"}`}
               aria-label={`Call state ${transportAria(session.status)}`}
             >
               {transportLabel(session.status)} · {duration}
@@ -220,7 +219,7 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
           <div className="flex shrink-0 items-center gap-2">
             <Button
               variant={muted ? "primary" : "outline"}
-              className={muted ? "bg-amber-400 text-slate-950" : "border-slate-500 bg-slate-800 text-slate-100"}
+              className={muted ? "rounded-lg! bg-[hsl(38_90%_62%)] text-[hsl(28_50%_12%)]" : "rounded-lg! border-[hsl(214_20%_36%)] bg-transparent text-[hsl(214_40%_96%)]"}
               onPress={() => {
                 const next = !muted;
                 setTwilioMuted(next);
@@ -232,7 +231,7 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
             </Button>
             <Button
               variant="danger"
-              className={warningCue ? "ring-2 ring-white ring-offset-2 ring-offset-red-700" : ""}
+              className={warningCue ? "rounded-lg! ring-2 ring-white ring-offset-2 ring-offset-[hsl(4_72%_42%)]" : "rounded-lg!"}
               onPress={() => {
                 hangUpTwilioCall();
                 if (session.status !== "in_progress") {
@@ -245,18 +244,18 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
           </div>
         </div>
         {muted ? (
-          <p className="mx-auto mt-2 max-w-3xl text-sm font-medium text-amber-100" role="status">
+          <p className="mx-auto mt-2 max-w-3xl text-sm font-semibold text-[hsl(38_90%_78%)]" role="status">
             They cannot hear you
           </p>
         ) : null}
-        <p className="mx-auto mt-2 max-w-3xl text-xs text-amber-100/90" role="note">
+        <p className="mx-auto mt-2 max-w-3xl text-xs text-[hsl(214_16%_52%)]" role="note">
           {recordingNotice}
         </p>
       </header>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-y-auto px-4 py-4">
+      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-y-auto px-4 py-5">
         {health === "interrupted" ? (
-          <Alert status="warning" className="mb-3" role="status">
+          <Alert status="warning" className="mb-4" role="status">
             <Alert.Indicator />
             <Alert.Content>
               <Alert.Title>Transcription interrupted</Alert.Title>
@@ -265,64 +264,54 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
         ) : null}
 
         {ringing && !connected ? (
-          <article
-            className="flex min-h-[40vh] items-center justify-center rounded-xl border border-amber-400/40 bg-amber-950/30 p-8"
-            aria-label="Live coaching cue"
-          >
-            <p className="animate-pulse text-center text-4xl font-semibold tracking-tight text-amber-100">Ringing…</p>
+          <article className="flex min-h-[40vh] items-center justify-center rounded-lg bg-[hsl(222_32%_14%)] p-5" aria-label="Live coaching cue">
+            <p className="animate-pulse text-center text-4xl font-semibold tracking-tight text-[hsl(38_90%_82%)]">
+              Ringing…
+            </p>
           </article>
         ) : warningCue && coach?.cue ? (
-          <article
-            className="rounded-xl border-2 border-red-500 bg-red-50 p-6 text-red-950"
-            aria-label="Live coaching cue"
-            role="alert"
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide">End the call — do not contact</p>
-            <p className="mt-2 text-2xl font-semibold leading-snug">{coach.cue.text}</p>
+          <article className="rounded-lg bg-[hsl(4_50%_16%)] p-5" aria-label="Live coaching cue" role="alert">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[hsl(4_80%_78%)]">End the call — do not contact</p>
+            <p className="mt-3 text-2xl font-semibold leading-snug">{coach.cue.text}</p>
           </article>
         ) : health !== "interrupted" && coach?.cue?.shouldShow ? (
-          <article
-            className="rounded-xl border border-emerald-400/70 bg-emerald-950/40 p-6"
-            aria-label="Live coaching cue"
-          >
-            <p className="text-xs font-medium uppercase tracking-wide text-emerald-200">
+          <article className="rounded-lg bg-[hsl(222_32%_14%)] p-5" aria-label="Live coaching cue">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[hsl(214_24%_68%)]">
               {humanizeId(coach.cue.cueType)}
-              <span className="ml-2 font-normal text-emerald-100/80">
+              <span className="ml-2 font-normal text-[hsl(214_24%_68%)]">
                 Stage: {humanizeId(coach.stage ?? "opener")}
               </span>
             </p>
-            <p className="mt-2 text-3xl font-semibold leading-snug">{coach.cue.text}</p>
+            <p className="mt-3 text-3xl font-semibold leading-snug tracking-tight">{coach.cue.text}</p>
           </article>
         ) : (
-          <article className="rounded-xl border border-slate-700 p-6" aria-label="Live coaching cue">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Stage: {humanizeId(coach?.stage ?? "opener")}
-            </p>
-            <p className="mt-2 text-xl text-slate-300">
+          <article className="rounded-lg bg-[hsl(222_32%_14%)] p-5" aria-label="Live coaching cue">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[hsl(214_24%_68%)]">Stage: {humanizeId(coach?.stage ?? "opener")}</p>
+            <p className="mt-3 text-xl text-[hsl(214_24%_68%)]">
               {health === "interrupted" ? "Cue hidden while transcription is interrupted." : "No cue right now."}
             </p>
           </article>
         )}
 
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-3 text-sm">
+        <div className="mt-5 flex flex-wrap items-start justify-between gap-3 text-sm">
           <div aria-label="Talk ratio">
             Talk ratio: {Math.round((coach?.talkRatio.callerShare ?? 0) * 100)}% caller /{" "}
             {Math.round((coach?.talkRatio.contactShare ?? 0) * 100)}% contact
             {coach?.talkRatio.warn ? (
-              <p className="mt-1 text-amber-200" role="status">
+              <p className="mt-1 font-medium text-[hsl(38_90%_72%)]" role="status">
                 You are talking more than 40% after a minute. Let the contact speak.
               </p>
             ) : null}
           </div>
           {health !== "interrupted" ? (
-            <p className="text-xs text-slate-400" aria-label={`Transcription health ${healthLabel(health)}`}>
+            <p className="text-xs text-[hsl(214_16%_52%)]" aria-label={`Transcription health ${healthLabel(health)}`}>
               Transcribing: {healthLabel(health)}
             </p>
           ) : null}
         </div>
 
         {coach && coach.qualification.length > 0 ? (
-          <ul className="mt-3 flex flex-wrap gap-2" aria-label="Qualification criteria">
+          <ul className="mt-4 flex flex-wrap gap-2" aria-label="Qualification criteria">
             {coach.qualification.map((item) => (
               <li key={item.id} aria-label={`${item.id} ${item.state}`} title={item.prompt}>
                 <Chip size="sm" variant="soft" color={item.state === "yes" ? "success" : item.state === "no" ? "danger" : "default"}>
@@ -333,8 +322,8 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
           </ul>
         ) : null}
 
-        <details className="mt-4 rounded-md border border-slate-700 p-3" open>
-          <summary className="cursor-pointer text-sm font-medium">Live transcript</summary>
+        <details className="mt-5 rounded-lg bg-[hsl(222_32%_14%)] p-4" open>
+          <summary className="cursor-pointer text-sm font-semibold">Live transcript</summary>
           <ol className="mt-3 space-y-2 text-sm">
             {utterances.map((utterance) => (
               <li key={utterance.id}>
@@ -343,27 +332,27 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
               </li>
             ))}
             {interims.caller ? (
-              <li className="text-slate-400">
+              <li className="text-[hsl(214_24%_68%)]">
                 <span className="font-semibold">Caller (interim): </span>
                 {interims.caller}
               </li>
             ) : null}
             {interims.contact ? (
-              <li className="text-slate-400">
+              <li className="text-[hsl(214_24%_68%)]">
                 <span className="font-semibold">Contact (interim): </span>
                 {interims.contact}
               </li>
             ) : null}
             {utterances.length === 0 && !interims.caller && !interims.contact ? (
-              <li className="text-slate-500">Waiting for speech…</li>
+              <li className="text-[hsl(214_16%_52%)]">Waiting for speech…</li>
             ) : null}
           </ol>
         </details>
 
         {warningCue ? null : (
-          <details className="mt-4 rounded-md border border-slate-700 p-3">
-            <summary className="cursor-pointer text-sm font-medium">Need to press a key?</summary>
-            <p className="mt-1 text-xs text-slate-400">
+          <details className="mt-4 rounded-lg bg-[hsl(222_32%_14%)] p-4">
+            <summary className="cursor-pointer text-sm font-semibold">Need to press a key?</summary>
+            <p className="mt-2 text-xs text-[hsl(214_16%_52%)]">
               {canSendDigits
                 ? "Use when an IVR asks you to press a key."
                 : "Keypad is available once the call is connected."}
@@ -378,19 +367,19 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
                   onPress={() => {
                     void sendDigit(digit);
                   }}
-                  className="font-mono text-lg font-semibold"
+                  className="rounded-lg! border-[hsl(214_20%_36%)] bg-transparent font-mono text-lg font-semibold text-[hsl(214_40%_96%)]"
                 >
                   {dtmfPending === digit ? "…" : digit}
                 </Button>
               ))}
             </div>
             {sentDigits ? (
-              <p className="mt-2 font-mono text-xs text-slate-400" aria-label="Sent digits">
+              <p className="mt-2 font-mono text-xs text-[hsl(214_16%_52%)]" aria-label="Sent digits">
                 Sent: {sentDigits}
               </p>
             ) : null}
             {dtmfError ? (
-              <p className="mt-2 text-sm text-red-300" role="alert">
+              <p className="mt-2 text-sm text-[hsl(4_80%_78%)]" role="alert">
                 {dtmfError}
               </p>
             ) : null}
@@ -399,8 +388,8 @@ export function CallingPanel({ session, recordingNotice, onTerminal, onSession }
 
         {session.preparation ? (
           <details className="mt-5">
-            <summary className="cursor-pointer text-sm font-medium">Prep</summary>
-            <div className="text-slate-900">
+            <summary className="cursor-pointer text-sm font-semibold">Prep</summary>
+            <div className="mt-3 rounded-lg bg-surface p-1 text-foreground">
               <ProspectBrief preparation={session.preparation} />
             </div>
           </details>

@@ -13,6 +13,8 @@ import {
   updateProposalBody
 } from "./store.js";
 import { getProposalOrThrow } from "./finalize.js";
+import { getSession } from "../calls/ledger.js";
+import { activateCampaignSheet } from "../sheets/bind.js";
 
 export class ReviewError extends Error {
   constructor(
@@ -30,10 +32,14 @@ export async function approveProposal(
   proposalId: string,
   edits: WriteFields | undefined
 ): Promise<{ proposal: PublicProposal; lead: PublicLead | null; leads: PublicLead[]; sheet: BootstrapResponse["sheet"] }> {
+  const row = getProposalOrThrow(ctx.db, proposalId);
+  if (row.session_id) {
+    const session = getSession(ctx.db, row.session_id);
+    if (session) await activateCampaignSheet(ctx, session.campaign_id);
+  }
   if (!ctx.adapter || !ctx.sheetsConfig || !ctx.finalizer) {
     throw new ReviewError("unconfigured", "Sheet is not configured", 503);
   }
-  const row = getProposalOrThrow(ctx.db, proposalId);
   if (row.status !== "pending_review" && row.status !== "pending_retry") {
     throw new ReviewError("state", `Proposal cannot be approved in status ${row.status}`);
   }

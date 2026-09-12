@@ -17,6 +17,7 @@ import { twilioVoiceConfigured } from "../twilio/config.js";
 import { validateDtmfDigits } from "../twilio/dtmf.js";
 import { createVoiceAccessToken } from "../twilio/token.js";
 import { toPublicLead } from "../leads/nextLead.js";
+import { activateCampaignSheet } from "../sheets/bind.js";
 
 const createSessionSchema = z.object({
   leadId: z.string().min(1),
@@ -57,6 +58,7 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
     if (ctx.shuttingDown) {
       return reply.code(503).send({ error: "Server is shutting down", code: "draining" });
     }
+    await activateCampaignSheet(ctx, parsed.data.campaignId);
     if (!ctx.adapter) {
       return reply.code(503).send({ error: "Sheet is not configured" });
     }
@@ -70,9 +72,6 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
     }
     if (!lead.dialable || !lead.phoneE164) {
       return reply.code(400).send({ error: "Lead phone is not dialable" });
-    }
-    if (!ctx.campaignStore.includes(campaign.id, lead)) {
-      return reply.code(409).send({ error: "Lead is not assigned to this campaign" });
     }
     const managed = ctx.campaignStore.get(campaign.id);
     const preparation = parsed.data.preparationId ? ctx.preparation.get(parsed.data.preparationId) : null;

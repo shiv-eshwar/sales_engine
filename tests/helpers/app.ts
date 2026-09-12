@@ -60,6 +60,23 @@ export function getAppContext(app: Awaited<ReturnType<typeof buildApp>>): AppCon
   return (app as typeof app & { appContext: AppContext }).appContext;
 }
 
+export async function bindSampleSheet(
+  app: Awaited<ReturnType<typeof buildApp>>,
+  cookie: string,
+  requestId: string
+): Promise<{ spreadsheetId: string }> {
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/sheets/create",
+    headers: { cookie },
+    payload: { requestId, title: "Sample leads" }
+  });
+  if (response.statusCode >= 400) {
+    throw new Error(`bindSampleSheet failed: ${response.statusCode} ${response.body}`);
+  }
+  return response.json() as { spreadsheetId: string };
+}
+
 export async function loginCookie(app: Awaited<ReturnType<typeof buildApp>>): Promise<string> {
   const response = await app.inject({
     method: "POST",

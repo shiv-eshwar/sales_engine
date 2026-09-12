@@ -11,7 +11,7 @@ import { computeTalkRatio } from "../../src/server/coach/talkRatio.js";
 import { validatePostCallOutcome } from "../../src/server/review/validate.js";
 import type { PublicCampaign } from "../../src/shared/contracts.js";
 import type { ProspectPreparation } from "../../src/shared/campaigns.js";
-import { getAppContext, loginCookie, makeTestEnv, startTestApp } from "../helpers/app.js";
+import { getAppContext, loginCookie, makeTestEnv, startTestApp, bindSampleSheet } from "../helpers/app.js";
 import { FakeLlmClient, postCallOutput } from "../helpers/llm.js";
 import { offering, strategy, prospectBrief, fakeResearch, interviewAsk, interviewTurn } from "../helpers/campaigns.js";
 
@@ -25,9 +25,11 @@ async function setup(research = true) {
   const cookie = await loginCookie(app);
   const ctx = getAppContext(app);
   async function create(name: string, tag = "") {
+    const requestId = randomUUID();
+    await bindSampleSheet(app, cookie, requestId);
     llm.enqueueJson(strategy(name));
     const response = await app.inject({ method: "POST", url: "/api/campaigns", headers: { cookie }, payload: {
-      requestId: randomUUID(), brief: { ...offering(name), sheetCampaignValue: tag }
+      requestId, brief: { ...offering(name), sheetCampaignValue: tag }
     } });
     expect(response.statusCode, response.body).toBe(201);
     return response.json() as PublicCampaign;
@@ -54,7 +56,9 @@ describe("AI campaigns and prospect preparation", () => {
 
   it("supports open access and keeps invalid generation out of saved campaigns", async () => {
     const { app, llm, cookie, ctx } = await setup();
-    const payload = { requestId: randomUUID(), brief: offering() };
+    const requestId = randomUUID();
+    await bindSampleSheet(app, cookie, requestId);
+    const payload = { requestId, brief: offering() };
     llm.enqueueRaw("not json");
     expect((await app.inject({ method: "POST", url: "/api/campaigns", headers: { cookie }, payload })).statusCode).toBe(502);
     expect(ctx.campaignStore.list()).toEqual([]);
@@ -67,33 +71,31 @@ describe("AI campaigns and prospect preparation", () => {
     expect(llm.calls).toHaveLength(2);
   });
 
-  it("keeps offerings, lead queues and skipped leads separate, without changing Sheet tags", async () => {
-    const { app, cookie, ctx, create, llm } = await setup();
+  it("keeps skips campaign-scoped and isolates each campaign's Sheet", async () => {
+    const { app, cookie, ctx, create } = await setup();
     const invoices = await create("Invoice assistant");
     const security = await create("Security training");
-    for (const [id, leadIds] of [[invoices.id, ["L-100"]], [security.id, ["L-101"]]] as const) {
-      expect((await app.inject({ method: "POST", url: `/api/campaigns/${id}/leads`, headers: { cookie }, payload: { leadIds, assigned: true } })).statusCode).toBe(200);
-      const selected = await app.inject({ method: "POST", url: "/api/campaigns/select", headers: { cookie }, payload: { campaignId: id } });
-      expect(selected.json().lead.leadId).toBe(leadIds[0]);
+    expect(invoices.spreadsheetId).toBeTruthy();
+    expect(security.spreadsheetId).toBeTruthy();
+    expect(invoices.spreadsheetId).not.toBe(security.spreadsheetId);
+    async function select(id: string) {
+      return (await app.inject({ method: "POST", url: "/api/campaigns/select", headers: { cookie }, payload: { campaignId: id } })).json() as { lead: { leadId: string }; leads: Array<{ leadId: string }> };
     }
-    expect(JSON.parse(llm.calls[1]!.user).offering.offeringName).toBe("Security training");
-    expect(llm.calls[1]!.user).not.toContain("Invoice assistant");
+    expect((await select(invoices.id)).leads.map((lead) => lead.leadId)).toEqual(["L-100", "L-101", "L-102"]);
+    expect((await select(security.id)).leads.map((lead) => lead.leadId)).toEqual(["L-100", "L-101", "L-102"]);
     expect((await ctx.adapter!.findLeadById("L-100"))!.campaignId).toBe("lamina-sales");
-    expect((await app.inject({ method: "POST", url: "/api/calls/sessions", headers: { cookie }, payload: { leadId: "L-100", campaignId: security.id } })).statusCode).toBe(409);
-    ctx.campaignStore.assign(security.id, ["L-100"], true);
     await app.inject({ method: "POST", url: "/api/leads/skip", headers: { cookie }, payload: { leadId: "L-100", campaignId: invoices.id } });
-    const selected = await app.inject({ method: "POST", url: "/api/campaigns/select", headers: { cookie }, payload: { campaignId: security.id } });
-    expect(selected.json().lead.leadId).toBe("L-100");
+    expect((await select(invoices.id)).lead.leadId).not.toBe("L-100");
+    expect((await select(security.id)).lead.leadId).toBe("L-100");
   });
 
-  it("supports matching an existing CRM tag and explicit removal from that campaign", async () => {
+  it("loads every eligible Sheet contact once a campaign exists", async () => {
     const { app, cookie, create } = await setup();
-    const campaign = await create("Invoices", "lamina-sales");
-    const response = await app.inject({ url: "/api/bootstrap", headers: { cookie } });
-    expect(response.json().lead.leadId).toBe("L-100");
-    await app.inject({ method: "POST", url: `/api/campaigns/${campaign.id}/leads`, headers: { cookie }, payload: { leadIds: ["L-100"], assigned: false } });
+    const campaign = await create("Invoices");
+    const selected = await app.inject({ method: "POST", url: "/api/campaigns/select", headers: { cookie }, payload: { campaignId: campaign.id } });
+    expect(selected.json().leads.map((lead: { leadId: string }) => lead.leadId)).toEqual(["L-100", "L-101", "L-102"]);
     const next = await app.inject({ url: "/api/leads/next", headers: { cookie } });
-    expect(next.json().lead.leadId).not.toBe("L-100");
+    expect(next.json().lead.leadId).toBe("L-100");
   });
 
   it("selects a specific lead from the queue instead of only advancing", async () => {
@@ -200,12 +202,14 @@ describe("AI campaigns and prospect preparation", () => {
 
     llm.enqueueJson(interviewTurn({ ...offering(), sheetCampaignValue: "lamina-sales" }));
     llm.enqueueJson(strategy("Invoice collections"));
+    const requestId = randomUUID();
+    await bindSampleSheet(app, cookie, requestId);
     const second = await app.inject({
       method: "POST",
       url: "/api/campaigns/interview",
       headers: { cookie },
       payload: {
-        requestId: randomUUID(),
+        requestId,
         messages: [
           { role: "user", content: "A workflow tool" },
           { role: "assistant", content: "What are you selling?" },
@@ -218,7 +222,7 @@ describe("AI campaigns and prospect preparation", () => {
     expect(ctx.campaignStore.list()).toHaveLength(1);
   });
 
-  it("persists campaigns, lead assignments and briefs across app restarts", async () => {
+  it("persists campaigns and briefs across app restarts", async () => {
     const dir = mkdtempSync(join(tmpdir(), "sales-campaigns-"));
     const llm = new FakeLlmClient();
     let app: Awaited<ReturnType<typeof buildApp>> | undefined;
@@ -227,10 +231,11 @@ describe("AI campaigns and prospect preparation", () => {
       app = await buildApp(env, { initialCampaigns: [], llmClient: llm, researchClient: fakeResearch });
       const cookie = await loginCookie(app);
       llm.enqueueJson(strategy());
-      const created = await app.inject({ method: "POST", url: "/api/campaigns", headers: { cookie }, payload: { requestId: randomUUID(), brief: offering() } });
+      const requestId = randomUUID();
+      await bindSampleSheet(app, cookie, requestId);
+      const created = await app.inject({ method: "POST", url: "/api/campaigns", headers: { cookie }, payload: { requestId, brief: offering() } });
       const id = created.json().id;
       const ctx = getAppContext(app);
-      ctx.campaignStore.assign(id, ["L-100"], true);
       llm.enqueueJson(prospectBrief());
       const brief = await ctx.preparation.prepare(ctx.campaignStore.get(id)!, (await ctx.adapter!.findLeadById("L-100"))!);
       await app.close(); app = undefined;

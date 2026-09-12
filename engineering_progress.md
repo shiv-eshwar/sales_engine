@@ -251,7 +251,7 @@ Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` (6/6) and V
 
 - [x] Ready shows a next-up contact card with Call as the primary action; table is secondary (`All leads`)
 - [x] First-run is an empty-state card, not an auto-opened campaign drawer
-- [x] Assign leads checkbox list for eligible Sheet contacts
+- [x] Every eligible Sheet row is in the selected campaign queue (no assign-leads UI)
 - [x] Disabled Generate looks disabled; AI copy does not name env vars
 - [x] Live HUD: sticky Mute/Hang Up, large cue, keypad collapsed behind “Need to press a key?”
 - [x] Live call hides New campaign, disables campaign switching, intercepts Ready navigation
@@ -271,6 +271,16 @@ Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` and Vitest 
 - [x] Campaign creation is an in-app interview chat (assistant-ui + `campaign-interview` agent), not a form
 - [x] Campaign form/drawer fields removed; POST `/api/campaigns` remains for tests and internal use
 - [x] Merged P0/P1 caller workflow kept: next-up Ready, pinned live HUD, Approve → next contact
+
+### Operator UI rebuild (Refactoring UI)
+
+Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` (6/6) and Vitest 137. Visual pass against screenshots of empty, Ready, lead detail, sheet connect, diagnostics.
+
+- [x] HSL grey/primary/accent scales, hand-crafted type and spacing tokens, ~5 elevations, one 8px radius (no pill mix)
+- [x] Feature-first Ready: next contact + Call as the only solid primary; Skip outline; Refresh tertiary
+- [x] Empty campaign is a first-class screen with accent bar and one CTA; header chrome de-emphasized
+- [x] Live HUD keeps same-hue secondaries on the dark ground (no grey-on-navy)
+- [x] Review ranks semantic outcome over label:value dumps; Approve stays the pinned primary
 
 ---
 
@@ -361,3 +371,7 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-12 | Shared empty states for no campaign, empty queue, sheet, search, review, and missing lead. Header hides the campaign selector when none exist and shows New campaign instead. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-12 | Campaign creation now requires connecting a Google Sheet first: continue with the current Sheet, link an existing spreadsheet, or create a new one with standard CRM headers. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-12 | Added Refactoring UI as project skill `.cursor/skills/ui-ux/` plus a client-file Cursor rule so operator UI work loads hierarchy, spacing, type, and empty-state guidance. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-12 | Rebuilt operator UI from Refactoring UI: HSL 100–900 palette, type/space/elevation tokens, one 8px radius, action pyramid, empty-state-first, fewer borders. Screenshots used to fix translucent sticky header, modal height, and competing primaries. Typecheck + 137 Vitest + 6 Playwright. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-12 | Dropped custom CSS utilities (`.kicker`, `.choice`, `.hud`, …). Operator UI now uses Tailwind + HeroUI class names; Sheet connect options stack title above description with `flex-col gap-2`. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-12 | Eligible Sheet rows are the campaign queue (assign-leads UI/API removed). Navbar is one 56px bar: wordmark, campaign name, problem status, New campaign. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-12 | Each campaign owns a unique spreadsheet (no sharing). Create/link binds a pending Sheet to the new campaign; selecting a campaign switches the adapter. Typecheck + 138 Vitest + 6 Playwright. | Slice 6 code complete; live smoke still blocked |

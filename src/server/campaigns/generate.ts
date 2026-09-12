@@ -34,5 +34,13 @@ export async function generateCampaign(llm: LlmClient, brief: CampaignBrief, tim
     }
   });
   const now = new Date().toISOString();
-  return { config, brief, strategy, createdAt: previous?.createdAt ?? now, updatedAt: now };
+  return {
+    config,
+    brief,
+    strategy,
+    createdAt: previous?.createdAt ?? now,
+    updatedAt: now,
+    spreadsheetId: previous?.spreadsheetId ?? null,
+    sheetName: previous?.sheetName ?? null
+  };
 }

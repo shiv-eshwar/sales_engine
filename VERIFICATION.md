@@ -89,14 +89,14 @@ Source: `tests/integration/holdouts.test.ts`. Prompts send campaign config, not 
 |---|---|
 | No example campaigns at production startup; create separate offerings | `tests/integration/ai-campaigns.test.ts`, `tests/e2e/campaigns.spec.ts` |
 | AI-generated names, strategies, questions and qualification; invalid JSON stays unsaved | Campaign API tests and browser failure/retry flow |
-| Explicit assignment or CRM tag filters leads; skips stay within the campaign; foreign-campaign calls blocked | Campaign integration tests |
-| Campaigns, assignments and briefs persist across server restart | SQLite restart test |
+| Eligible Sheet rows are the campaign queue; skips stay within the campaign | Campaign integration tests |
+| Campaigns and briefs persist across server restart | SQLite restart test |
 | Per-campaign/prospect cache, in-flight deduplication and invalidation on context/version changes | Preparation integration tests |
 | Web search is required; only provider citations become source links; model-only/incomplete results rejected | `tests/unit/research.test.ts` |
 | Missing research produces labeled CRM-only content; invented citations are rejected | Preparation integration tests |
 | Exact generated plan frozen on the call; editing campaign cannot alter coaching/review criteria | Campaign integration test and browser call-preparation view |
 | Qualification uses generated criterion rules; missing evidence cannot mark a contact qualified; DNC is unconditional | Qualification and campaign integration tests |
-| Browser creation, assignment, switching, regeneration, cited sources and retained form input on failure | `tests/e2e/campaigns.spec.ts` |
+| Browser creation, switching, regeneration, cited sources and retained form input on failure | `tests/e2e/campaigns.spec.ts` |
 
 The live Google Sheet passed preflight and the local application responded successfully. The initial direct API connection returned HTTP 401. The dedicated subscription proxy verification below supersedes that connection failure. No live prospect calls or Sheet writes were made for this feature verification.
 

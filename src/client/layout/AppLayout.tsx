@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Alert, Button } from "@heroui/react";
 import { useSession } from "../state/session";
 import { fetchBootstrap } from "../state/api";
@@ -23,6 +23,8 @@ export function AppLayout() {
   const twilioConfigured = data.twilio.status === "ok";
   const onReview = location.pathname.includes("/calls/") && location.pathname.endsWith("/review");
   const hideCampaignChrome = Boolean(liveCall) || onReview;
+  const hasCampaigns = data.campaigns.length > 0;
+  const selectedCampaign = data.campaigns.find((item) => item.id === data.selectedCampaignId);
 
   function guardLeadsNav(event: React.MouseEvent<HTMLAnchorElement>) {
     if (!liveCall) return;
@@ -56,82 +58,75 @@ export function AppLayout() {
   }
 
   return (
-    <div className="bg-background text-foreground min-h-screen">
-      <header className={`border-separator bg-surface/95 sticky top-0 z-40 border-b backdrop-blur ${liveCall ? "hidden" : ""}`}>
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-6 py-3">
-          <Link to="/leads" className="text-foreground text-base font-semibold tracking-tight" onClick={guardLeadsNav}>
+    <div className="min-h-screen">
+      <header className={`sticky top-0 z-50 bg-background ${liveCall ? "hidden" : ""}`}>
+        <div className="h-[3px] bg-accent" />
+        <div className="mx-auto flex h-14 w-full max-w-6xl min-w-0 items-center gap-3 px-4 sm:gap-6 sm:px-6">
+          <Link
+            to="/leads"
+            className="shrink-0 text-[15px] font-semibold tracking-tight text-foreground"
+            onClick={guardLeadsNav}
+          >
             {PRODUCT_NAME}
           </Link>
-          <nav className="flex items-center gap-1 text-sm" aria-label="Primary">
-            <NavLink
-              to="/leads"
-              onClick={guardLeadsNav}
-              className={({ isActive }) =>
-                `rounded-md px-3 py-1.5 font-medium ${isActive ? "bg-foreground text-background" : "text-muted hover:bg-surface-secondary"}`
-              }
+          {hasCampaigns ? (
+            <select
+              id="campaign"
+              aria-label="Campaign"
+              title={selectedCampaign?.name}
+              className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-[15px] font-medium text-foreground"
+              value={data.selectedCampaignId ?? ""}
+              disabled={pending || campaignBusy || Boolean(editor) || Boolean(liveCall)}
+              onChange={(event) => {
+                void handleSelectCampaign(event.target.value);
+              }}
             >
-              Ready
-            </NavLink>
-          </nav>
-          <div className="ml-auto flex flex-wrap items-center gap-3">
-            {data.campaigns.length > 0 ? (
-              <label className="text-muted flex items-center gap-2 text-xs font-medium uppercase tracking-wide" htmlFor="campaign">
-                Campaign
-                <select
-                  id="campaign"
-                  aria-label="Campaign"
-                  className="border-separator bg-surface text-foreground rounded-md border px-2 py-1.5 text-sm normal-case tracking-normal"
-                  value={data.selectedCampaignId ?? ""}
-                  disabled={pending || campaignBusy || Boolean(editor) || Boolean(liveCall)}
-                  onChange={(event) => {
-                    void handleSelectCampaign(event.target.value);
-                  }}
-                >
-                  {data.campaigns.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
+              {data.campaigns.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+
+          <div className="ml-auto flex min-w-0 max-w-[58%] shrink-0 items-center justify-end gap-3 sm:max-w-none sm:gap-4">
             <ReadinessChip
               sheet={data.sheet}
               twilioConfigured={twilioConfigured}
               deviceStatus={deviceStatus}
               diagnosticCount={data.sheet.diagnostics.length}
             />
+            {data.twilio.callerId ? (
+              <p className="hidden truncate font-mono text-xs text-muted sm:block" title={deviceDetail}>
+                {data.twilio.callerId}
+              </p>
+            ) : null}
             {hideCampaignChrome ? null : (
-              <Button
-                variant={data.campaigns.length > 0 ? "outline" : "primary"}
-                size="sm"
-                onPress={() => setEditor("new")}
-                isDisabled={pending || campaignBusy || Boolean(editor)}
+              <button
+                type="button"
+                className="shrink-0 text-sm font-semibold text-muted hover:text-foreground disabled:opacity-50"
+                disabled={pending || campaignBusy || Boolean(editor)}
+                onClick={() => setEditor("new")}
               >
                 New campaign
-              </Button>
+              </button>
             )}
           </div>
-        </div>
-        <div className="mx-auto max-w-6xl px-6 pb-2">
-          <p className="text-muted text-xs">
-            {data.twilio.callerId ? `Calling from ${data.twilio.callerId} · ` : ""}{deviceDetail}
-          </p>
         </div>
       </header>
 
       {incoming ? (
-        <div className="mx-auto max-w-6xl px-6 pt-4">
+        <div className="mx-auto max-w-6xl px-6 pt-5">
           <Alert status="success" role="alert" aria-label="Incoming call">
             <Alert.Indicator />
             <Alert.Content>
               <Alert.Title>Incoming call from {incoming.from}</Alert.Title>
               <Alert.Description>Answer to talk in your browser, or decline to send them away.</Alert.Description>
-              <div className="mt-3 flex flex-wrap gap-3">
-                <Button isDisabled={pending} onPress={() => void onAnswer()}>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Button className="rounded-lg!" isDisabled={pending} onPress={() => void onAnswer()}>
                   Answer
                 </Button>
-                <Button variant="outline" onPress={declineIncoming}>
+                <Button variant="outline" className="rounded-lg!" onPress={declineIncoming}>
                   Decline
                 </Button>
               </div>
@@ -141,7 +136,7 @@ export function AppLayout() {
       ) : null}
 
       {error ? (
-        <div className="mx-auto max-w-6xl px-6 pt-4">
+        <div className="mx-auto max-w-6xl px-6 pt-5">
           <Alert status="danger" role="alert">
             <Alert.Indicator />
             <Alert.Content>
@@ -152,24 +147,22 @@ export function AppLayout() {
       ) : null}
 
       {inboundCall ? (
-        <div className="mx-auto max-w-6xl px-6 pt-4">
-          <CallingPanel
-            session={inboundCall}
-            recordingNotice={data.recordingNotice}
-            onSession={setInboundCall}
-            onTerminal={() => void closeInboundCall()}
-          />
-        </div>
+        <CallingPanel
+          session={inboundCall}
+          recordingNotice={data.recordingNotice}
+          onSession={setInboundCall}
+          onTerminal={() => void closeInboundCall()}
+        />
       ) : null}
 
-      <main className="mx-auto max-w-6xl px-6 py-6">
+      <main className="mx-auto max-w-6xl px-6 py-8">
         <Outlet />
       </main>
 
       {liveCall ? null : (
         <CampaignDrawer
           mode={editor}
-          campaign={data.campaigns.find((item) => item.id === data.selectedCampaignId)}
+          campaign={selectedCampaign}
           sheet={data.sheet}
           onBusy={setCampaignBusy}
           aiMessage={data.ai.status !== "ok" ? data.ai.message : undefined}

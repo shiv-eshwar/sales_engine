@@ -1,28 +1,38 @@
 import { useState } from "react";
-import { Alert, Button, Card } from "@heroui/react";
+import { Alert, Button } from "@heroui/react";
 import type { SheetInfo } from "../../shared/contracts";
 import { EMPTY_COPY } from "../copy";
 import { createLeadsSheet, linkLeadsSheet } from "../state/api";
 
+const choiceClass =
+  "flex w-full flex-col gap-2 rounded-lg bg-surface p-4 text-left shadow-sm hover:bg-surface-secondary disabled:opacity-50";
+const fieldClass = "flex flex-col gap-2";
+const inputClass = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground";
+const quietLinkClass = "text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4";
+
 export function SheetConnect({
   sheet,
+  requestId,
+  campaignId,
   onBusy,
-  onBound,
-  onContinueCurrent
+  onBound
 }: {
   sheet: SheetInfo;
+  requestId: string;
+  campaignId?: string;
   onBusy: (busy: boolean) => void;
   onBound: (next: SheetInfo) => Promise<void>;
-  onContinueCurrent: () => void;
 }) {
   const copy = EMPTY_COPY.sheetConnect;
-  const [mode, setMode] = useState<"choose" | "link" | "create">(sheet.status === "ok" ? "choose" : "choose");
+  const [mode, setMode] = useState<"choose" | "link" | "create">("choose");
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("Sales Engine Leads");
   const [shareEmail, setShareEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const currentReady = sheet.status === "ok";
+  const sampleAvailable = sheet.backend === "memory";
+  const googleReady = sheet.manageable;
+  const target = { requestId, campaignId };
 
   async function run(action: () => Promise<SheetInfo>) {
     setPending(true);
@@ -39,8 +49,8 @@ export function SheetConnect({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto">
-      <p className="text-muted text-sm leading-relaxed">{copy.description}</p>
+    <div className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto">
+      <p className="max-w-[32em] text-sm leading-relaxed text-muted">{copy.description}</p>
       {error ? (
         <Alert status="danger" role="alert">
           <Alert.Indicator />
@@ -49,7 +59,7 @@ export function SheetConnect({
           </Alert.Content>
         </Alert>
       ) : null}
-      {!sheet.manageable ? (
+      {!googleReady && !sampleAvailable ? (
         <Alert status="warning">
           <Alert.Indicator />
           <Alert.Content>
@@ -58,114 +68,114 @@ export function SheetConnect({
         </Alert>
       ) : null}
 
-      {currentReady ? (
-        <Card>
-          <Card.Header>
-            <Card.Title>Current Sheet</Card.Title>
-            <Card.Description>
-              {sheet.sheetName ? `${sheet.sheetName}` : "Leads"}
-              {sheet.spreadsheetId ? ` · ${sheet.spreadsheetId}` : ""}
-              {sheet.backend === "memory" ? " · sample leads" : ""}
-            </Card.Description>
-          </Card.Header>
-          <Card.Footer>
-            <Button onPress={onContinueCurrent} isDisabled={pending}>
-              {copy.continueCurrent}
-            </Button>
-            {sheet.url ? (
-              <a href={sheet.url} target="_blank" rel="noreferrer" className="text-sm font-medium underline underline-offset-2">
-                Open in Google
-              </a>
-            ) : null}
-          </Card.Footer>
-        </Card>
-      ) : null}
-
-      {mode === "choose" || !sheet.manageable ? (
-        <div className="flex flex-wrap gap-2">
-          {sheet.manageable ? (
+      {mode === "choose" ? (
+        <div className="flex flex-col gap-3">
+          {sampleAvailable ? (
+            <div className="flex w-full flex-col gap-2 rounded-lg bg-surface p-4 text-left shadow-sm">
+              <p className="font-semibold">{copy.sampleLeads}</p>
+              <p className="text-sm leading-relaxed text-muted">{copy.sampleLeadsHint}</p>
+              <div className="pt-1">
+                <Button
+                  className="rounded-lg!"
+                  isDisabled={pending}
+                  isPending={pending}
+                  onPress={() => {
+                    void run(async () => (await createLeadsSheet({ title, ...target })).sheet);
+                  }}
+                >
+                  {copy.sampleLeads}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          {googleReady ? (
             <>
-              <Button variant={currentReady ? "outline" : "primary"} isDisabled={pending} onPress={() => setMode("link")}>
-                {copy.linkExisting}
-              </Button>
-              <Button variant="outline" isDisabled={pending} onPress={() => setMode("create")}>
-                {copy.createNew}
-              </Button>
+              <button type="button" className={choiceClass} disabled={pending} onClick={() => setMode("link")}>
+                <span className="font-semibold">{copy.linkExisting}</span>
+                <span className="text-sm leading-relaxed text-muted">
+                  Use a spreadsheet you already keep leads in.
+                </span>
+              </button>
+              <button type="button" className={choiceClass} disabled={pending} onClick={() => setMode("create")}>
+                <span className="font-semibold">{copy.createNew}</span>
+                <span className="text-sm leading-relaxed text-muted">
+                  Create one with the Sales Engine headers.
+                </span>
+              </button>
             </>
-          ) : currentReady ? null : (
-            <p className="text-muted text-sm">{copy.googleMissing}</p>
-          )}
+          ) : null}
         </div>
       ) : null}
 
-      {mode === "link" && sheet.manageable ? (
+      {mode === "link" && googleReady ? (
         <form
-          className="flex flex-col gap-3"
+          className="flex max-w-lg flex-col gap-6"
           onSubmit={(event) => {
             event.preventDefault();
-            void run(async () => (await linkLeadsSheet(url)).sheet);
+            void run(async () => (await linkLeadsSheet(url, target)).sheet);
           }}
         >
-          <label className="text-sm font-medium" htmlFor="sheet-url">
-            {copy.urlLabel}
+          <label className={fieldClass} htmlFor="sheet-url">
+            <span className="text-sm font-semibold">{copy.urlLabel}</span>
+            <input
+              id="sheet-url"
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder={copy.urlPlaceholder}
+              autoComplete="off"
+              className={inputClass}
+            />
           </label>
-          <input
-            id="sheet-url"
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            placeholder={copy.urlPlaceholder}
-            autoComplete="off"
-            className="border-separator bg-surface w-full rounded-md border px-3 py-2 text-sm"
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" isDisabled={pending || url.trim().length < 8} isPending={pending}>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" className="rounded-lg!" isDisabled={pending || url.trim().length < 8} isPending={pending}>
               {copy.linkAction}
             </Button>
-            <Button variant="ghost" type="button" isDisabled={pending} onPress={() => setMode("choose")}>
+            <button type="button" className={quietLinkClass} disabled={pending} onClick={() => setMode("choose")}>
               Back
-            </Button>
+            </button>
           </div>
         </form>
       ) : null}
 
-      {mode === "create" && sheet.manageable ? (
+      {mode === "create" && googleReady ? (
         <form
-          className="flex flex-col gap-3"
+          className="flex max-w-lg flex-col gap-6"
           onSubmit={(event) => {
             event.preventDefault();
             void run(async () => (await createLeadsSheet({
               title,
-              shareEmail: shareEmail.trim() || undefined
+              shareEmail: shareEmail.trim() || undefined,
+              ...target
             })).sheet);
           }}
         >
-          <label className="text-sm font-medium" htmlFor="sheet-title">
-            {copy.titleLabel}
+          <label className={fieldClass} htmlFor="sheet-title">
+            <span className="text-sm font-semibold">{copy.titleLabel}</span>
+            <input
+              id="sheet-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              className={inputClass}
+            />
           </label>
-          <input
-            id="sheet-title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            className="border-separator bg-surface w-full rounded-md border px-3 py-2 text-sm"
-          />
-          <label className="text-sm font-medium" htmlFor="sheet-email">
-            {copy.shareLabel}
+          <label className={fieldClass} htmlFor="sheet-email">
+            <span className="text-sm font-semibold">{copy.shareLabel}</span>
+            <input
+              id="sheet-email"
+              type="email"
+              value={shareEmail}
+              onChange={(event) => setShareEmail(event.target.value)}
+              className={inputClass}
+            />
+            <span className="text-sm text-muted">{copy.shareHint}</span>
           </label>
-          <input
-            id="sheet-email"
-            type="email"
-            value={shareEmail}
-            onChange={(event) => setShareEmail(event.target.value)}
-            className="border-separator bg-surface w-full rounded-md border px-3 py-2 text-sm"
-          />
-          <p className="text-muted text-xs leading-relaxed">{copy.shareHint}</p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" isDisabled={pending || title.trim().length < 1} isPending={pending}>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" className="rounded-lg!" isDisabled={pending || title.trim().length < 1} isPending={pending}>
               {copy.createAction}
             </Button>
-            <Button variant="ghost" type="button" isDisabled={pending} onPress={() => setMode("choose")}>
+            <button type="button" className={quietLinkClass} disabled={pending} onClick={() => setMode("choose")}>
               Back
-            </Button>
+            </button>
           </div>
         </form>
       ) : null}

@@ -7,6 +7,7 @@ import { interviewCampaignTurn } from "../campaigns/interview.js";
 import type { AppContext } from "../context.js";
 import { toPublicLead } from "../leads/nextLead.js";
 import { toPublicCampaign } from "./leads.js";
+import { activateCampaignSheet, peekPendingSheet, SheetBindingError, takePendingSheet } from "../sheets/bind.js";
 
 const createSchema = z.object({ brief: campaignBriefSchema, requestId: z.uuid() });
 const updateSchema = z.object({ brief: campaignBriefSchema, expectedVersion: z.number().int().positive() });
@@ -20,9 +21,17 @@ const interviewSchema = z.object({
 });
 
 function generationError(error: unknown): string {
+  if (error instanceof SheetBindingError) return error.message;
   if (error instanceof Error && error.message === "LLM HTTP 401") return "The AI provider rejected the API key. Update LLM_API_KEY and restart the server, then try again.";
-  if (error instanceof Error && /^(LLM HTTP|Campaign changed|Configure the LLM|Generated brief cited)/.test(error.message)) return error.message;
+  if (error instanceof Error && /^(LLM HTTP|Campaign changed|Configure the LLM|Generated brief cited|That Sheet is already|Connect a unique)/.test(error.message)) return error.message;
   return "AI generation failed or returned an invalid result. Check the AI connection and try again; your saved campaign is unchanged.";
+}
+
+function generationStatus(error: unknown): number {
+  if (error instanceof SheetBindingError) return error.http;
+  if (error instanceof Error && error.message.startsWith("Connect a unique")) return 400;
+  if (error instanceof Error && error.message.startsWith("That Sheet is already")) return 409;
+  return 502;
 }
 
 export async function registerCampaigns(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -58,6 +67,7 @@ export async function registerCampaigns(app: FastifyInstance, ctx: AppContext): 
         if (existing) {
           return { text: turn.message, campaign: toPublicCampaign(existing.config, ctx) };
         }
+        peekPendingSheet(ctx, parsed.data.requestId);
       }
       const campaign = await generateCampaign(
         ctx.llmClient,
@@ -71,18 +81,27 @@ export async function registerCampaigns(app: FastifyInstance, ctx: AppContext): 
         const index = ctx.campaigns.findIndex(item => item.id === previous.config.id);
         ctx.campaigns.splice(index, 1, campaign.config);
       } else {
-        ctx.campaignStore.save(campaign);
+        const sheet = takePendingSheet(ctx, parsed.data.requestId);
+        campaign.spreadsheetId = sheet.spreadsheet_id;
+        campaign.sheetName = sheet.sheet_name;
+        try {
+          ctx.campaignStore.save(campaign);
+        } catch (error) {
+          ctx.pendingSheets.set(parsed.data.requestId, sheet);
+          throw error;
+        }
         ctx.campaigns.push(campaign.config);
         ctx.operator.selectedCampaignId = campaign.config.id;
         ctx.operator.selectedLeadId = null;
+        await activateCampaignSheet(ctx, campaign.config.id);
       }
       const created = toPublicCampaign(campaign.config, ctx);
       const suffix = previous
         ? `Updated ${created.name} (strategy v${created.version}). You can keep calling.`
-        : `Created ${created.name}. Assign leads if you need to, then start calling.`;
+        : `Created ${created.name}. Eligible Sheet contacts are ready to call.`;
       return { text: `${turn.message}\n\n${suffix}`, campaign: created };
     } catch (error) {
-      return reply.code(502).send({ error: generationError(error) });
+      return reply.code(generationStatus(error)).send({ error: generationError(error) });
     } finally {
       generating.delete(lockKey);
     }
@@ -102,14 +121,24 @@ export async function registerCampaigns(app: FastifyInstance, ctx: AppContext): 
     if (generating.has(requestId) || generating.size >= 2) return reply.code(409).send({ error: "Campaign generation is already in progress. Wait for it to finish." });
     generating.add(requestId);
     try {
+      peekPendingSheet(ctx, requestId);
       const campaign = await generateCampaign(ctx.llmClient, brief, ctx.env.AI_GENERATION_TIMEOUT_MS, undefined, requestId);
-      ctx.campaignStore.save(campaign);
+      const sheet = takePendingSheet(ctx, requestId);
+      campaign.spreadsheetId = sheet.spreadsheet_id;
+      campaign.sheetName = sheet.sheet_name;
+      try {
+        ctx.campaignStore.save(campaign);
+      } catch (error) {
+        ctx.pendingSheets.set(requestId, sheet);
+        throw error;
+      }
       ctx.campaigns.push(campaign.config);
       ctx.operator.selectedCampaignId = campaign.config.id;
       ctx.operator.selectedLeadId = null;
+      await activateCampaignSheet(ctx, campaign.config.id);
       return reply.code(201).send(toPublicCampaign(campaign.config, ctx));
     } catch (error) {
-      return reply.code(502).send({ error: generationError(error) });
+      return reply.code(generationStatus(error)).send({ error: generationError(error) });
     } finally {
       generating.delete(requestId);
     }
@@ -133,35 +162,10 @@ export async function registerCampaigns(app: FastifyInstance, ctx: AppContext): 
       ctx.campaigns.splice(index, 1, campaign.config);
       return toPublicCampaign(campaign.config, ctx);
     } catch (error) {
-      return reply.code(502).send({ error: generationError(error) });
+      return reply.code(generationStatus(error)).send({ error: generationError(error) });
     } finally {
       generating.delete(id);
     }
-  });
-
-  app.get("/api/campaigns/:id/leads", { preHandler: auth }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    if (!ctx.campaigns.some(item => item.id === id)) return reply.code(404).send({ error: "Campaign not found" });
-    if (!ctx.adapter) return reply.code(503).send({ error: "Sheet is not configured" });
-    const queue = await ctx.adapter.loadQueue();
-    const belongs = ctx.campaignStore.membership(id);
-    return { leads: queue.leads.map(lead => ({
-      leadId: lead.leadId, fullName: lead.fullName, company: lead.company, role: lead.role,
-      sheetCampaign: lead.campaignId, assigned: belongs(lead)
-    })) };
-  });
-
-  app.post("/api/campaigns/:id/leads", { preHandler: auth }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    if (!ctx.campaigns.some(item => item.id === id)) return reply.code(404).send({ error: "Campaign not found" });
-    const parsed = z.object({ leadIds: z.array(z.string().min(1).max(200)).min(1).max(1000), assigned: z.boolean() }).safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: "Select eligible leads to assign or remove." });
-    if (!ctx.adapter) return reply.code(503).send({ error: "Sheet is not configured" });
-    const queue = await ctx.adapter.loadQueue();
-    const eligible = new Set(queue.leads.map(lead => lead.leadId));
-    if (parsed.data.leadIds.some(leadId => !eligible.has(leadId))) return reply.code(409).send({ error: "A selected lead is no longer eligible. Refresh the list." });
-    ctx.campaignStore.assign(id, parsed.data.leadIds, parsed.data.assigned);
-    return { ok: true };
   });
 
   app.post("/api/campaigns/:id/leads/:leadId/prepare", { preHandler: auth }, async (request, reply) => {
@@ -172,13 +176,13 @@ export async function registerCampaigns(app: FastifyInstance, ctx: AppContext): 
     const campaign = ctx.campaignStore.get(id);
     if (!campaign) return reply.code(404).send({ error: "AI campaign not found" });
     if (!ctx.llmClient) return reply.code(503).send({ error: "Configure the LLM connection to prepare this call." });
+    await activateCampaignSheet(ctx, id);
     const lead = await ctx.adapter?.findLeadById(leadId);
     if (!lead) return reply.code(404).send({ error: "Lead is not eligible" });
-    if (!ctx.campaignStore.includes(id, lead)) return reply.code(409).send({ error: "Lead is not assigned to this campaign" });
     try {
       const preparation = await ctx.preparation.prepare(campaign, toPublicLead(lead), parsed.data.force);
-      if (ctx.campaignStore.get(id)?.config.version !== campaign.config.version || !ctx.campaignStore.includes(id, lead)) {
-        return reply.code(409).send({ error: "Campaign or lead assignment changed while preparing. Refresh and try again." });
+      if (ctx.campaignStore.get(id)?.config.version !== campaign.config.version) {
+        return reply.code(409).send({ error: "Campaign changed while preparing. Refresh and try again." });
       }
       return preparation;
     } catch (error) {

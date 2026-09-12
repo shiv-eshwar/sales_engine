@@ -61,13 +61,13 @@ export function LeadDetailPage() {
     return (
       <div>
         <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: "Lead" }]} />
-        <div className="mt-8">
+        <div className="mt-10">
           <EmptyState
             icon="leads"
             title={EMPTY_COPY.leadUnspecified.title}
             description={EMPTY_COPY.leadUnspecified.description}
             action={
-              <Link to="/leads" className="text-sm font-medium underline underline-offset-2">
+              <Link to="/leads" className="text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4">
                 Back to ready
               </Link>
             }
@@ -81,13 +81,13 @@ export function LeadDetailPage() {
     return (
       <div>
         <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: decodedId }]} />
-        <div className="mt-8">
+        <div className="mt-10">
           <EmptyState
             icon="leads"
             title={EMPTY_COPY.leadMissing.title}
-            description={`${decodedId} is not in this campaign queue. It may have been called, skipped, or filtered by the campaign tag.`}
+            description={`${decodedId} is not in this queue. It may have been called, skipped, or is no longer eligible.`}
             action={
-              <Link to="/leads" className="text-sm font-medium underline underline-offset-2">
+              <Link to="/leads" className="text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4">
                 Back to ready
               </Link>
             }
@@ -109,41 +109,40 @@ export function LeadDetailPage() {
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-8">
       <Breadcrumbs items={crumbs} />
-      <div className="mt-4">
         <ReadyContactCard
-          lead={lead}
-          campaign={campaign}
-          opening={opening}
-          firstQuestion={firstQuestion}
-          disabledReason={disabledReason}
-          starting={starting}
-          pending={pending}
-          callError={callError}
-          sheetBlocking={sheetBlocking}
-          onCall={() => void onCall()}
-          onSkip={() => void onSkip()}
-          onRefresh={onRefresh}
-          callButtonRef={callButtonRef}
-        />
-      </div>
+        lead={lead}
+        campaign={campaign}
+        kicker="Contact"
+        opening={opening}
+        firstQuestion={firstQuestion}
+        disabledReason={disabledReason}
+        starting={starting}
+        pending={pending}
+        callError={callError}
+        sheetBlocking={sheetBlocking}
+        onCall={() => void onCall()}
+        onSkip={() => void onSkip()}
+        onRefresh={onRefresh}
+        callButtonRef={callButtonRef}
+      />
 
       {lead.enrichment ? (
-        <details className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
-          <summary className="cursor-pointer text-sm font-medium">Context</summary>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{lead.enrichment}</p>
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold">Context</summary>
+          <p className="mt-3 max-w-[32em] whitespace-pre-wrap text-sm leading-relaxed text-muted">{lead.enrichment}</p>
         </details>
       ) : null}
 
       {(campaign?.requiredQuestions.length ?? 0) > 0 ? (
-        <details className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
-          <summary className="cursor-pointer text-sm font-medium">Questions</summary>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-800">
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold">Questions</summary>
+          <ul className="mt-3 max-w-xl space-y-2 text-sm">
             {(campaign?.requiredQuestions ?? []).map((question) => (
               <li key={question.id}>
                 {question.prompt}
-                {question.required ? " (priority)" : ""}
+                {question.required ? <span className="text-sm text-muted"> · priority</span> : ""}
               </li>
             ))}
           </ul>
@@ -151,10 +150,10 @@ export function LeadDetailPage() {
       ) : null}
 
       {campaign?.brief ? (
-        <details className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
-          <summary className="cursor-pointer text-sm font-medium">Prep</summary>
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold">Prep</summary>
           {preparing ? (
-            <div className="mt-3">
+            <div className="mt-4">
               <LoadingSkeleton
                 title={`Researching ${lead.company || "the company"}…`}
                 detail={`Preparing questions for ${lead.fullName || "this prospect"}. This can take a minute or two.`}
@@ -162,12 +161,12 @@ export function LeadDetailPage() {
               />
             </div>
           ) : null}
-          {prepError ? <p role="alert" className="mt-3 text-sm text-red-700">{prepError}</p> : null}
+          {prepError ? <p role="alert" className="mt-3 text-sm font-medium text-danger">{prepError}</p> : null}
           {preparation ? <ProspectBrief preparation={preparation} /> : null}
           <Button
             variant="outline"
             size="sm"
-            className="mt-3"
+            className="mt-4 rounded-lg!"
             isDisabled={preparing || pending}
             onPress={regeneratePrep}
           >
@@ -176,9 +175,9 @@ export function LeadDetailPage() {
         </details>
       ) : null}
 
-        <Link to="/leads" className="mt-4 inline-block text-sm text-indigo-800 underline">
-          Back to ready
-        </Link>
+      <Link to="/leads" className="w-fit text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4">
+        Back to ready
+      </Link>
     </div>
   );
 }

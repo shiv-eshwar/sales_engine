@@ -44,6 +44,7 @@ export type PublicCampaign = {
   objective: string;
   openingContext: string;
   requiredQuestions: Array<{ id: string; prompt: string; required: boolean }>;
+  spreadsheetId: string | null;
   brief?: CampaignBrief;
   strategy?: CampaignStrategy;
 };

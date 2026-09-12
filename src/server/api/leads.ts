@@ -19,6 +19,7 @@ export function toPublicCampaign(campaign: AppContext["campaigns"][number], ctx:
     objective: campaign.objective,
     openingContext: campaign.opening_context,
     requiredQuestions: campaign.required_questions,
+    spreadsheetId: managed?.spreadsheetId ?? ctx.fileSheetIds.get(campaign.id) ?? null,
     ...(managed ? { brief: managed.brief, strategy: managed.strategy } : {})
   };
 }
@@ -117,7 +118,7 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
       return reply.code(400).send({ error: "Unknown campaign" });
     }
     // Tentatively select, then let loadNextLead validate eligibility (skipped,
-    // unassigned, ineligible, or missing). If the requested lead is not in the
+    // ineligible, or missing). If the requested lead is not in the
     // returned queue the selection did not stick and the previous lead is kept.
     const previousLeadId = ctx.operator.selectedLeadId;
     ctx.operator.selectedLeadId = parsed.data.leadId;

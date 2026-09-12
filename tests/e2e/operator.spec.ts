@@ -141,5 +141,5 @@ const invalidSheet = base.extend<{ server: E2eServer }>({
 invalidSheet("invalid Sheet headers block Call", async ({ page, server }) => {
   await login(page, server.baseURL);
   await expect(page.getByLabel("Sheet blocking error")).toBeVisible();
-  await expect(page.getByLabel("Sheet blocking error")).toContainText("Sheet needs attention");
+  await expect(page.getByLabel("Sheet blocking error")).toContainText("Sheet needs a fix");
 });

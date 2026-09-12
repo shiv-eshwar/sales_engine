@@ -1,7 +1,7 @@
 import { useSession } from "../state/session";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { diagnosticCopy } from "../copy";
-import { Alert, Card } from "@heroui/react";
+import { Alert } from "@heroui/react";
 
 export function DiagnosticsPage() {
   const { data } = useSession();
@@ -13,8 +13,8 @@ export function DiagnosticsPage() {
   return (
     <div>
       <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: "Queue diagnostics" }]} />
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight">Queue diagnostics</h1>
-      <p className="text-muted mt-1 text-sm">
+      <h1 className="mt-4 text-2xl font-semibold tracking-tight">Queue diagnostics</h1>
+      <p className="mt-2 max-w-[32em] text-sm leading-relaxed text-muted">
         {blocking
           ? "The sheet needs a fix before calling."
           : issues.length > 0
@@ -23,7 +23,7 @@ export function DiagnosticsPage() {
       </p>
 
       {issues.length === 0 ? (
-        <Alert status={usable ? "success" : "warning"} className="mt-5">
+        <Alert status={usable ? "success" : "warning"} className="mt-6">
           <Alert.Indicator />
           <Alert.Content>
             <Alert.Title>
@@ -32,12 +32,10 @@ export function DiagnosticsPage() {
           </Alert.Content>
         </Alert>
       ) : (
-        <ul className="mt-5 space-y-2">
+        <ul className="mt-6 max-w-xl space-y-3">
           {issues.map((item, index) => (
-            <li key={`${item.code}-${index}`}>
-              <Card>
-                <Card.Content className="text-sm">{diagnosticCopy(item)}</Card.Content>
-              </Card>
+            <li key={`${item.code}-${index}`} className="rounded-lg bg-surface px-4 py-3 text-sm shadow-sm">
+              {diagnosticCopy(item)}
             </li>
           ))}
         </ul>

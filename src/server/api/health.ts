@@ -34,11 +34,13 @@ export async function registerHealth(app: FastifyInstance, ctx: AppContext): Pro
     const backend = resolveSheetsBackend(ctx.env);
     if (!ctx.adapter) {
       checks.sheet = {
-        ok: backend === "none",
+        ok: ctx.campaigns.length === 0 || backend === "none",
         message:
-          backend === "none"
-            ? "Sheet backend is unconfigured"
-            : ctx.sheetMessage || "Sheet adapter is unavailable"
+          ctx.campaigns.length === 0
+            ? "Connect a unique Sheet when you create a campaign"
+            : backend === "none"
+              ? "Sheet backend is unconfigured"
+              : ctx.sheetMessage || "Sheet adapter is unavailable"
       };
     } else {
       const preflight = await ctx.adapter.preflight();

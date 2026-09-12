@@ -126,12 +126,3 @@ export const preparationSchema = z.object({
   brief: prospectBriefSchema
 });
 export type ProspectPreparation = z.infer<typeof preparationSchema>;
-
-export type CampaignLead = {
-  leadId: string;
-  fullName: string;
-  company: string;
-  role: string;
-  sheetCampaign: string;
-  assigned: boolean;
-};

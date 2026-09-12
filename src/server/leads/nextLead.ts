@@ -2,7 +2,7 @@ import type { BootstrapResponse, PublicLead } from "../../shared/contracts.js";
 import type { AppContext } from "../context.js";
 import type { LeadRecord } from "../../shared/types.js";
 import { skippedLeadKey } from "../campaigns/store.js";
-import { withSheetBinding } from "../sheets/bind.js";
+import { activateCampaignSheet, withSheetBinding } from "../sheets/bind.js";
 
 export function toPublicLead(lead: LeadRecord): PublicLead {
   return {
@@ -27,6 +27,7 @@ export async function loadNextLead(ctx: AppContext): Promise<{
   diagnostics: BootstrapResponse["sheet"]["diagnostics"];
   sheetStatus: BootstrapResponse["sheet"];
 }> {
+  await activateCampaignSheet(ctx, ctx.operator.selectedCampaignId);
   if (!ctx.adapter) {
     ctx.operator.selectedLeadId = null;
     return {
@@ -87,7 +88,7 @@ export async function loadNextLead(ctx: AppContext): Promise<{
     diagnostics: queue.diagnostics,
     sheetStatus: withSheetBinding(ctx, {
       status: "ok",
-      message: lead ? "Sheet connected" : campaignId ? "No eligible leads assigned to this campaign" : "Create or select a campaign to choose leads",
+      message: lead ? "Sheet connected" : campaignId ? "No eligible contacts in the connected Sheet" : "Create a campaign to start calling",
       diagnostics: queue.diagnostics
     })
   };

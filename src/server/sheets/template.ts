@@ -1,5 +1,20 @@
 import type { SheetsConfig } from "../../shared/schemas.js";
 
+export function sheetsConfigForSpreadsheet(
+  template: SheetsConfig | null,
+  spreadsheetId: string,
+  sheetName?: string
+): SheetsConfig {
+  if (template) {
+    return {
+      ...template,
+      spreadsheet_id: spreadsheetId,
+      sheet_name: sheetName ?? template.sheet_name
+    };
+  }
+  return standardSheetsConfig(spreadsheetId, sheetName);
+}
+
 export function standardSheetsConfig(spreadsheetId: string, sheetName = "Leads"): SheetsConfig {
   return {
     spreadsheet_id: spreadsheetId,

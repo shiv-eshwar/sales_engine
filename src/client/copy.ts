@@ -54,7 +54,7 @@ export const EMPTY_COPY = {
   },
   queue: {
     title: "No one is ready to call",
-    description: "Assign eligible Sheet contacts to this campaign, or fix phone numbers that cannot be dialed."
+    description: "No eligible contacts in the connected Sheet, or their phone numbers cannot be dialed."
   },
   search: {
     title: "No matching leads",
@@ -64,17 +64,9 @@ export const EMPTY_COPY = {
     title: "No dialable leads",
     description: "Contacts that need a phone fix are hidden."
   },
-  assigned: {
-    title: "No eligible leads",
-    description: "No eligible leads assigned to this campaign yet."
-  },
-  assign: {
-    title: "No contacts to assign",
-    description: "No eligible Sheet contacts are available to assign."
-  },
   leadMissing: {
     title: "Lead not found",
-    description: "This contact is not in the campaign queue. It may have been called, skipped, or filtered by the campaign tag."
+    description: "This contact is not in the queue. It may have been called, skipped, or is no longer eligible."
   },
   leadUnspecified: {
     title: "No lead selected",
@@ -98,8 +90,9 @@ export const EMPTY_COPY = {
   },
   sheetConnect: {
     title: "Connect a leads Sheet",
-    description: "Campaigns pull contacts from Google Sheets. Link a Sheet you already use, or create a new one with the Sales Engine headers.",
-    continueCurrent: "Continue with this Sheet",
+    description: "Each campaign needs its own leads Sheet. Campaigns cannot share a spreadsheet. Link one you already use, or create a new one with the Sales Engine headers.",
+    sampleLeads: "Use sample leads",
+    sampleLeadsHint: "Creates a private sample queue for this campaign only.",
     linkExisting: "Link existing Sheet",
     createNew: "Create a new Sheet",
     urlLabel: "Google Sheet URL or ID",

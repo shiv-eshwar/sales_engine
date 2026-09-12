@@ -1,5 +1,5 @@
 import type { BootstrapResponse, DailySummary, PublicCampaign, PublicLead, PublicProposal, PublicWriteFields, SheetInfo } from "../../shared/contracts";
-import type { CampaignBrief, CampaignLead, ProspectPreparation } from "../../shared/campaigns";
+import type { CampaignBrief, ProspectPreparation } from "../../shared/campaigns";
 
 async function parseError(response: Response): Promise<string> {
   try {
@@ -256,27 +256,25 @@ export type SheetConnectResult = {
   sheet: SheetInfo;
 };
 
-export function createLeadsSheet(input: { title?: string; shareEmail?: string } = {}): Promise<SheetConnectResult> {
+export function createLeadsSheet(input: {
+  title?: string;
+  shareEmail?: string;
+  requestId?: string;
+  campaignId?: string;
+} = {}): Promise<SheetConnectResult> {
   return campaignRequest("/api/sheets/create", {
     method: "POST",
     body: JSON.stringify(input)
   });
 }
 
-export function linkLeadsSheet(spreadsheet: string): Promise<SheetConnectResult> {
+export function linkLeadsSheet(
+  spreadsheet: string,
+  input: { requestId?: string; campaignId?: string } = {}
+): Promise<SheetConnectResult> {
   return campaignRequest("/api/sheets/link", {
     method: "POST",
-    body: JSON.stringify({ spreadsheet })
-  });
-}
-
-export function fetchCampaignLeads(campaignId: string, signal?: AbortSignal): Promise<{ leads: CampaignLead[] }> {
-  return campaignRequest(`/api/campaigns/${encodeURIComponent(campaignId)}/leads`, { signal });
-}
-
-export function assignCampaignLeads(campaignId: string, leadIds: string[], assigned: boolean): Promise<{ ok: true }> {
-  return campaignRequest(`/api/campaigns/${encodeURIComponent(campaignId)}/leads`, {
-    method: "POST", body: JSON.stringify({ leadIds, assigned })
+    body: JSON.stringify({ spreadsheet, ...input })
   });
 }
 

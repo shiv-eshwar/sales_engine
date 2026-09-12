@@ -10,7 +10,7 @@ import {
 import type { ResearchInput, ResearchResult } from "../../src/server/research/client.js";
 import type { PublicCampaign } from "../../src/shared/contracts.js";
 import type { ProspectPreparation } from "../../src/shared/campaigns.js";
-import { getAppContext, loginCookie, startTestApp } from "../helpers/app.js";
+import { getAppContext, loginCookie, startTestApp, bindSampleSheet } from "../helpers/app.js";
 import { offering, prospectBrief, strategy } from "../helpers/campaigns.js";
 import { FakeLlmClient } from "../helpers/llm.js";
 
@@ -101,9 +101,11 @@ describe("preparation reuses cached research", () => {
     const cookie = await loginCookie(app);
     const ctx = getAppContext(app);
     async function create(name: string): Promise<PublicCampaign> {
+      const requestId = randomUUID();
+      await bindSampleSheet(app, cookie, requestId);
       llm.enqueueJson(strategy(name));
       const response = await app.inject({ method: "POST", url: "/api/campaigns", headers: { cookie }, payload: {
-        requestId: randomUUID(), brief: { ...offering(name), sheetCampaignValue: "" }
+        requestId, brief: { ...offering(name), sheetCampaignValue: "" }
       } });
       expect(response.statusCode, response.body).toBe(201);
       return response.json() as PublicCampaign;
@@ -116,8 +118,6 @@ describe("preparation reuses cached research", () => {
     }
     const first = await create("First");
     const second = await create("Second");
-    ctx.campaignStore.assign(first.id, ["L-100"], true);
-    ctx.campaignStore.assign(second.id, ["L-100"], true);
     const briefA = await prepare(first.id);
     expect(researchCalls).toBe(1);
     const briefB = await prepare(second.id);

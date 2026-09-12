@@ -17,7 +17,7 @@ function offeringMessage(name: string, tag = "") {
 async function openCampaignChat(page: Page, label: "Create a campaign" | "New campaign" = "Create a campaign") {
   await page.getByRole("button", { name: label, exact: true }).click();
   await expect(page.getByRole("heading", { name: "Connect a leads Sheet" })).toBeVisible();
-  await page.getByRole("button", { name: "Continue with this Sheet", exact: true }).click();
+  await page.getByRole("button", { name: "Use sample leads", exact: true }).click();
   await expect(page.getByLabel("Campaign chat")).toBeVisible();
   await expect(page.getByLabel("Campaign message")).toBeVisible();
 }
@@ -44,7 +44,7 @@ test("create different offerings, match leads by sheet tag, view cited preparati
   const server = await startE2eServer({ initialCampaigns: [], enqueueLlm: false, researchClient: fakeResearch });
   try {
     await page.goto(server.baseURL);
-    await expect(page.getByRole("link", { name: "Ready" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Sales Engine" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Create a campaign" }).first()).toBeVisible();
     await expect(page.getByLabel("Campaign", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "New campaign", exact: true })).toBeVisible();

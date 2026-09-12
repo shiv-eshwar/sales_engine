@@ -13,6 +13,7 @@ import type { CampaignStore } from "./campaigns/store.js";
 import type { PreparationService } from "./research/preparation.js";
 import type { ResearchClient } from "./research/client.js";
 import type { DtmfSender } from "./twilio/dtmf.js";
+import type { MemorySheetStore } from "./sheets/memory.js";
 
 export type OperatorState = {
   skippedLeadIds: Set<string>;
@@ -28,10 +29,14 @@ export type AppContext = {
   preparation: PreparationService;
   researchClient: ResearchClient | null;
   playbook: PlaybookConfig | null;
+  sheetsTemplate: SheetsConfig | null;
   sheetsConfig: SheetsConfig | null;
   sheetsConfigError: string | null;
   adapter: SheetAdapter | null;
   sheetMessage: string;
+  memorySheets: Map<string, MemorySheetStore>;
+  pendingSheets: Map<string, SheetsConfig>;
+  fileSheetIds: Map<string, string>;
   operator: OperatorState;
   streamTokens: StreamTokenStore;
   liveEvents: LiveEventBus;
