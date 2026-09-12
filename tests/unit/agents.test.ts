@@ -35,9 +35,12 @@ describe("eve agent instructions", () => {
     expect(renderAgentSystem("live-coach", "S")).toContain(
       "You are a live call coach for one human operator. Return JSON only matching LiveCoachOutput."
     );
+    expect(renderAgentSystem("live-coach", "S")).toContain("Problem Proposition");
+    expect(renderAgentSystem("live-coach", "S")).toContain("never rebut or pitch");
     expect(renderAgentSystem("post-call", "S")).toContain(
       "You extract one structured post-call CRM proposal. Return JSON only matching PostCallOutcome."
     );
+    expect(renderAgentSystem("post-call", "S")).toContain("send_information");
     expect(renderAgentSystem("campaign-generation", "S")).toContain(
       "Create a campaign strategy for exactly the offering supplied. Return JSON matching this schema:"
     );

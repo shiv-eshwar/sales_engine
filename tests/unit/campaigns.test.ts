@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadCampaigns } from "../../src/server/config/campaigns.js";
 import { loadPlaybook } from "../../src/server/config/playbook.js";
+import { campaignCoachingRules } from "../../src/server/coach/campaignRules.js";
 import { campaignConfigSchema } from "../../src/shared/schemas.js";
 import { readFileSync } from "node:fs";
 import { parse } from "yaml";
@@ -17,7 +18,24 @@ describe("Campaign and playbook YAML", () => {
   it("loads the cold-calling playbook including confidence and objection guides", () => {
     const playbook = loadPlaybook("./config/playbooks/cold-calling.yaml");
     expect(playbook.cue_min_confidence).toBe(0.5);
+    expect(playbook.version).toBe(2);
     expect(playbook.objection_guides?.existing_solution?.first_cue).toBe("clarify");
+    expect(playbook.principles.some((line) => line.includes("Problem Proposition"))).toBe(true);
+    expect(playbook.objection_guides?.send_information?.prompt).toMatch(/Brush-off/);
+    expect(playbook.objection_flow).toEqual([
+      "agree_specific",
+      "incentivize_or_clarify",
+      "sell_the_test_drive",
+      "ask_and_shut_up"
+    ]);
+  });
+
+  it("injects book-derived sales rules into live-coach and post-call prompts", () => {
+    const sales = loadCampaigns("./config/campaigns").find((item) => item.type === "sales");
+    expect(sales).toBeDefined();
+    const rules = campaignCoachingRules(sales!).join(" ");
+    expect(rules).toContain("Problem Proposition");
+    expect(rules).toContain("never rebut or pitch");
   });
 
   it("rejects unknown campaign types", () => {
