@@ -9,6 +9,7 @@ import { ReadyContactCard } from "../components/ReadyContactCard";
 import { CallingPanel } from "../components/CallingPanel";
 import { AI_DISCONNECTED_COPY, EMPTY_COPY } from "../copy";
 import { useLeadCall } from "../state/useLeadCall";
+import { SPLIT, SPLIT_RAIL } from "../layout/shell";
 
 export function LeadsPage() {
   const { data, pending, campaignBusy, setEditor } = useSession();
@@ -21,7 +22,7 @@ export function LeadsPage() {
   const nextLead = data.leads.find((item) => item.dialable) ?? null;
   const {
     campaign, call, setCall, callError, starting, disabledReason, sheetBlocking,
-    opening, firstQuestion, onCall, onSkip, onRefresh, openReview
+    opening, firstQuestion, preparing, onCall, onSkip, onRefresh, openReview
   } = useLeadCall(nextLead);
 
   const visible = useMemo(() => {
@@ -64,9 +65,8 @@ export function LeadsPage() {
       {campaign ? (
         <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">{nextLead ? "Ready" : null}</p>
             {nextLead ? null : <h1 className="text-2xl font-semibold tracking-tight">Ready</h1>}
-            <p className="mt-1 text-sm text-muted">
+            <p className={`text-sm text-muted ${nextLead ? "" : "mt-1"}`}>
               Selling {campaign.brief?.offeringName ?? campaign.name}
               {sheetUnconfigured ? "" : ` · ${data.leads.length} eligible`}
             </p>
@@ -90,41 +90,8 @@ export function LeadsPage() {
         </header>
       ) : null}
 
-      {data.ai.status !== "ok" ? (
-        <Alert status="warning" role="status">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Title>{data.ai.message.includes("LLM_") ? AI_DISCONNECTED_COPY : data.ai.message}</Alert.Title>
-          </Alert.Content>
-        </Alert>
-      ) : null}
-      {data.research.status !== "ok" && data.ai.status === "ok" ? (
-        <Alert status="warning">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Title>{data.research.message}</Alert.Title>
-          </Alert.Content>
-        </Alert>
-      ) : null}
-      {data.pendingProposal ? (
-        <Alert status="accent">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Title>
-              Review waiting for {data.pendingProposal.contactName || data.pendingProposal.leadId}.{" "}
-              <Link
-                to={`/calls/${encodeURIComponent(data.pendingProposal.sessionId)}/review`}
-                className="font-semibold underline underline-offset-2"
-              >
-                Open review
-              </Link>
-            </Alert.Title>
-          </Alert.Content>
-        </Alert>
-      ) : null}
-
       {!campaign ? (
-        <div className="pt-10">
+        <div className="pt-6">
           <EmptyState
             icon="campaign"
             title={EMPTY_COPY.campaign.title}
@@ -133,7 +100,7 @@ export function LeadsPage() {
           />
         </div>
       ) : sheetUnconfigured ? (
-        <div className="pt-10">
+        <div className="pt-6">
           <EmptyState
             icon="sheet"
             title={EMPTY_COPY.sheet.title}
@@ -146,21 +113,51 @@ export function LeadsPage() {
           />
         </div>
       ) : nextLead ? (
-        <ReadyContactCard
-          lead={nextLead}
-          campaign={campaign}
-          opening={opening}
-          firstQuestion={firstQuestion}
-          disabledReason={disabledReason}
-          starting={starting}
-          pending={pending}
-          callError={callError}
-          sheetBlocking={sheetBlocking}
-          onCall={() => void onCall()}
-          onSkip={() => void onSkip()}
-          onRefresh={onRefresh}
-          callButtonRef={callButtonRef}
-        />
+        <div className={SPLIT}>
+          <div className={SPLIT_RAIL}>
+            <ReadyContactCard
+              lead={nextLead}
+              campaign={campaign}
+              opening={opening}
+              firstQuestion={firstQuestion}
+              preparing={preparing}
+              disabledReason={disabledReason}
+              starting={starting}
+              pending={pending}
+              callError={callError}
+              sheetBlocking={sheetBlocking}
+              onCall={() => void onCall()}
+              onSkip={() => void onSkip()}
+              onRefresh={onRefresh}
+              callButtonRef={callButtonRef}
+            />
+          </div>
+          <div className="flex min-w-0 flex-col gap-8">
+            <QueueAlerts
+              aiStatus={data.ai.status}
+              aiMessage={data.ai.message}
+              researchStatus={data.research.status}
+              researchMessage={data.research.message}
+              pendingProposal={data.pendingProposal}
+            />
+            {data.leads.length > 0 ? (
+              <LeadsQueue
+                query={query}
+                setQuery={setQuery}
+                dialableOnly={dialableOnly}
+                setDialableOnly={setDialableOnly}
+                sortKey={sortKey}
+                sortDir={sortDir}
+                toggleSort={toggleSort}
+                visible={visible}
+                leadsCount={data.leads.length}
+                undialableCount={undialableCount}
+                tableEmpty={tableEmpty}
+              />
+            ) : null}
+            <DailySummaryPanel summary={data.summary} />
+          </div>
+        </div>
       ) : data.leads.length === 0 ? (
         <div className="pt-6">
           <EmptyState
@@ -174,82 +171,180 @@ export function LeadsPage() {
             }
           />
         </div>
-      ) : null}
-
-      {campaign && !sheetUnconfigured && data.leads.length > 0 ? (
-        <section className="pt-2" aria-label="All leads">
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">All leads</p>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <label className="min-w-52 flex-1 text-sm">
-              <span className="sr-only">Search leads</span>
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search name, company, phone…"
-                aria-label="Search leads"
-                className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
-              />
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={dialableOnly}
-                onChange={(event) => setDialableOnly(event.target.checked)}
-              />
-              Ready to call
-            </label>
-            {undialableCount > 0 ? (
-              <button type="button" className="text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4" onClick={() => setDialableOnly(false)}>
-                {undialableCount} need a phone fix
-              </button>
-            ) : null}
-            <div className="ml-auto flex items-center gap-1 text-sm" role="group" aria-label="Sort leads">
-              {([["name", "Name"], ["company", "Company"], ["status", "Status"]] as Array<[LeadSortKey, string]>).map(([key, label]) => (
-                <Button
-                  key={key}
-                  size="sm"
-                  variant="ghost"
-                  aria-pressed={sortKey === key}
-                  className={sortKey === key ? "rounded-lg! font-semibold text-foreground" : "rounded-lg!"}
-                  onPress={() => toggleSort(key)}
-                >
-                  {label}{sortKey === key ? (sortDir === 1 ? " ↑" : " ↓") : ""}
-                </Button>
-              ))}
-            </div>
-          </div>
-          <p className="mt-3 text-sm text-muted" aria-live="polite">
-            Showing {visible.length} of {data.leads.length} eligible leads.
-          </p>
-          <LeadsTable
-            leads={visible}
-            empty={
-              tableEmpty ? (
-                <EmptyState
-                  compact
-                  icon={query.trim() ? "search" : "leads"}
-                  title={tableEmpty.title}
-                  description={tableEmpty.description}
-                  action={
-                    query.trim() ? (
-                      <Button variant="outline" size="sm" onPress={() => setQuery("")}>
-                        Clear search
-                      </Button>
-                    ) : dialableOnly && undialableCount > 0 ? (
-                      <Button variant="outline" size="sm" onPress={() => setDialableOnly(false)}>
-                        Show contacts that need a phone fix
-                      </Button>
-                    ) : null
-                  }
-                />
-              ) : null
-            }
+      ) : (
+        <div className="flex min-w-0 flex-col gap-8">
+          <QueueAlerts
+            aiStatus={data.ai.status}
+            aiMessage={data.ai.message}
+            researchStatus={data.research.status}
+            researchMessage={data.research.message}
+            pendingProposal={data.pendingProposal}
           />
-        </section>
-      ) : null}
-
-      <DailySummaryPanel summary={data.summary} />
+          <LeadsQueue
+            query={query}
+            setQuery={setQuery}
+            dialableOnly={dialableOnly}
+            setDialableOnly={setDialableOnly}
+            sortKey={sortKey}
+            sortDir={sortDir}
+            toggleSort={toggleSort}
+            visible={visible}
+            leadsCount={data.leads.length}
+            undialableCount={undialableCount}
+            tableEmpty={tableEmpty}
+          />
+          <DailySummaryPanel summary={data.summary} />
+        </div>
+      )}
     </div>
+  );
+}
+
+function QueueAlerts({
+  aiStatus,
+  aiMessage,
+  researchStatus,
+  researchMessage,
+  pendingProposal
+}: {
+  aiStatus: string;
+  aiMessage: string;
+  researchStatus: string;
+  researchMessage: string;
+  pendingProposal: { contactName: string; leadId: string; sessionId: string } | null;
+}) {
+  return (
+    <>
+      {aiStatus !== "ok" ? (
+        <Alert status="warning" role="status">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>{aiMessage.includes("LLM_") ? AI_DISCONNECTED_COPY : aiMessage}</Alert.Title>
+          </Alert.Content>
+        </Alert>
+      ) : null}
+      {researchStatus !== "ok" && aiStatus === "ok" ? (
+        <Alert status="warning">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>{researchMessage}</Alert.Title>
+          </Alert.Content>
+        </Alert>
+      ) : null}
+      {pendingProposal ? (
+        <Alert status="accent">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>
+              Review waiting for {pendingProposal.contactName || pendingProposal.leadId}.{" "}
+              <Link
+                to={`/calls/${encodeURIComponent(pendingProposal.sessionId)}/review`}
+                className="font-semibold underline underline-offset-2"
+              >
+                Open review
+              </Link>
+            </Alert.Title>
+          </Alert.Content>
+        </Alert>
+      ) : null}
+    </>
+  );
+}
+
+function LeadsQueue({
+  query,
+  setQuery,
+  dialableOnly,
+  setDialableOnly,
+  sortKey,
+  sortDir,
+  toggleSort,
+  visible,
+  leadsCount,
+  undialableCount,
+  tableEmpty
+}: {
+  query: string;
+  setQuery: (value: string) => void;
+  dialableOnly: boolean;
+  setDialableOnly: (value: boolean) => void;
+  sortKey: LeadSortKey;
+  sortDir: 1 | -1;
+  toggleSort: (key: LeadSortKey) => void;
+  visible: ReturnType<typeof filterLeads>;
+  leadsCount: number;
+  undialableCount: number;
+  tableEmpty: { title: string; description: string } | null;
+}) {
+  return (
+    <section aria-label="All leads">
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="min-w-52 flex-1 text-sm">
+          <span className="sr-only">Search leads</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search name, company, phone…"
+            aria-label="Search leads"
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={dialableOnly}
+            onChange={(event) => setDialableOnly(event.target.checked)}
+          />
+          Ready to call
+        </label>
+        {undialableCount > 0 ? (
+          <button type="button" className="text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4" onClick={() => setDialableOnly(false)}>
+            {undialableCount} need a phone fix
+          </button>
+        ) : null}
+        <div className="ml-auto flex items-center gap-1 text-sm" role="group" aria-label="Sort leads">
+          {([["name", "Name"], ["company", "Company"], ["status", "Status"]] as Array<[LeadSortKey, string]>).map(([key, label]) => (
+            <Button
+              key={key}
+              size="sm"
+              variant="ghost"
+              aria-pressed={sortKey === key}
+              className={sortKey === key ? "rounded-lg! font-semibold text-foreground" : "rounded-lg!"}
+              onPress={() => toggleSort(key)}
+            >
+              {label}{sortKey === key ? (sortDir === 1 ? " ↑" : " ↓") : ""}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <p className="mt-3 text-sm text-muted" aria-live="polite">
+        Showing {visible.length} of {leadsCount} eligible leads.
+      </p>
+      <LeadsTable
+        leads={visible}
+        empty={
+          tableEmpty ? (
+            <EmptyState
+              compact
+              icon={query.trim() ? "search" : "leads"}
+              title={tableEmpty.title}
+              description={tableEmpty.description}
+              action={
+                query.trim() ? (
+                  <Button variant="outline" size="sm" onPress={() => setQuery("")}>
+                    Clear search
+                  </Button>
+                ) : dialableOnly && undialableCount > 0 ? (
+                  <Button variant="outline" size="sm" onPress={() => setDialableOnly(false)}>
+                    Show contacts that need a phone fix
+                  </Button>
+                ) : null
+              }
+            />
+          ) : null
+        }
+      />
+    </section>
   );
 }

@@ -19,6 +19,7 @@ export type SheetDiagnostic = {
   message: string;
   leadId?: string;
   rowNumber?: number;
+  fullName?: string;
 };
 
 export type PublicLead = {

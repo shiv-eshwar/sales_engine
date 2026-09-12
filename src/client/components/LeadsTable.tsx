@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 import type { PublicLead } from "../../shared/contracts";
+import { Icon } from "./Icon";
 
 export type LeadSortKey = "name" | "company" | "status";
 
@@ -60,9 +61,14 @@ export function LeadsTable({
               <p className="mt-0.5 text-sm text-muted">
                 {[lead.role, lead.company].filter(Boolean).join(" · ") || "—"}
               </p>
-              <p className="mt-1 font-mono text-xs tabular-nums">{lead.phoneE164 ?? lead.phone}</p>
-              <p className={`mt-2 text-xs font-semibold ${lead.dialable ? "text-success" : "text-danger"}`}>
-                {lead.dialable ? "Ready to call" : "Not dialable"}
+              <p className="mt-1 flex items-center gap-2 font-mono text-xs tabular-nums">
+                <Icon
+                  name={lead.dialable ? "phone" : "phoneOff"}
+                  size={14}
+                  className={lead.dialable ? "text-muted" : "text-danger"}
+                  title={lead.dialable ? undefined : "Not dialable"}
+                />
+                {lead.phoneE164 ?? lead.phone}
               </p>
             </Link>
           </li>
@@ -76,7 +82,6 @@ export function LeadsTable({
               <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Company</th>
               <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Phone</th>
               <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Status</th>
-              <th className="px-4 py-2.5"><span className="sr-only">Open</span></th>
             </tr>
           </thead>
           <tbody>
@@ -92,25 +97,21 @@ export function LeadsTable({
                       {lead.fullName || "Unnamed contact"}
                     </Link>
                     {lead.role ? <p className="mt-0.5 text-sm text-muted">{lead.role}</p> : null}
-                    {!lead.dialable ? (
-                      <span className="mt-1 inline-block text-xs font-semibold text-danger">
-                        Not dialable
-                      </span>
-                    ) : null}
                   </td>
                   <td className="px-4 py-3 text-muted">{lead.company || "—"}</td>
-                  <td className="px-4 py-3 font-mono text-xs tabular-nums">{lead.phoneE164 ?? lead.phone}</td>
+                  <td className="px-4 py-3">
+                    <span className="flex items-center gap-2 font-mono text-xs tabular-nums">
+                      <Icon
+                        name={lead.dialable ? "phone" : "phoneOff"}
+                        size={14}
+                        className={lead.dialable ? "text-muted" : "text-danger"}
+                        title={lead.dialable ? undefined : "Not dialable"}
+                      />
+                      {lead.phoneE164 ?? lead.phone}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-sm text-muted">
                     {[lead.callStatus, lead.crmStatus].filter(Boolean).join(" · ") || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      to={`/leads/${encodeURIComponent(lead.leadId)}`}
-                      className="text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4"
-                      aria-label={`Open ${lead.fullName || lead.leadId}`}
-                    >
-                      Open
-                    </Link>
                   </td>
                 </tr>
               );

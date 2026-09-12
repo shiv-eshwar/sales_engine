@@ -146,15 +146,41 @@ export function formatUtteranceText(text: string, startedAtMs: number, endedAtMs
   return `Audio missed ${formatClock(startedAtMs)}–${formatClock(endedAtMs)}`;
 }
 
+export function diagnosticHeading(item: SheetDiagnostic): string {
+  const name = item.fullName?.trim();
+  if (name) return name;
+  if (item.leadId) return item.leadId;
+  if (item.rowNumber) return `Row ${item.rowNumber}`;
+  return "Sheet row";
+}
+
+export function diagnosticDetail(item: SheetDiagnostic): string {
+  if (item.code === "blank_lead_id") return "No Lead ID";
+  if (item.code === "duplicate_lead_id") return "Duplicate Lead ID";
+  if (item.code === "invalid_phone") return "Can't be dialed";
+  return item.message;
+}
+
+export function diagnosticMeta(item: SheetDiagnostic): string | null {
+  if (item.rowNumber) return `Row ${item.rowNumber}`;
+  return null;
+}
+
 export function diagnosticCopy(item: SheetDiagnostic): string {
+  const name = item.fullName?.trim();
   if (item.code === "blank_lead_id" && item.rowNumber) {
-    return `Row ${item.rowNumber} has no Lead ID — skipped.`;
+    return name
+      ? `Row ${item.rowNumber} (${name}) has no Lead ID — skipped.`
+      : `Row ${item.rowNumber} has no Lead ID — skipped.`;
   }
   if (item.code === "duplicate_lead_id" && item.leadId) {
-    return `Lead ID “${item.leadId}” appears more than once — skipped.`;
+    return name
+      ? `${name} (${item.leadId}) appears more than once — skipped.`
+      : `Lead ID “${item.leadId}” appears more than once — skipped.`;
   }
   if (item.code === "invalid_phone") {
-    const who = item.leadId ? item.leadId : item.rowNumber ? `Row ${item.rowNumber}` : "A lead";
+    if (name && item.leadId) return `${name} (${item.leadId}) has a phone that cannot be dialed.`;
+    const who = name || item.leadId || (item.rowNumber ? `Row ${item.rowNumber}` : "A lead");
     return `${who} has a phone that cannot be dialed.`;
   }
   return item.message;

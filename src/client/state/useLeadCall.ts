@@ -53,17 +53,17 @@ export function useLeadCall(lead: PublicLead | null) {
 
   const disabledReason = !campaign
     ? "Create a campaign first"
-    : campaign.brief && (!preparation || preparing)
-      ? preparing
-        ? "Preparing research and call brief…"
-        : "Generate a call brief before calling"
-      : callDisabledReason({
-          twilioConfigured,
-          deviceStatus,
-          lead: lead ?? null,
-          callActive,
-          sheetStatus: data.sheet.status
-        });
+    : campaign.brief && preparing
+      ? null
+      : campaign.brief && !preparation
+        ? "Generate a call brief before calling"
+        : callDisabledReason({
+            twilioConfigured,
+            deviceStatus,
+            lead: lead ?? null,
+            callActive,
+            sheetStatus: data.sheet.status
+          });
 
   useEffect(() => {
     setLiveCall(call);
@@ -73,7 +73,12 @@ export function useLeadCall(lead: PublicLead | null) {
   useEffect(() => {
     if (!prepKey || !campaign || !lead || callActive) return undefined;
     const controller = new AbortController();
-    setPrepState({ key: prepKey, result: null, error: null, loading: true });
+    setPrepState((previous) => ({
+      key: prepKey,
+      result: previous?.key === prepKey ? previous.result : null,
+      error: null,
+      loading: true
+    }));
     void prepareLead(campaign.id, lead.leadId, refreshAttempt > 0, controller.signal)
       .then((result) => {
         if (!controller.signal.aborted) {

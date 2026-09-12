@@ -4,6 +4,24 @@
 @theme inline {
   --radius-3xl: var(--radius);
   --radius-4xl: var(--radius);
+  --animate-fade-in: fade-in 280ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-pulse,
+  .animate-spin {
+    animation: none !important;
+  }
 }
 
 :root {

@@ -22,6 +22,7 @@ describe("eligible queue", () => {
 
     expect(queue.diagnostics.some((item) => item.code === "blank_lead_id")).toBe(true);
     expect(queue.diagnostics.some((item) => item.code === "duplicate_lead_id")).toBe(true);
+    expect(queue.diagnostics.find((item) => item.code === "invalid_phone")?.fullName).toBe("Sam Patel");
     expect(queue.leads.find((lead) => lead.leadId === "L-102")?.dialable).toBe(false);
   });
 

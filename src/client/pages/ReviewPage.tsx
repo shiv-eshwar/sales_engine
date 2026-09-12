@@ -5,7 +5,7 @@ import { approveProposal, fetchProposalBySession, skipProposal, retryProposalWri
 import { ReviewPanel } from "../components/ReviewPanel";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { EmptyState } from "../components/EmptyState";
-import { LoadingSkeleton } from "../components/LoadingSkeleton";
+import { ContactCardSkeleton } from "../components/LoadingSkeleton";
 import { EMPTY_COPY, nextLeadPath } from "../copy";
 import type { PublicProposal, PublicWriteFields } from "../../shared/contracts";
 
@@ -99,8 +99,8 @@ export function ReviewPage() {
     return (
       <div>
         <Breadcrumbs items={crumbs} />
-        <div className="mt-4">
-          <LoadingSkeleton title="Loading review…" detail="Fetching the proposed CRM update for this call." lines={4} />
+        <div className="mt-10">
+          <ContactCardSkeleton />
         </div>
       </div>
     );

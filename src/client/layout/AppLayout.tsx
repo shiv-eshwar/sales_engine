@@ -8,6 +8,7 @@ import { CampaignDrawer } from "../components/CampaignDrawer";
 import { CallingPanel } from "../components/CallingPanel";
 import { ReadinessChip } from "../components/ReadinessChip";
 import { PRODUCT_NAME } from "../copy";
+import { SHELL } from "./shell";
 import type { CallSessionView } from "../state/calls";
 import { useState } from "react";
 
@@ -61,7 +62,7 @@ export function AppLayout() {
     <div className="min-h-screen">
       <header className={`sticky top-0 z-50 bg-background ${liveCall ? "hidden" : ""}`}>
         <div className="h-[3px] bg-accent" />
-        <div className="mx-auto flex h-14 w-full max-w-6xl min-w-0 items-center gap-3 px-4 sm:gap-6 sm:px-6">
+        <div className={`${SHELL} flex h-14 min-w-0 items-center gap-3 sm:gap-6`}>
           <Link
             to="/leads"
             className="shrink-0 text-[15px] font-semibold tracking-tight text-foreground"
@@ -116,7 +117,7 @@ export function AppLayout() {
       </header>
 
       {incoming ? (
-        <div className="mx-auto max-w-6xl px-6 pt-5">
+        <div className={`${SHELL} pt-5`}>
           <Alert status="success" role="alert" aria-label="Incoming call">
             <Alert.Indicator />
             <Alert.Content>
@@ -136,7 +137,7 @@ export function AppLayout() {
       ) : null}
 
       {error ? (
-        <div className="mx-auto max-w-6xl px-6 pt-5">
+        <div className={`${SHELL} pt-5`}>
           <Alert status="danger" role="alert">
             <Alert.Indicator />
             <Alert.Content>
@@ -155,7 +156,7 @@ export function AppLayout() {
         />
       ) : null}
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className={`${SHELL} py-8`}>
         <Outlet />
       </main>
 

@@ -73,10 +73,12 @@ export function buildQueue(
   for (const data of dataRows) {
     const leadId = cell(data.values, index, config.read_columns.lead_id);
     if (leadId === "") {
+      const fullName = cell(data.values, index, config.read_columns.full_name);
       diagnostics.push({
         code: "blank_lead_id",
         message: `Row ${data.rowNumber} has no Lead ID — skipped.`,
-        rowNumber: data.rowNumber
+        rowNumber: data.rowNumber,
+        fullName: fullName || undefined
       });
       continue;
     }
@@ -85,10 +87,19 @@ export function buildQueue(
 
   for (const [leadId, count] of counts) {
     if (count > 1) {
+      const names = [
+        ...new Set(
+          dataRows
+            .filter((data) => cell(data.values, index, config.read_columns.lead_id) === leadId)
+            .map((data) => cell(data.values, index, config.read_columns.full_name))
+            .filter((name) => name.length > 0)
+        )
+      ];
       diagnostics.push({
         code: "duplicate_lead_id",
         message: `Lead ID "${leadId}" appears ${count} times and will be skipped.`,
-        leadId
+        leadId,
+        fullName: names.length > 0 ? names.join(", ") : undefined
       });
     }
   }
@@ -115,7 +126,8 @@ export function buildQueue(
         code: "invalid_phone",
         message: `${parsed.rawLeadId} has a phone that cannot be dialed.`,
         leadId: parsed.rawLeadId,
-        rowNumber: data.rowNumber
+        rowNumber: data.rowNumber,
+        fullName: parsed.fullName || undefined
       });
     }
 

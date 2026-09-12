@@ -1,13 +1,14 @@
 import { useEffect, type RefObject } from "react";
 import { Alert, Button, Card } from "@heroui/react";
 import type { PublicCampaign, PublicLead } from "../../shared/contracts";
+import { Icon, QuoteMark } from "./Icon";
 
 export function ReadyContactCard({
-  kicker = "Next up",
   lead,
   campaign,
   opening,
   firstQuestion,
+  preparing = false,
   disabledReason,
   starting,
   pending,
@@ -18,11 +19,11 @@ export function ReadyContactCard({
   onRefresh,
   callButtonRef
 }: {
-  kicker?: string;
   lead: PublicLead;
   campaign?: PublicCampaign;
   opening: string | null;
   firstQuestion: string | null;
+  preparing?: boolean;
   disabledReason: string | null;
   starting: boolean;
   pending: boolean;
@@ -34,45 +35,76 @@ export function ReadyContactCard({
   callButtonRef?: RefObject<HTMLButtonElement | null>;
 }) {
   useEffect(() => {
-    if (sheetBlocking || disabledReason || starting) return;
+    if (sheetBlocking || disabledReason || starting || preparing) return;
     callButtonRef?.current?.focus();
-  }, [callButtonRef, disabledReason, sheetBlocking, starting, lead.leadId]);
+  }, [callButtonRef, disabledReason, preparing, sheetBlocking, starting, lead.leadId]);
 
-  const title = [lead.role, lead.company].filter(Boolean).join(" · ");
+  const extraIssues = lead.issues.filter((issue) => issue !== "Phone is not dialable");
 
   return (
-    <Card aria-label="Next contact" className="max-w-xl rounded-lg! border-t-[3px] border-t-accent">
-      <Card.Header className="gap-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">{kicker}</p>
+    <Card aria-label="Next contact" className="w-full rounded-lg! border-t-[3px] border-t-accent">
+      <Card.Header className="flex flex-col items-start gap-1 px-8 pt-8 pb-0">
         <h1 className="text-2xl font-semibold leading-[1.15] tracking-tight">
           {lead.fullName || "Unnamed contact"}
         </h1>
-        {title ? <p className="text-sm text-muted">{title}</p> : null}
-      </Card.Header>
-      <Card.Content className="gap-4">
-        <p className="font-mono text-sm tabular-nums">
-          {lead.phoneE164 ?? lead.phone}
-          {lead.dialable ? "" : " — not dialable"}
+        {lead.role ? <p className="text-sm text-muted">{lead.role}</p> : null}
+        {lead.company ? <p className="text-sm text-muted">{lead.company}</p> : null}
+        <p className="mt-1 flex items-center gap-2 text-sm">
+          <Icon
+            name={lead.dialable ? "phone" : "phoneOff"}
+            className={lead.dialable ? "text-muted" : "text-danger"}
+            title={lead.dialable ? undefined : "Not dialable"}
+          />
+          <span className="font-mono tabular-nums">{lead.phoneE164 ?? lead.phone}</span>
         </p>
+      </Card.Header>
+      <Card.Content className="gap-8 px-8 pt-8 pb-8">
         {campaign?.objective ? (
-          <p className="max-w-[32em] text-sm leading-relaxed text-muted">{campaign.objective}</p>
+          <div className="flex flex-col gap-2">
+            <p className="max-w-[32em] text-sm leading-relaxed text-muted">{campaign.objective}</p>
+            {campaign.brief ? <p className="text-sm text-muted">Strategy v{campaign.version}</p> : null}
+          </div>
+        ) : campaign?.brief ? (
+          <p className="text-sm text-muted">Strategy v{campaign.version}</p>
         ) : null}
-        {campaign?.brief ? <p className="text-sm text-muted">Strategy v{campaign.version}</p> : null}
-        {opening ? (
-          <div className="rounded-lg bg-accent-soft p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Opening</p>
-            <p className="mt-2 text-sm leading-relaxed text-accent-soft-foreground">{opening}</p>
+        {campaign?.brief || opening || preparing ? (
+          <div
+            className="relative min-h-[14rem] rounded-lg bg-accent-soft px-6 py-6 transition-opacity duration-300"
+            role={preparing ? "status" : undefined}
+            aria-label={preparing ? "Preparing opening" : undefined}
+            style={{ opacity: preparing ? 0.72 : 1 }}
+          >
+            <QuoteMark />
+            <div className="relative mt-3">
+              <div
+                className={`space-y-3 transition-opacity duration-300 ${
+                  opening ? "pointer-events-none absolute inset-0 opacity-0" : "opacity-100"
+                }`}
+                aria-hidden={Boolean(opening)}
+              >
+                <div className="h-3 w-full animate-pulse rounded-full bg-accent/15" />
+                <div className="h-3 w-5/6 animate-pulse rounded-full bg-accent/15" />
+                <div className="h-3 w-2/3 animate-pulse rounded-full bg-accent/15" />
+              </div>
+              {opening ? (
+                <p className="text-sm leading-relaxed text-accent-soft-foreground">{opening}</p>
+              ) : null}
+            </div>
           </div>
         ) : null}
-        {firstQuestion ? (
-          <p className="text-sm leading-relaxed">
-            <span className="font-semibold">Ask first. </span>
-            {firstQuestion}
-          </p>
-        ) : null}
-        {lead.issues.length > 0 ? (
+        <div className="min-h-[3rem]">
+          {firstQuestion ? (
+            <p className="max-w-[32em] text-sm leading-relaxed">{firstQuestion}</p>
+          ) : preparing ? (
+            <div className="space-y-2" aria-hidden="true">
+              <div className="h-3 w-full animate-pulse rounded-full bg-surface-secondary" />
+              <div className="h-3 w-4/5 animate-pulse rounded-full bg-surface-secondary" />
+            </div>
+          ) : null}
+        </div>
+        {extraIssues.length > 0 ? (
           <ul className="text-sm font-medium text-danger">
-            {lead.issues.map((issue) => (
+            {extraIssues.map((issue) => (
               <li key={issue}>{issue}</li>
             ))}
           </ul>
@@ -86,13 +118,13 @@ export function ReadyContactCard({
           </Alert>
         ) : null}
       </Card.Content>
-      <Card.Footer className="flex flex-wrap items-center gap-x-4 gap-y-3">
+      <Card.Footer className="flex flex-wrap items-center gap-x-5 gap-y-4 px-8 pb-8 pt-0">
         {sheetBlocking ? null : (
           <Button
             ref={callButtonRef}
             size="lg"
             className="min-w-28 rounded-lg!"
-            isDisabled={Boolean(disabledReason) || pending || starting}
+            isDisabled={Boolean(disabledReason) || pending || starting || preparing}
             isPending={starting}
             onPress={onCall}
           >

@@ -68,7 +68,7 @@ export function ReviewPanel({
 
   return (
     <section className="space-y-8 pb-28" aria-label="Call review">
-      <header className="max-w-xl">
+      <header>
         <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Review</p>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">Review CRM update</h2>
         <p className="mt-2 text-sm text-muted">
@@ -125,7 +125,7 @@ export function ReviewPanel({
       ) : null}
 
       <div className="grid gap-8 lg:grid-cols-2">
-        <section className="max-w-xl">
+        <section>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Outcomes</p>
           <p className="mt-2 text-xl font-semibold tracking-tight">
             {outcomeLabel(proposal.semanticOutcome)}
@@ -138,7 +138,7 @@ export function ReviewPanel({
             <p className="mt-3 max-w-[32em] text-sm leading-relaxed text-muted">{proposal.qualificationReason}</p>
           ) : null}
         </section>
-        <section className="max-w-xl">
+        <section>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Next step</p>
           <p className="mt-2 text-lg font-semibold leading-snug">
             {proposal.nextStep || "None proposed"}
@@ -299,8 +299,8 @@ export function ReviewPanel({
         </details>
       ) : null}
 
-      <div className="fixed inset-x-0 bottom-0 z-30 bg-background px-6 py-3 shadow-lg">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
+      <div className="fixed inset-x-0 bottom-0 z-30 bg-background px-4 py-3 shadow-lg sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full flex-wrap items-center gap-3">
           {failedWrite ? (
             <Button className="rounded-lg!" isDisabled={pending} onPress={onRetryWrite}>
               Retry write

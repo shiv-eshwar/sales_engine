@@ -8,7 +8,7 @@ export function DailySummaryPanel({ summary }: { summary: DailySummary }) {
   return (
     <section className="pt-2" aria-label="Daily summary">
       <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Today</p>
-      <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
+      <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4 xl:grid-cols-6">
         <SummaryStat label="Attempts" value={summary.attempts} />
         <SummaryStat label="Connects" value={summary.connects} />
         <SummaryStat label="Qualified" value={summary.qualified} />

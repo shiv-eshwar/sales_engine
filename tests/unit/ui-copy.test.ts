@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   diagnosticCopy,
+  diagnosticHeading,
   EMPTY_COPY,
   formatUtteranceText,
   outcomeLabel,
@@ -22,6 +23,16 @@ describe("caller-facing copy", () => {
     expect(diagnosticCopy({ code: "blank_lead_id", message: "x", rowNumber: 6 })).toBe(
       "Row 6 has no Lead ID — skipped."
     );
+    expect(diagnosticCopy({ code: "blank_lead_id", message: "x", rowNumber: 6, fullName: "Blank ID" })).toBe(
+      "Row 6 (Blank ID) has no Lead ID — skipped."
+    );
+    expect(diagnosticCopy({ code: "invalid_phone", message: "x", leadId: "L-102", fullName: "Sam Patel" })).toBe(
+      "Sam Patel (L-102) has a phone that cannot be dialed."
+    );
+    expect(diagnosticHeading({ code: "invalid_phone", message: "x", leadId: "L-102", fullName: "Sam Patel" })).toBe(
+      "Sam Patel"
+    );
+    expect(diagnosticHeading({ code: "blank_lead_id", message: "x", rowNumber: 6 })).toBe("Row 6");
   });
 
   it("keeps empty-state copy operator-facing", () => {

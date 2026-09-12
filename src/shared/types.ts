@@ -22,6 +22,7 @@ export type QueueResult = {
     message: string;
     leadId?: string;
     rowNumber?: number;
+    fullName?: string;
   }>;
 };
 

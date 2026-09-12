@@ -7,10 +7,12 @@ import { CallingPanel } from "../components/CallingPanel";
 import { ProspectBrief } from "../components/ProspectBrief";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { EmptyState } from "../components/EmptyState";
-import { LoadingSkeleton } from "../components/LoadingSkeleton";
+import { BriefLoading } from "../components/LoadingSkeleton";
 import { ReadyContactCard } from "../components/ReadyContactCard";
 import { useLeadCall } from "../state/useLeadCall";
 import { EMPTY_COPY } from "../copy";
+import { Icon } from "../components/Icon";
+import { SPLIT, SPLIT_RAIL } from "../layout/shell";
 
 export function LeadDetailPage() {
   const { leadId } = useParams();
@@ -61,7 +63,7 @@ export function LeadDetailPage() {
     return (
       <div>
         <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: "Lead" }]} />
-        <div className="mt-10">
+        <div className="mt-16">
           <EmptyState
             icon="leads"
             title={EMPTY_COPY.leadUnspecified.title}
@@ -81,7 +83,7 @@ export function LeadDetailPage() {
     return (
       <div>
         <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: decodedId }]} />
-        <div className="mt-10">
+        <div className="mt-16">
           <EmptyState
             icon="leads"
             title={EMPTY_COPY.leadMissing.title}
@@ -111,73 +113,93 @@ export function LeadDetailPage() {
   return (
     <div className="flex flex-col gap-8">
       <Breadcrumbs items={crumbs} />
-        <ReadyContactCard
-        lead={lead}
-        campaign={campaign}
-        kicker="Contact"
-        opening={opening}
-        firstQuestion={firstQuestion}
-        disabledReason={disabledReason}
-        starting={starting}
-        pending={pending}
-        callError={callError}
-        sheetBlocking={sheetBlocking}
-        onCall={() => void onCall()}
-        onSkip={() => void onSkip()}
-        onRefresh={onRefresh}
-        callButtonRef={callButtonRef}
-      />
-
-      {lead.enrichment ? (
-        <details>
-          <summary className="cursor-pointer text-sm font-semibold">Context</summary>
-          <p className="mt-3 max-w-[32em] whitespace-pre-wrap text-sm leading-relaxed text-muted">{lead.enrichment}</p>
-        </details>
-      ) : null}
-
-      {(campaign?.requiredQuestions.length ?? 0) > 0 ? (
-        <details>
-          <summary className="cursor-pointer text-sm font-semibold">Questions</summary>
-          <ul className="mt-3 max-w-xl space-y-2 text-sm">
-            {(campaign?.requiredQuestions ?? []).map((question) => (
-              <li key={question.id}>
-                {question.prompt}
-                {question.required ? <span className="text-sm text-muted"> · priority</span> : ""}
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
-
-      {campaign?.brief ? (
-        <details>
-          <summary className="cursor-pointer text-sm font-semibold">Prep</summary>
-          {preparing ? (
-            <div className="mt-4">
-              <LoadingSkeleton
-                title={`Researching ${lead.company || "the company"}…`}
-                detail={`Preparing questions for ${lead.fullName || "this prospect"}. This can take a minute or two.`}
-                lines={4}
-              />
-            </div>
-          ) : null}
-          {prepError ? <p role="alert" className="mt-3 text-sm font-medium text-danger">{prepError}</p> : null}
-          {preparation ? <ProspectBrief preparation={preparation} /> : null}
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4 rounded-lg!"
-            isDisabled={preparing || pending}
-            onPress={regeneratePrep}
+      <div className={campaign?.brief || lead.enrichment || (campaign?.requiredQuestions.length ?? 0) > 0 ? SPLIT : undefined}>
+        <div className={SPLIT_RAIL}>
+          <ReadyContactCard
+            lead={lead}
+            campaign={campaign}
+            opening={opening}
+            firstQuestion={firstQuestion}
+            preparing={preparing}
+            disabledReason={disabledReason}
+            starting={starting}
+            pending={pending}
+            callError={callError}
+            sheetBlocking={sheetBlocking}
+            onCall={() => void onCall()}
+            onSkip={() => void onSkip()}
+            onRefresh={onRefresh}
+            callButtonRef={callButtonRef}
+          />
+          <Link
+            to="/leads"
+            className="mt-6 inline-block w-fit text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4"
           >
-            {prepError ? "Retry preparation" : "Regenerate brief"}
-          </Button>
-        </details>
-      ) : null}
+            Back to ready
+          </Link>
+        </div>
 
-      <Link to="/leads" className="w-fit text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4">
-        Back to ready
-      </Link>
+        {campaign?.brief || lead.enrichment || (campaign?.requiredQuestions.length ?? 0) > 0 ? (
+          <div className="flex min-w-0 flex-col gap-8">
+            {campaign?.brief ? (
+              <section>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+                  <p className="text-sm font-semibold">Prep</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg!"
+                    isDisabled={preparing || pending}
+                    onPress={regeneratePrep}
+                  >
+                    {prepError ? "Retry preparation" : "Regenerate brief"}
+                  </Button>
+                </div>
+                {prepError ? <p role="alert" className="mt-4 text-sm font-medium text-danger">{prepError}</p> : null}
+                <div className="mt-6">
+                  {preparation ? (
+                    <div
+                      className={`transition-opacity duration-500 ease-out ${preparing ? "opacity-60" : "opacity-100"}`}
+                    >
+                      <ProspectBrief preparation={preparation} />
+                    </div>
+                  ) : (
+                    <BriefLoading
+                      title={`Researching ${lead.company || "the company"}…`}
+                      detail={`Preparing questions for ${lead.fullName || "this prospect"}. This can take a minute or two.`}
+                    />
+                  )}
+                </div>
+              </section>
+            ) : null}
+
+            {lead.enrichment || (campaign?.requiredQuestions.length ?? 0) > 0 ? (
+              <div className="flex flex-col gap-3">
+                {lead.enrichment ? (
+                  <details>
+                    <summary className="cursor-pointer py-1 text-sm font-semibold">Context</summary>
+                    <p className="mt-4 max-w-[32em] whitespace-pre-wrap text-sm leading-relaxed text-muted">{lead.enrichment}</p>
+                  </details>
+                ) : null}
+
+                {(campaign?.requiredQuestions.length ?? 0) > 0 ? (
+                  <details>
+                    <summary className="cursor-pointer py-1 text-sm font-semibold">Questions</summary>
+                    <ul className="mt-4 space-y-3 text-sm">
+                      {(campaign?.requiredQuestions ?? []).map((question) => (
+                        <li key={question.id} className="flex items-start gap-2">
+                          {question.required ? <Icon name="flag" className="mt-0.5 text-accent" title="Priority" /> : null}
+                          <span>{question.prompt}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
