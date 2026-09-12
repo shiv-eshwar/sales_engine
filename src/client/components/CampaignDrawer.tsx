@@ -34,7 +34,7 @@ export function CampaignDrawer({
   return (
     <Modal.Backdrop isOpen={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <Modal.Container size="lg">
-        <Modal.Dialog className="flex max-h-[min(86vh,760px)] flex-col" aria-label={mode === "edit" ? "Edit offering" : "Create a campaign"}>
+        <Modal.Dialog className="flex h-[min(86vh,760px)] flex-col" aria-label={mode === "edit" ? "Edit offering" : "Create a campaign"}>
           <Modal.Header>
             <Modal.Heading>
               {mode === "edit" ? (campaign ? `Editing ${campaign.name}` : "Edit offering") : "Create a campaign"}
@@ -43,12 +43,12 @@ export function CampaignDrawer({
               Close
             </Button>
           </Modal.Header>
-          <Modal.Body className="flex min-h-0 flex-1 flex-col">
-            <p className="mb-3 text-sm text-muted">
+          <Modal.Body className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <p className="text-muted mb-3 shrink-0 text-sm">
               Chat with the campaign assistant. It will interview you and produce the calling strategy — there is no form to fill.
             </p>
             {open ? (
-              <div className="min-h-[28rem] flex-1">
+              <div className="min-h-0 flex-1">
                 <CampaignChat
                   key={`${mode}-${campaign?.id ?? "new"}-${requestId}`}
                   campaign={mode === "edit" ? campaign : undefined}
