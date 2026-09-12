@@ -1,0 +1,11 @@
+---
+description: Load Refactoring UI when designing or reviewing the operator interface.
+globs: src/client/**/*.{tsx,css}
+alwaysApply: false
+---
+
+# Operator UI (Refactoring UI)
+
+When changing layout, styling, empty states, type, color, spacing, hierarchy, or polish, read and follow [`.cursor/skills/ui-ux/SKILL.md`](../skills/ui-ux/SKILL.md). Load the matching chapter (hierarchy, spacing, type, color, depth, images, empty states) before editing.
+
+Do not invent a parallel visual system. Use the project's existing tokens and components, then apply the book's ranking, spacing, and personality rules on top.
