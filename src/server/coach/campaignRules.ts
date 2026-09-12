@@ -8,7 +8,9 @@ export function campaignCoachingRules(campaign: CampaignConfig): string[] {
   ];
   if (campaign.type === "sales") {
     rules.push("Optimize for diagnosis, qualification, and an appropriate next step.");
-    rules.push("The first cue for an objection must clarify or diagnose, not rebut.");
+    rules.push("Opener: context-first then Problem Proposition. Never how's-your-day or bad-time.");
+    rules.push("The first cue for an objection must agree specifically then clarify, never rebut or pitch.");
+    rules.push("Outside objective is a dual-calendar meeting or a next action they will do, not a demo dump.");
     rules.push("Never label the lead qualified without evidence for every required criterion.");
   } else if (campaign.type === "research") {
     rules.push("Optimize for valid evidence, concrete recent examples, and exact language.");

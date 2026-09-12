@@ -134,6 +134,8 @@ The four AI capabilities are eve-framework agents under `agents/` — one direct
 
 - `live-coach`, `post-call`, `campaign-generation`, `prospect-research`
 
+Book-derived knowledge packs live in `agents/skills/` (Farrokh, Blount, Weinberg, Sobczak). They are not Eve agents. Live cues auto-load distilled rules from `config/playbooks/cold-calling.yaml` (context-first opener, Problem Proposition, Miyagi/RBO, two-brush-off NEXT). Edit that YAML to change coaching; read a skill chapter when rewriting an objection guide. Do not paste book files into the live prompt — cues stay ≤160 characters.
+
 `src/server/agents/loader.ts` renders instructions and the existing OpenAI-compatible transport (`src/server/llm/`) executes single structured turns, so timeouts, validators, and holdout behavior are unchanged. The full eve runtime (durable sessions, AI Gateway) is intentionally not used: this app is one process with sub-3s coaching budgets and fake-injected tests. To edit an agent's behavior, edit its `instructions.md`; contracts live in the zod schemas referenced by `agent.ts`. `tests/unit/agents.test.ts` guards both.
 
 ## Tunnel / `APP_BASE_URL`

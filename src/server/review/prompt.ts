@@ -49,7 +49,12 @@ export function buildExtractionPrompt(input: {
       talkRatio: { callerShare: input.talk.callerShare, contactShare: input.talk.contactShare }
     },
     playbook: input.playbook
-      ? { principles: input.playbook.principles, objections: input.playbook.objections }
+      ? {
+          principles: input.playbook.principles,
+          objections: input.playbook.objections,
+          objectionFlow: input.playbook.objection_flow,
+          objectionGuides: input.playbook.objection_guides ?? {}
+        }
       : null,
     transcriptComplete: input.transcriptComplete,
     transcript

@@ -1,5 +1,5 @@
 id: cold-calling
-version: 1
+version: 2
 stages:
   - opener
   - hook
@@ -17,20 +17,25 @@ talk_ratio:
   warn_after_connected_seconds: 60
 
 principles:
-  - Prefer flows and intent over memorized scripts.
-  - Focus on the problem and its consequences before explaining the product.
-  - Prefer concise questions that cause the contact to describe their situation.
-  - Treat clear rejection and disqualification as useful outcomes.
-  - Do not argue with objections.
-  - Never invent customer names, results, prices, integrations, guarantees, or claims.
-  - Cues must be at most 160 characters. should_show false is valid.
+  - "Call path: context-first opener → Problem Proposition (triggering problem, one-sentence we-do-X, interest CTA) → objections → meeting. Most calls are won or lost in the first 60 seconds."
+  - "Never open with how's your day, did I catch you at a bad time, or is this Bob. Assume the name. Use a sit-up moment (peer, event, intel) in the first 5 seconds."
+  - "Prefer problem language over buzzwords or social-proof dumps. People act on a movie-scene problem in their words, not a category pitch."
+  - "Possible Value Proposition stays possible until they confirm it. Hint value, then ask questions. Do not present, demo, or ask for a meeting in sentence four."
+  - "Outside objective is a dual-calendar meeting or a clear next action they will do — not see-if-there's-interest and not a product dump."
+  - "First no is almost always a reflex at the interruption, not a product verdict. Do not argue, rebut, or overcome."
+  - "Miyagi / RBO: pause, agree with the specific objection, incentivize a real reason, sell the test drive, then ask and shut up. After two brush-offs, NEXT — come back another day."
+  - "Ask one relevant question at a time. Prefer their words. Do not overqualify a lookalike before the meeting."
+  - "Talk less than 40% after the first minute. Prefer concise questions that make the contact describe the situation."
+  - "Gatekeeper: do not pitch or befriend the EA. Slide-by with context, treat them as a buyer for intel, never identity lies. After 1-2 shutdowns, try mobile/off-hours/another channel."
+  - "Treat clear rejection and disqualification as useful outcomes. Honor do-not-contact immediately."
+  - "Never invent customer names, results, prices, integrations, guarantees, or unapproved claims."
+  - "Cues must be at most 160 characters. should_show false is valid."
 
 objection_flow:
-  - acknowledge
-  - clarify
-  - diagnose
-  - answer_from_approved_evidence
-  - confirm
+  - agree_specific
+  - incentivize_or_clarify
+  - sell_the_test_drive
+  - ask_and_shut_up
 
 objections:
   - not_interested
@@ -52,21 +57,45 @@ cue_max_characters: 160
 cue_min_confidence: 0.5
 
 objection_guides:
-  existing_solution:
-    first_cue: clarify
-    prompt: "Ask what the current solution covers and what still hurts before offering any comparison."
   not_interested:
     first_cue: clarify
-    prompt: "Acknowledge and ask what they would rather not spend time on."
-  do_not_contact:
+    prompt: "Miyagi: agree it's a cold call. Multiple-choice why (timing, already covered, wrong person). Sell a 15-min test drive, not the product."
+  send_information:
     first_cue: clarify
-    prompt: "Acknowledge immediately and end respectfully. Do not continue the pitch."
+    prompt: "Brush-off. Disrupt: ask what specifically to send and why. Do not accept email as the win. Offer a short look so the note is useful."
   bad_timing:
     first_cue: clarify
-    prompt: "Ask when timing would be better rather than pushing a meeting."
+    prompt: "Situational: they win today. Ask when timing is better and book that, or a no-obligation look so they know what's out there."
+  busy_now:
+    first_cue: clarify
+    prompt: "Anchor then disrupt: that's why you called briefly. Ask for a specific better time on their calendar. Do not say you'll call later vaguely."
+  existing_solution:
+    first_cue: clarify
+    prompt: "Agree it works. Trap: what still hurts or what better-than-satisfied would look like. Then peer proof from approved claims only. Never badmouth."
+  in_house_team:
+    first_cue: clarify
+    prompt: "Agree in-house can work. Ask what they still do by hand or miss. Do not pitch a rip-and-replace."
+  no_budget:
+    first_cue: clarify
+    prompt: "Let them win on budget today. Sell the test drive for later, not a discount. Do not lock pricing on this call."
+  too_expensive:
+    first_cue: clarify
+    prompt: "Price before needs is a trap. Defer to their situation. If they insist, range only from approved claims."
   no_authority:
     first_cue: qualify
-    prompt: "Ask who else is involved before trying to close."
+    prompt: "Name the right title. You email with permission; do not ask a stranger to intro you. Ask who else is involved before closing."
+  wrong_person:
+    first_cue: qualify
+    prompt: "Name the likely title. Ask for the name. You follow up; don't pitch this person."
+  need_to_think:
+    first_cue: clarify
+    prompt: "Agree. Ask what specifically they need to think through. Book a short look or a dated callback with homework on both sides."
+  trust_or_risk:
+    first_cue: clarify
+    prompt: "Acknowledge the risk. Ask what would need to be true. Use only approved claims as proof. No invented case studies."
+  do_not_contact:
+    first_cue: listen
+    prompt: "Acknowledge immediately and end respectfully. Do not continue the pitch."
   other:
     first_cue: clarify
-    prompt: "Ask one diagnostic question to understand the objection."
+    prompt: "Agree with the specific words they used. Ask one diagnostic question. Do not rebut."
