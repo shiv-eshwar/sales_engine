@@ -271,6 +271,40 @@ export const approveProposalRequestSchema = z.object({
   fields: writeFieldsSchema.optional()
 });
 
+export const reviewInterviewActionSchema = z.enum([
+  "none",
+  "propose_fields",
+  "approve",
+  "retry_write",
+  "skip",
+  "retry_processing",
+  "discard"
+]);
+
+export const reviewInterviewTurnSchema = z.object({
+  message: z.string().trim().min(1).max(4000),
+  action: reviewInterviewActionSchema.default("none"),
+  fields: writeFieldsSchema.optional()
+}).superRefine((value, ctx) => {
+  if (value.action === "propose_fields") {
+    const keys = Object.values(value.fields ?? {}).filter((item) => item !== undefined);
+    if (keys.length === 0) {
+      ctx.addIssue({ code: "custom", path: ["fields"], message: "Field edits require at least one writable value" });
+    }
+  }
+  if (value.action === "discard" && value.fields) {
+    ctx.addIssue({ code: "custom", path: ["fields"], message: "Discard does not accept field edits" });
+  }
+});
+
+export const reviewInterviewRequestSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant", "system"]),
+    content: z.string().trim().min(1).max(20000)
+  })).max(40),
+  bootstrap: z.boolean().optional()
+});
+
 export const discardProposalRequestSchema = z.object({
   confirm: z.literal(true)
 });
@@ -282,3 +316,5 @@ export const summaryQuerySchema = z.object({
 
 export type PostCallOutcome = z.infer<typeof postCallOutcomeSchema>;
 export type WriteFieldsInput = z.infer<typeof writeFieldsSchema>;
+export type ReviewInterviewTurn = z.infer<typeof reviewInterviewTurnSchema>;
+export type ReviewInterviewAction = z.infer<typeof reviewInterviewActionSchema>;

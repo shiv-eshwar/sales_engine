@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Button } from "@heroui/react";
 import type { SheetInfo } from "../../shared/contracts";
-import { EMPTY_COPY } from "../copy";
+import { DEFAULT_SHEET_TITLE, EMPTY_COPY } from "../copy";
 import { SCROLL } from "../layout/shell";
 import { createLeadsSheet, linkLeadsSheet } from "../state/api";
 
@@ -27,7 +27,7 @@ export function SheetConnect({
   const copy = EMPTY_COPY.sheetConnect;
   const [mode, setMode] = useState<"choose" | "link" | "create">("choose");
   const [url, setUrl] = useState("");
-  const [title, setTitle] = useState("Sales Engine Leads");
+  const [title, setTitle] = useState(DEFAULT_SHEET_TITLE);
   const [shareEmail, setShareEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -100,7 +100,7 @@ export function SheetConnect({
               <button type="button" className={choiceClass} disabled={pending} onClick={() => setMode("create")}>
                 <span className="font-semibold">{copy.createNew}</span>
                 <span className="text-sm leading-relaxed text-muted">
-                  Create one with the Sales Engine headers.
+                  Create one with the Mantis headers.
                 </span>
               </button>
             </>

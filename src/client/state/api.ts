@@ -244,6 +244,32 @@ export function saveCampaign(brief: CampaignBrief, requestId: string, previous?:
   });
 }
 
+export type ReviewInterviewResponse = {
+  text: string;
+  proposal: PublicProposal;
+  wrote: boolean;
+  leftReview: boolean;
+  lead: PublicLead | null;
+  leads: PublicLead[];
+  sheet: BootstrapResponse["sheet"] | null;
+};
+
+export function interviewReview(input: {
+  sessionId: string;
+  messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
+  bootstrap?: boolean;
+  signal?: AbortSignal;
+}): Promise<ReviewInterviewResponse> {
+  return campaignRequest(`/api/calls/${encodeURIComponent(input.sessionId)}/review/interview`, {
+    method: "POST",
+    body: JSON.stringify({
+      messages: input.messages,
+      bootstrap: input.bootstrap
+    }),
+    signal: input.signal
+  });
+}
+
 export function interviewCampaign(input: {
   messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   requestId: string;

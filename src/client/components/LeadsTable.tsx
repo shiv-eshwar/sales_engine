@@ -45,12 +45,12 @@ export function LeadsTable({
   empty?: ReactNode;
 }) {
   if (leads.length === 0) {
-    return <div className="mt-4">{empty}</div>;
+    return <div>{empty}</div>;
   }
 
   return (
     <>
-      <ul className="mt-4 space-y-3 lg:hidden" aria-label="Leads">
+      <ul className="space-y-3 lg:hidden" aria-label="Leads">
         {leads.map((lead) => (
           <li key={lead.leadId}>
             <Link
@@ -75,21 +75,21 @@ export function LeadsTable({
           </li>
         ))}
       </ul>
-      <div className={`mt-4 hidden min-h-0 flex-1 ${SCROLL} ${SCROLL_X} rounded-lg bg-surface shadow-sm lg:block`}>
+      <div className={`hidden min-h-0 flex-1 ${SCROLL} ${SCROLL_X} rounded-lg bg-surface shadow-sm lg:block`}>
         <table className="w-full text-left text-sm" aria-label="Leads">
-          <thead>
-            <tr className="border-b border-separator">
-              <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Name</th>
-              <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Company</th>
-              <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Phone</th>
-              <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Status</th>
+          <thead className="sticky top-0 z-10 bg-surface">
+            <tr>
+              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Name</th>
+              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Company</th>
+              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Phone</th>
+              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Status</th>
             </tr>
           </thead>
           <tbody>
             {leads.map((lead) => {
               return (
-                <tr key={lead.leadId} className="border-b border-separator last:border-0">
-                  <td className="px-4 py-3">
+                <tr key={lead.leadId} className="hover:bg-surface-secondary">
+                  <td className="px-4 py-2.5">
                     <Link
                       to={`/leads/${encodeURIComponent(lead.leadId)}`}
                       className="font-semibold text-foreground hover:underline hover:underline-offset-2"
@@ -99,8 +99,8 @@ export function LeadsTable({
                     </Link>
                     {lead.role ? <p className="mt-0.5 text-sm text-muted">{lead.role}</p> : null}
                   </td>
-                  <td className="px-4 py-3 text-muted">{lead.company || "—"}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-2.5 text-muted">{lead.company || "—"}</td>
+                  <td className="px-4 py-2.5">
                     <span className="flex items-center gap-2 font-mono text-xs tabular-nums">
                       <Icon
                         name={lead.dialable ? "phone" : "phoneOff"}
@@ -111,7 +111,7 @@ export function LeadsTable({
                       {lead.phoneE164 ?? lead.phone}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-muted">
+                  <td className="px-4 py-2.5 text-sm text-muted">
                     {[lead.callStatus, lead.crmStatus].filter(Boolean).join(" · ") || "—"}
                   </td>
                 </tr>

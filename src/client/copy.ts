@@ -1,6 +1,21 @@
 import type { SheetDiagnostic, WriteFieldKey } from "../shared/contracts";
 
-export const PRODUCT_NAME = "Sales Engine";
+export const PRODUCT_NAME = "Mantis";
+export const DEFAULT_SHEET_TITLE = `${PRODUCT_NAME} Leads`;
+
+export const NAV_COPY = {
+  home: PRODUCT_NAME,
+  campaign: "Campaign",
+  editOffering: "Edit offering",
+  notifications: "Notifications",
+  analytics: "Analytics",
+  newCampaign: "New campaign"
+} as const;
+
+export function notificationsNavLabel(count: number): string {
+  if (count > 0) return `${NAV_COPY.notifications}, ${count} waiting`;
+  return NAV_COPY.notifications;
+}
 
 export const SEMANTIC_OUTCOME_LABELS: Record<string, string> = {
   meeting_booked: "Meeting booked",
@@ -82,19 +97,19 @@ export const EMPTY_COPY = {
   },
   notifications: {
     title: "Nothing waiting",
-    description: "Pending CRM reviews and failed Sheet writes show up here after a call."
+    description: "Pending CRM reviews, failed Sheet writes, and skipped queue rows show up here."
   },
   sheet: {
     title: "Sheet needs a fix",
     description: "The queue cannot load until the Sheet mapping and headers are valid."
   },
   bootstrap: {
-    title: "Could not load Sales Engine",
+    title: "Could not load Mantis",
     description: "Refresh the page. If this keeps happening, check that the local server is running."
   },
   sheetConnect: {
     title: "Connect a leads Sheet",
-    description: "Each campaign needs its own leads Sheet. Campaigns cannot share a spreadsheet. Link one you already use, or create a new one with the Sales Engine headers.",
+    description: "Each campaign needs its own leads Sheet. Campaigns cannot share a spreadsheet. Link one you already use, or create a new one with the Mantis headers.",
     sampleLeads: "Use sample leads",
     sampleLeadsHint: "Creates a private sample queue for this campaign only.",
     linkExisting: "Link existing Sheet",

@@ -21,13 +21,11 @@ export function readinessState(input: {
 export function ReadinessChip({
   sheet,
   twilioConfigured,
-  deviceStatus,
-  diagnosticCount
+  deviceStatus
 }: {
   sheet: BootstrapResponse["sheet"];
   twilioConfigured: boolean;
   deviceStatus: DeviceStatus;
-  diagnosticCount: number;
 }) {
   const state = readinessState({ sheet, twilioConfigured, deviceStatus });
   const blocking = state.kind === "sheet";
@@ -38,18 +36,13 @@ export function ReadinessChip({
       aria-label={blocking ? "Sheet blocking error" : state.kind === "ready" ? "Ready to call" : "Can't call — Twilio off"}
     >
       {state.kind !== "ready" ? (
-        blocking && diagnosticCount > 0 ? (
-          <Link to="/diagnostics" className="truncate font-medium text-danger hover:underline hover:underline-offset-4">
+        blocking ? (
+          <Link to="/notifications#queue" className="truncate font-medium text-danger hover:underline hover:underline-offset-4">
             {state.label}
           </Link>
         ) : (
           <span className="truncate font-medium text-danger">{state.label}</span>
         )
-      ) : diagnosticCount > 0 ? (
-        <Link to="/diagnostics" className="truncate font-medium text-muted hover:text-foreground hover:underline hover:underline-offset-4">
-          <span className="sm:hidden">Diagnostics ({diagnosticCount})</span>
-          <span className="hidden sm:inline">Queue diagnostics ({diagnosticCount})</span>
-        </Link>
       ) : null}
       {twilioConfigured ? (
         <span className="sr-only" aria-label={`Twilio device ${deviceStatus}`}>

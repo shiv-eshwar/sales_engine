@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Button } from "@heroui/react";
 import { login } from "../state/api";
+import { PRODUCT_NAME } from "../copy";
 
 type LoginPageProps = {
   onLoggedIn: () => void;
@@ -27,7 +28,7 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Sales Engine</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">{PRODUCT_NAME}</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">Sign in</h1>
       <p className="mt-2 max-w-[32em] text-sm leading-relaxed text-muted">Single-user internal tool. Sign in to load the next eligible lead.</p>
       <form className="mt-8 flex flex-col gap-6" onSubmit={(event) => void onSubmit(event)}>

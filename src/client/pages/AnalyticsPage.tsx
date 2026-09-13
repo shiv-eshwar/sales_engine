@@ -1,19 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Breadcrumbs } from "../components/Breadcrumbs";
 import { CampaignSelect } from "../components/CampaignSelect";
 import { DailySummaryPanel } from "../components/DailySummaryPanel";
+import { AnalyticsStatsSkeleton } from "../components/LoadingSkeleton";
 import { useSession } from "../state/session";
 import { fetchSummary } from "../state/api";
 import type { DailySummary } from "../../shared/contracts";
 
-const fieldClass = "flex min-w-0 flex-col gap-2";
-const inputClass =
-  "h-11 rounded-lg border border-border bg-surface px-3 text-sm text-foreground";
-const presetClass =
-  "min-h-9 rounded-md px-3 text-sm font-semibold text-muted hover:text-foreground";
-const presetActiveClass =
-  "min-h-9 rounded-md bg-surface px-3 text-sm font-semibold text-foreground shadow-sm";
+const presetClass = "min-h-9 rounded-md px-3 text-sm font-semibold text-muted hover:text-foreground";
+const presetActiveClass = "min-h-9 rounded-md bg-surface px-3 text-sm font-semibold text-foreground shadow-sm";
 
 function utcDayStamp(date = new Date()): string {
   return date.toISOString().slice(0, 10);
@@ -96,23 +91,37 @@ export function AnalyticsPage() {
 
   return (
     <div>
-      <Breadcrumbs items={[{ label: "Home", to: "/leads" }, { label: "Analytics" }]} />
-      <h1 className="mt-5 text-2xl font-semibold tracking-tight sm:mt-8">Analytics</h1>
-      <p className="mt-3 max-w-[32em] text-sm leading-relaxed text-muted">
-        Daily counts from the call ledger for one day.
-      </p>
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold tracking-tight">Analytics</h1>
+          <p className="mt-1 text-sm text-muted">
+            {formatDayHeading(date)}
+            {selectedName ? ` · ${selectedName}` : ""}
+          </p>
+        </div>
 
-      <form
-        className="mt-8 flex flex-col gap-6 sm:flex-row sm:flex-wrap sm:items-start"
-        onSubmit={(event) => event.preventDefault()}
-      >
-        <div className={fieldClass}>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Date</p>
-          <div className="flex flex-wrap items-center gap-2">
+        <form className="flex min-w-0 flex-wrap items-center gap-3" onSubmit={(event) => event.preventDefault()}>
+          <div className="flex flex-wrap items-center gap-1 rounded-lg bg-surface-secondary p-1">
+            <button
+              type="button"
+              className={date === today ? presetActiveClass : presetClass}
+              aria-pressed={date === today}
+              onClick={() => setFilter({ date: today })}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              className={date === shiftUtcDay(today, -1) ? presetActiveClass : presetClass}
+              aria-pressed={date === shiftUtcDay(today, -1)}
+              onClick={() => setFilter({ date: shiftUtcDay(today, -1) })}
+            >
+              Yesterday
+            </button>
             <input
               type="date"
               aria-label="Summary date"
-              className={`${inputClass} w-[11.5rem]`}
+              className="field-quiet h-9 w-[10.5rem] rounded-md px-2 text-sm text-foreground"
               value={date}
               max={today}
               onChange={(event) => {
@@ -120,62 +129,31 @@ export function AnalyticsPage() {
                 if (isDayStamp(value)) setFilter({ date: value });
               }}
             />
-            <div className="flex rounded-lg bg-surface-secondary p-1">
-              <button
-                type="button"
-                className={date === today ? presetActiveClass : presetClass}
-                aria-pressed={date === today}
-                onClick={() => setFilter({ date: today })}
-              >
-                Today
-              </button>
-              <button
-                type="button"
-                className={date === shiftUtcDay(today, -1) ? presetActiveClass : presetClass}
-                aria-pressed={date === shiftUtcDay(today, -1)}
-                onClick={() => setFilter({ date: shiftUtcDay(today, -1) })}
-              >
-                Yesterday
-              </button>
-            </div>
           </div>
-        </div>
-        <div className={`${fieldClass} sm:w-80`}>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Campaign</p>
-          <CampaignSelect
-            includeAll
-            ariaLabel="Filter campaign"
-            campaigns={data.campaigns}
-            value={campaignId}
-            onChange={(next) => setFilter({ campaignId: next })}
-          />
-        </div>
-      </form>
+          <div className="w-full min-w-0 sm:w-72">
+            <CampaignSelect
+              includeAll
+              ariaLabel="Filter campaign"
+              campaigns={data.campaigns}
+              value={campaignId}
+              onChange={(next) => setFilter({ campaignId: next })}
+            />
+          </div>
+        </form>
+      </div>
 
-      <div className="mt-10">
+      <div className="mt-8">
         {error ? (
           <p role="alert" className="text-sm font-medium text-danger">
             {error}
           </p>
         ) : loading ? (
-          <div className="rounded-lg bg-surface p-5 shadow-sm sm:p-8" role="status" aria-label="Loading summary">
-            <div className="h-3 w-16 animate-pulse rounded-full bg-surface-secondary" />
-            <div className="mt-8 grid grid-cols-2 gap-5 sm:grid-cols-4">
-              <div className="h-12 animate-pulse rounded-lg bg-surface-secondary" />
-              <div className="h-12 animate-pulse rounded-lg bg-surface-secondary" />
-              <div className="h-12 animate-pulse rounded-lg bg-surface-secondary" />
-              <div className="h-12 animate-pulse rounded-lg bg-surface-secondary" />
-            </div>
-          </div>
+          <AnalyticsStatsSkeleton />
         ) : summary ? (
-          <>
-            {summary.attempts === 0 ? (
-              <p className="mb-6 max-w-[32em] text-sm leading-relaxed text-muted">
-                {emptyCopy}
-              </p>
-            ) : null}
-            <DailySummaryPanel summary={summary} heading={formatDayHeading(date)} />
-          </>
+          <DailySummaryPanel
+            summary={summary}
+            emptyCopy={summary.attempts === 0 ? emptyCopy : undefined}
+          />
         ) : null}
       </div>
     </div>

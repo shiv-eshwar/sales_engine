@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { ProspectPreparation } from "../../shared/campaigns";
+import { SCROLL } from "../layout/shell";
 import { Icon, QuoteMark } from "./Icon";
 
 export function ProspectBrief({
@@ -172,13 +173,25 @@ export function ProspectBrief({
     ? [opening, questions, objections, factsGrid, relevance, hypotheses, nextStep, unknowns, sources]
     : [factsGrid, relevance, hypotheses, opening, questions, objections, nextStep, unknowns, sources];
 
+  if (compact) {
+    return (
+      <section className="space-y-6 rounded-lg bg-surface p-4 shadow-sm" aria-label="AI prospect brief">
+        {meta}
+        {body}
+      </section>
+    );
+  }
+
   return (
     <section
-      className={`rounded-lg bg-surface shadow-sm ${compact ? "space-y-6 p-4" : "space-y-8 p-5 sm:p-8"}`}
+      className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-surface shadow-sm"
       aria-label="AI prospect brief"
+      data-brief-state="ready"
     >
-      {meta}
-      {body}
+      <div className="shrink-0 px-5 pt-5 sm:px-8 sm:pt-8">{meta}</div>
+      <div className={`min-h-0 flex-1 ${SCROLL} px-5 pb-5 pt-8 sm:px-8 sm:pb-8`}>
+        <div className="space-y-8">{body}</div>
+      </div>
     </section>
   );
 }

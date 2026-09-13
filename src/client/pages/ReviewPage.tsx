@@ -1,23 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useSession, discardProposal, retryProposalProcessing } from "../state/session";
-import { approveProposal, fetchProposalBySession, skipProposal, retryProposalWrite } from "../state/api";
-import { ReviewPanel } from "../components/ReviewPanel";
-import { Breadcrumbs } from "../components/Breadcrumbs";
+import { useSession } from "../state/session";
+import { fetchProposalBySession } from "../state/api";
+import { ReviewChat } from "../components/ReviewChat";
 import { EmptyState } from "../components/EmptyState";
 import { ReviewSkeleton } from "../components/LoadingSkeleton";
-import { EMPTY_COPY, nextLeadPath } from "../copy";
-import type { PublicProposal, PublicWriteFields } from "../../shared/contracts";
+import { EMPTY_COPY } from "../copy";
+import type { PublicProposal } from "../../shared/contracts";
 
 export function ReviewPage() {
   const { sessionId } = useParams();
-  const { setReview, afterWrite, pending, setError, error, refresh, data } = useSession();
+  const { setReview, afterWrite, pending, error, refresh } = useSession();
   const [proposal, setProposal] = useState<PublicProposal | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [localPending, setLocalPending] = useState(false);
   const navigate = useNavigate();
-  const busy = pending || localPending;
 
   useEffect(() => {
     if (!sessionId) {
@@ -46,32 +43,9 @@ export function ReviewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
-  async function withLocal(action: () => Promise<void>) {
-    setLocalPending(true);
-    setError(null);
-    try {
-      await action();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Request failed");
-    } finally {
-      setLocalPending(false);
-    }
-  }
-
-  async function onApprove(fields?: PublicWriteFields) {
-    if (!proposal) return;
-    const proposalId = proposal.id;
-    await withLocal(async () => {
-      const bootstrap = await afterWrite(await approveProposal(proposalId, fields));
-      const next = bootstrap?.leads.find((item) => item.dialable) ?? bootstrap?.lead ?? null;
-      navigate(nextLeadPath(next));
-    });
-  }
-
   if (!sessionId) {
     return (
       <div>
-        <Breadcrumbs items={[{ label: "Home", to: "/leads" }, { label: "Review" }]} />
         <div className="mt-8">
           <EmptyState
             icon="review"
@@ -88,20 +62,10 @@ export function ReviewPage() {
     );
   }
 
-  const leadName = proposal?.contactName ?? data.leads.find((item) => item.leadId === proposal?.leadId)?.fullName;
-  const crumbs = [
-    { label: "Home", to: "/leads" },
-    ...(proposal ? [{ label: leadName || proposal.leadId, to: `/leads/${encodeURIComponent(proposal.leadId)}` }] : []),
-    { label: "Review" },
-  ];
-
   if (loading) {
     return (
-      <div>
-        <Breadcrumbs items={crumbs} />
-        <div className="mt-8">
-          <ReviewSkeleton />
-        </div>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <ReviewSkeleton />
       </div>
     );
   }
@@ -109,7 +73,6 @@ export function ReviewPage() {
   if (fetchError || !proposal) {
     return (
       <div>
-        <Breadcrumbs items={crumbs} />
         <div className="mt-8">
           <EmptyState
             icon="review"
@@ -126,39 +89,31 @@ export function ReviewPage() {
     );
   }
 
-  const proposalValue = proposal;
-
   return (
-    <div>
-      <Breadcrumbs items={crumbs} />
-      <div className="mt-8">
-        <ReviewPanel
-          proposal={proposalValue}
-          pending={busy}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <ReviewChat
+          proposal={proposal}
+          pending={pending}
           error={error}
-          onApprove={(fields) => void onApprove(fields)}
-          onRetryWrite={() => void withLocal(async () => {
-            const bootstrap = await afterWrite(await retryProposalWrite(proposalValue.id));
-            if (bootstrap) {
-              const next = bootstrap.leads.find((item) => item.dialable) ?? bootstrap.lead;
-              navigate(nextLeadPath(next));
+          onProposal={(next) => {
+            setProposal(next);
+            setReview(next);
+          }}
+          onFinished={async (path, result) => {
+            if (result.sheet) {
+              await afterWrite({
+                proposal: result.proposal,
+                lead: result.lead,
+                leads: result.leads,
+                sheet: result.sheet
+              });
+            } else {
+              setReview(null);
+              await refresh();
             }
-          })}
-          onRetryProcessing={() => void withLocal(async () => {
-            setProposal(await retryProposalProcessing(proposalValue.id));
-          })}
-          onSkip={() => void withLocal(async () => {
-            const bootstrap = await afterWrite(await skipProposal(proposalValue.id));
-            const next = bootstrap?.leads.find((item) => item.dialable) ?? bootstrap?.lead ?? null;
-            navigate(nextLeadPath(next));
-          })}
-          onDiscard={() => void withLocal(async () => {
-            await discardProposal(proposalValue.id);
-            setProposal(null);
-            setReview(null);
-            await refresh();
-            navigate("/leads");
-          })}
+            navigate(path);
+          }}
         />
       </div>
     </div>

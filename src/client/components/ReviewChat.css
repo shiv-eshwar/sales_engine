@@ -1,0 +1,29 @@
+/* Review chat: 8px Mantis radius, quieter native button chrome. */
+.review-chat .review-chip,
+.review-chat .review-send,
+.review-chat .review-composer,
+.review-suggestions button {
+  border-radius: var(--radius) !important;
+}
+
+.review-chat .review-chip,
+.review-chat .review-send,
+.review-suggestions button {
+  border: 0;
+  box-shadow: none;
+  min-height: 2.25rem;
+  padding: 0.5rem 0.875rem;
+}
+
+.review-chat .review-composer textarea {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+  field-sizing: fixed;
+  resize: none;
+}
+
+.review-chat .review-composer:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

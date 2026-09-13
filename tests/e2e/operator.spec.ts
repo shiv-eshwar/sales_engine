@@ -11,7 +11,7 @@ const test = base.extend<{ server: E2eServer }>({
 
 async function login(page: import("@playwright/test").Page, baseURL: string) {
   await page.goto(baseURL);
-  await expect(page.getByRole("link", { name: "Sales Engine" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Mantis" })).toBeVisible();
 }
 
 async function chooseCampaign(page: import("@playwright/test").Page, name: string) {
@@ -90,11 +90,13 @@ test("login through approve loads the next lead", async ({ page, server }) => {
   });
   expect(completed.status).toBe(204);
 
-  await expect(page.getByRole("heading", { name: "Review CRM update" })).toBeVisible();
-  await expect(page.getByRole("table")).toContainText("Call Status");
-  await expect(page.getByRole("table")).toContainText("Proposed");
+  await expect(page.getByLabel("Review chat")).toBeVisible();
+  await expect(page.getByLabel("Review chat")).toContainText("Proposed");
+  await expect(page.getByLabel("Review chat")).toContainText("Call Status");
+  await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Approve & next" }).click();
+  await expect(page.getByRole("button", { name: "Write to Sheet & next" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Write this update" }).click();
   await expect(page.getByRole("heading", { name: "Jordan Chen" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Call" })).toBeVisible();
 });
@@ -114,7 +116,8 @@ test("open a specific lead from the table, search and navigate", async ({ page, 
   await openLead(page, "Jordan Chen");
   await expect(page).toHaveURL(/\/leads\/L-101/);
   await expect(page.getByRole("heading", { name: "Jordan Chen" })).toBeVisible();
-  await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Home" }).click();
+  await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Mantis" }).click();
   await expect(page.getByRole("table", { name: "Leads" })).toBeVisible();
 
   await openLead(page, "Alex Rivera");
@@ -141,6 +144,25 @@ const invalidSheet = base.extend<{ server: E2eServer }>({
     await use(server);
     await server.close();
   }
+});
+
+test("notifications lists queue issues and replaces diagnostics nav", async ({ page, server }) => {
+  await login(page, server.baseURL);
+  await chooseCampaign(page, "Lamina founder sales");
+  await expect(page.getByRole("link", { name: /Queue diagnostics/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Notifications, 3 waiting/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Analytics" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "New campaign" })).toBeVisible();
+  await page.getByRole("link", { name: /need a phone fix/ }).click();
+  await expect(page).toHaveURL(/\/notifications#queue/);
+  await expect(page.getByRole("heading", { name: "Notifications" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
+  await expect(page.getByText("Sam Patel")).toBeVisible();
+  await expect(page.getByText("Can't be dialed")).toBeVisible();
+  await expect(page.getByText("Blank ID")).toBeVisible();
+  await page.goto(`${server.baseURL}/diagnostics`);
+  await expect(page).toHaveURL(/\/notifications#queue/);
+  await expect(page.getByRole("heading", { name: "Notifications" })).toBeVisible();
 });
 
 invalidSheet("invalid Sheet headers block Call", async ({ page, server }) => {

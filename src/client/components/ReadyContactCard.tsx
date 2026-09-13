@@ -41,6 +41,7 @@ export function ReadyContactCard({
   }, [callButtonRef, disabledReason, preparing, sheetBlocking, starting, lead.leadId]);
 
   const extraIssues = lead.issues.filter((issue) => issue !== "Phone is not dialable");
+  const briefLocked = preparing && !opening;
 
   return (
     <Card aria-label="Next contact" className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col gap-0! overflow-hidden! rounded-lg! border-t-[3px] border-t-accent p-0! max-lg:pb-[5.5rem]">
@@ -48,8 +49,11 @@ export function ReadyContactCard({
         <h1 className="text-xl font-semibold leading-[1.15] tracking-tight break-words sm:text-2xl">
           {lead.fullName || "Unnamed contact"}
         </h1>
-        {lead.role ? <p className="text-sm text-muted break-words">{lead.role}</p> : null}
-        {lead.company ? <p className="text-sm text-muted break-words">{lead.company}</p> : null}
+        {lead.role || lead.company ? (
+          <p className="text-sm text-muted break-words">
+            {[lead.role, lead.company].filter(Boolean).join(" · ")}
+          </p>
+        ) : null}
         <p className="mt-1 flex min-w-0 items-center gap-2 text-sm">
           <Icon
             name={lead.dialable ? "phone" : "phoneOff"}
@@ -60,38 +64,42 @@ export function ReadyContactCard({
         </p>
       </Card.Header>
       <div className="relative z-0 min-h-0 min-w-0 flex-1 overflow-hidden">
-        <div className={`h-full min-h-0 ${SCROLL} px-5 pb-5 pt-5 sm:px-8 sm:pb-6 sm:pt-8`}>
-        <div className="flex min-h-min min-w-0 flex-col gap-5 sm:gap-8">
+        <div
+          className={`h-full min-h-0 px-5 pb-5 pt-5 sm:px-8 sm:pb-6 sm:pt-8 ${briefLocked ? "overflow-hidden" : SCROLL}`}
+        >
+        <div className={`flex min-w-0 flex-col gap-5 sm:gap-8 ${briefLocked ? "h-full min-h-0" : "min-h-min"}`}>
         {campaign?.objective ? (
-          <div className="flex min-w-0 flex-col gap-2">
-            <p className="max-w-[32em] text-sm leading-relaxed text-muted line-clamp-3 sm:line-clamp-none">{campaign.objective}</p>
-            {campaign.brief ? <p className="text-sm text-muted">Strategy v{campaign.version}</p> : null}
-          </div>
-        ) : campaign?.brief ? (
-          <p className="text-sm text-muted">Strategy v{campaign.version}</p>
+          <p className="max-w-[32em] shrink-0 text-sm leading-relaxed text-muted line-clamp-3 sm:line-clamp-none">{campaign.objective}</p>
         ) : null}
+        {campaign?.brief ? <p className="shrink-0 text-xs text-muted">Strategy v{campaign.version}</p> : null}
         {campaign?.brief || opening || preparing ? (
           <div
-            className="max-h-[12.5rem] min-h-[4.75rem] min-w-0 overflow-hidden rounded-lg bg-accent-soft"
-            role={preparing ? "status" : undefined}
-            aria-label={preparing ? "Preparing opening" : undefined}
-            style={preparing ? { opacity: 0.72 } : undefined}
+            className={`min-w-0 overflow-hidden rounded-lg bg-accent-soft px-5 py-5 sm:px-6 sm:py-6 ${briefLocked ? "flex min-h-0 flex-1 flex-col" : ""}`}
+            role={briefLocked ? "status" : undefined}
+            aria-label={briefLocked ? "Preparing opening" : undefined}
+            data-brief-state={briefLocked ? "loading" : "ready"}
+            style={briefLocked ? { opacity: 0.72 } : undefined}
           >
-            <div className={`max-h-[12.5rem] ${SCROLL} px-5 py-5 sm:px-6 sm:py-6`}>
             <QuoteMark />
             {opening ? (
               <p className="mt-3 text-sm leading-relaxed break-words text-accent-soft-foreground">{opening}</p>
             ) : (
-              <div className="mt-3 space-y-3" aria-hidden="true">
+              <div className={`mt-3 space-y-3 ${briefLocked ? "min-h-0 flex-1 overflow-hidden" : ""}`} aria-hidden="true">
                 <div className="h-3 w-full animate-pulse rounded-full bg-accent/15" />
                 <div className="h-3 w-5/6 animate-pulse rounded-full bg-accent/15" />
                 <div className="h-3 w-2/3 animate-pulse rounded-full bg-accent/15" />
+                {briefLocked ? (
+                  <>
+                    <div className="h-3 w-11/12 animate-pulse rounded-full bg-accent/15" />
+                    <div className="h-3 w-3/4 animate-pulse rounded-full bg-accent/15" />
+                    <div className="h-3 w-4/5 animate-pulse rounded-full bg-accent/15" />
+                  </>
+                ) : null}
               </div>
             )}
-            </div>
           </div>
         ) : null}
-        <div className="min-w-0">
+        <div className="min-w-0 shrink-0">
           {firstQuestion ? (
             <p className="max-w-[32em] text-sm leading-relaxed break-words">{firstQuestion}</p>
           ) : preparing ? (

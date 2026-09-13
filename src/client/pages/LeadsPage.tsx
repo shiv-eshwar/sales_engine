@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { Alert, Button } from "@heroui/react";
 import { useSession } from "../state/session";
 import { EmptyState } from "../components/EmptyState";
@@ -63,34 +64,6 @@ export function LeadsPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5 lg:overflow-hidden">
-      {campaign ? (
-        <header className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
-          <div>
-            {nextLead ? null : <h1 className="text-2xl font-semibold tracking-tight">Ready</h1>}
-            <p className={`text-sm text-muted ${nextLead ? "" : "mt-1"}`}>
-              Selling {campaign.brief?.offeringName ?? campaign.name}
-              {sheetUnconfigured ? "" : ` · ${data.leads.length} eligible`}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {campaign.brief ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-lg!"
-                isDisabled={pending || campaignBusy}
-                onPress={() => setEditor("edit")}
-              >
-                Edit offering
-              </Button>
-            ) : null}
-            <button type="button" className="text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4" disabled={pending || campaignBusy} onClick={onRefresh}>
-              Refresh
-            </button>
-          </div>
-        </header>
-      ) : null}
-
       {!campaign ? (
         <div className="pt-6">
           <EmptyState
@@ -190,6 +163,8 @@ export function LeadsPage() {
             leadsCount={data.leads.length}
             undialableCount={undialableCount}
             tableEmpty={tableEmpty}
+            onRefresh={onRefresh}
+            refreshDisabled={pending || campaignBusy}
           />
         </div>
       )}
@@ -241,7 +216,9 @@ function LeadsQueue({
   visible,
   leadsCount,
   undialableCount,
-  tableEmpty
+  tableEmpty,
+  onRefresh,
+  refreshDisabled
 }: {
   query: string;
   setQuery: (value: string) => void;
@@ -254,11 +231,13 @@ function LeadsQueue({
   leadsCount: number;
   undialableCount: number;
   tableEmpty: { title: string; description: string } | null;
+  onRefresh?: () => void;
+  refreshDisabled?: boolean;
 }) {
   return (
-    <section aria-label="All leads" className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
-        <label className="w-full min-w-0 flex-1 text-sm lg:min-w-52">
+    <section aria-label="All leads" className="flex min-h-0 min-w-0 flex-1 flex-col gap-5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-1">
+        <label className="min-w-0 flex-1 basis-48 text-sm">
           <span className="sr-only">Search leads</span>
           <input
             type="search"
@@ -266,39 +245,55 @@ function LeadsQueue({
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search name, company, phone…"
             aria-label="Search leads"
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
+            className="field-quiet w-full rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-[var(--field-placeholder)]"
           />
         </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={dialableOnly}
-            onChange={(event) => setDialableOnly(event.target.checked)}
-          />
-          Ready to call
-        </label>
-        {undialableCount > 0 ? (
-          <button type="button" className="text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4" onClick={() => setDialableOnly(false)}>
-            {undialableCount} need a phone fix
-          </button>
-        ) : null}
-        <div className="flex flex-wrap items-center gap-1 lg:ml-auto" role="group" aria-label="Sort leads">
-          {([["name", "Name"], ["company", "Company"], ["status", "Status"]] as Array<[LeadSortKey, string]>).map(([key, label]) => (
-            <Button
-              key={key}
-              size="sm"
-              variant="ghost"
-              aria-pressed={sortKey === key}
-              className={sortKey === key ? "rounded-lg! font-semibold text-foreground" : "rounded-lg!"}
-              onPress={() => toggleSort(key)}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted">
+          <label className="flex min-h-11 items-center gap-2">
+            <input
+              type="checkbox"
+              checked={dialableOnly}
+              aria-label="Ready to call"
+              className="size-3.5 accent-[var(--accent)]"
+              onChange={(event) => setDialableOnly(event.target.checked)}
+            />
+            Ready
+          </label>
+          {undialableCount > 0 ? (
+            <Link
+              to="/notifications#queue"
+              className="inline-flex min-h-11 items-center hover:text-foreground hover:underline hover:underline-offset-4"
             >
-              {label}{sortKey === key ? (sortDir === 1 ? " ↑" : " ↓") : ""}
-            </Button>
-          ))}
+              {undialableCount} need a phone fix
+            </Link>
+          ) : null}
+          <div className="flex items-center gap-0.5" role="group" aria-label="Sort leads">
+            {([["name", "Name"], ["company", "Company"], ["status", "Status"]] as Array<[LeadSortKey, string]>).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={sortKey === key}
+                className={`min-h-11 px-1.5 ${sortKey === key ? "font-semibold text-foreground" : "hover:text-foreground"}`}
+                onClick={() => toggleSort(key)}
+              >
+                {label}{sortKey === key ? (sortDir === 1 ? " ↑" : " ↓") : ""}
+              </button>
+            ))}
+          </div>
+          {onRefresh ? (
+            <button
+              type="button"
+              className="min-h-11 font-semibold hover:text-foreground hover:underline hover:underline-offset-4 disabled:opacity-50"
+              disabled={refreshDisabled}
+              onClick={onRefresh}
+            >
+              Refresh
+            </button>
+          ) : null}
         </div>
       </div>
-      <p className="mt-3 text-sm text-muted" aria-live="polite">
-        Showing {visible.length} of {leadsCount} eligible leads.
+      <p className="sr-only" aria-live="polite">
+        {visible.length} of {leadsCount}
       </p>
       <LeadsTable
         leads={visible}

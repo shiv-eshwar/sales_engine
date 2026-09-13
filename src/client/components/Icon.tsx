@@ -8,7 +8,10 @@ type IconName =
   | "check"
   | "copy"
   | "userOff"
-  | "row";
+  | "row"
+  | "bell"
+  | "chart"
+  | "plus";
 
 function Glyph({ name }: { name: IconName }) {
   if (name === "phone") {
@@ -66,6 +69,31 @@ function Glyph({ name }: { name: IconName }) {
         <circle cx="9" cy="7" r="4" />
         <line x1="17" x2="22" y1="8" y2="13" />
         <line x1="22" x2="17" y1="8" y2="13" />
+      </>
+    );
+  }
+  if (name === "bell") {
+    return (
+      <>
+        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+      </>
+    );
+  }
+  if (name === "chart") {
+    return (
+      <>
+        <path d="M18 20V10" />
+        <path d="M12 20V4" />
+        <path d="M6 20v-6" />
+      </>
+    );
+  }
+  if (name === "plus") {
+    return (
+      <>
+        <path d="M5 12h14" />
+        <path d="M12 5v14" />
       </>
     );
   }

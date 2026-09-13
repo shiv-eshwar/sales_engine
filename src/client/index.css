@@ -37,16 +37,22 @@
   --gray-500: hsl(220 10% 46%);
   --gray-900: hsl(220 20% 12%);
 
-  --blue-100: hsl(214 92% 95%);
-  --blue-400: hsl(217 72% 56%);
-  --blue-500: hsl(221 62% 38%);
-  --blue-700: hsl(223 66% 26%);
+  /* Brand green from the Mantis mark (~#00C853). Sat rises as L leaves 50%; hue rotates toward 180 to lighten, 120 to darken. */
+  --green-100: hsl(148 72% 95%);
+  --green-200: hsl(147 68% 88%);
+  --green-300: hsl(146 70% 72%);
+  --green-400: hsl(145 86% 48%);
+  --green-500: hsl(145 100% 39%);
+  --green-600: hsl(146 88% 32%);
+  --green-700: hsl(148 76% 26%);
+  --green-800: hsl(150 68% 18%);
+  --green-900: hsl(152 55% 14%);
 
   --red-100: hsl(4 86% 96%);
   --red-500: hsl(4 72% 42%);
   --amber-100: hsl(40 92% 94%);
   --amber-500: hsl(34 90% 42%);
-  --green-500: hsl(154 48% 32%);
+  --success-500: hsl(154 48% 32%);
 
   --background: var(--gray-50);
   --foreground: var(--gray-900);
@@ -55,9 +61,11 @@
   --surface-secondary: var(--gray-100);
   --overlay: hsl(0 0% 100%);
   --muted: var(--gray-500);
-  --accent: var(--blue-500);
-  --accent-foreground: hsl(0 0% 100%);
-  --success: var(--green-500);
+  --accent: var(--green-500);
+  --accent-foreground: var(--green-900);
+  --accent-soft: var(--green-100);
+  --accent-soft-foreground: var(--green-900);
+  --success: var(--success-500);
   --success-foreground: hsl(0 0% 100%);
   --warning: var(--amber-500);
   --warning-foreground: hsl(0 0% 100%);
@@ -65,8 +73,8 @@
   --danger-foreground: hsl(0 0% 100%);
   --border: var(--gray-200);
   --separator: var(--gray-200);
-  --focus: var(--blue-500);
-  --link: var(--blue-700);
+  --focus: var(--green-700);
+  --link: var(--green-800);
   --default: var(--gray-100);
   --default-foreground: var(--gray-900);
   --field-background: hsl(0 0% 100%);
@@ -102,8 +110,8 @@ html {
 body {
   margin: 0;
   background:
-    radial-gradient(1200px 480px at 50% -80px, hsl(214 60% 94% / 0.7), transparent 70%),
-    linear-gradient(180deg, hsl(220 22% 97%), hsl(200 18% 96%));
+    radial-gradient(1200px 480px at 50% -80px, hsl(148 50% 93% / 0.7), transparent 70%),
+    linear-gradient(180deg, hsl(220 22% 97%), hsl(150 16% 96%));
   color: var(--foreground);
   line-height: 1.5;
 }
@@ -115,4 +123,15 @@ textarea:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Supporting fields: quiet at rest; darker brand outline only when focused. */
+.field-quiet {
+  background: var(--surface-secondary);
+  color: var(--field-foreground);
+}
+
+input.field-quiet:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
 }

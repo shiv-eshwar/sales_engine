@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import {
   approveProposalRequestSchema,
   discardProposalRequestSchema,
+  reviewInterviewRequestSchema,
   summaryQuerySchema
 } from "../../shared/schemas.js";
 import type { AppContext } from "../context.js";
@@ -10,6 +11,13 @@ import { getSession } from "../calls/ledger.js";
 import { isTerminalStatus } from "../calls/state.js";
 import { getProposalBySession, findPendingProposal } from "../review/store.js";
 import { approveProposal, discardProposal, retryProcessing, skipNonConnect, ReviewError } from "../review/actions.js";
+import {
+  applyReviewInterviewAction,
+  bootstrapReviewReply,
+  interviewReviewTurn,
+  isBootstrapTurn,
+  resolveReviewTurn
+} from "../review/interview.js";
 import { buildDailySummary } from "../review/summary.js";
 
 function sendReviewError(reply: import("fastify").FastifyReply, error: unknown) {
@@ -54,6 +62,54 @@ export async function registerReviewApi(app: FastifyInstance, ctx: AppContext): 
       return reply.code(404).send({ error: "Proposal is not ready" });
     }
     return ctx.finalizer.present(row);
+  });
+
+  app.post("/api/calls/:id/review/interview", { preHandler: auth }, async (request, reply) => {
+    if (!ctx.finalizer) {
+      return reply.code(503).send({ error: "Sheet is not configured" });
+    }
+    const parsed = reviewInterviewRequestSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Send the review conversation so far." });
+    }
+    const { id } = request.params as { id: string };
+    const row = getProposalBySession(ctx.db, id);
+    if (!row || row.status === "processing") {
+      return reply.code(404).send({ error: "Proposal is not ready" });
+    }
+    const proposal = ctx.finalizer.present(row);
+    if (isBootstrapTurn(parsed.data.messages, parsed.data.bootstrap)) {
+      return bootstrapReviewReply(proposal);
+    }
+    const intent = resolveReviewTurn(parsed.data.messages, proposal);
+    if (intent) {
+      try {
+        return await applyReviewInterviewAction(ctx, proposal, intent.action, intent.fields, intent.message);
+      } catch (error) {
+        return sendReviewError(reply, error);
+      }
+    }
+    if (!ctx.llmClient) {
+      return reply.code(503).send({ error: "Configure the LLM connection before chatting about this review." });
+    }
+    if (ctx.shuttingDown) {
+      return reply.code(503).send({ error: "Server is restarting. Try again shortly." });
+    }
+    try {
+      const turn = await interviewReviewTurn(
+        ctx.llmClient,
+        parsed.data.messages,
+        proposal,
+        ctx.env.AI_GENERATION_TIMEOUT_MS
+      );
+      const latest = ctx.finalizer.present(getProposalBySession(ctx.db, id) ?? row);
+      return await applyReviewInterviewAction(ctx, latest, turn.action, turn.fields, turn.message);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("AI generation failed")) {
+        return reply.code(502).send({ error: error.message });
+      }
+      return sendReviewError(reply, error);
+    }
   });
 
   app.get("/api/proposals/pending", { preHandler: auth }, async (_request, reply) => {

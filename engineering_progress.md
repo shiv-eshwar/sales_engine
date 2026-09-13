@@ -257,10 +257,11 @@ Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` (6/6) and V
 - [x] Live call hides New campaign, disables campaign switching, intercepts Ready navigation
 - [x] Approve & next opens the next dialable lead’s Ready panel with Call
 - [x] Queue defaults to dialable (`Ready to call`); undialable split via “need a phone fix”
-- [x] One product name (Sales Engine); one readiness chip
+- [x] One product name (Mantis); one readiness chip
 - [x] Call is large; opening + first question on Ready; long brief behind Prep
 - [x] Ringing / muted / interrupted / DNC live treatments
 - [x] Review: human labels, technical details collapsed, enum dropdowns, pinned Approve & next
+- [x] Review is an agentic chat (`POST /api/calls/:id/review/interview` + `call-review` agent); confirm write still uses approve → Sheet batch; first turn auto-summarizes the proposal
 - [x] Narrow queue uses stacked cards, not a 720px table
 
 ### HeroUI + campaign chat
@@ -281,6 +282,7 @@ Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` (6/6) and V
 - [x] Empty campaign is a first-class screen with accent bar and one CTA; header chrome de-emphasized
 - [x] Live HUD keeps same-hue secondaries on the dark ground (no grey-on-navy)
 - [x] Review ranks semantic outcome over label:value dumps; Approve stays the pinned primary
+- [x] Breadcrumbs removed from operator pages (lead detail, analytics, notifications, review). Navbar Mantis / Home covers return.
 
 ---
 
@@ -386,5 +388,25 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-13 | Daily summary moved to `/analytics` with date and campaign filters; Ready queue no longer shows the stats strip. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Campaign selector uses HeroUI Select/ListBox with theme tokens instead of the native OS menu. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Nested breadcrumbs now start with Home (route still `/leads`); e2e breadcrumb clicks updated. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Home Skip no longer opens lead detail (`useLeadCall` stays on `/leads`). Split no longer uses `h-full` against the page header; the leads table wrapper scrolls in the right pane (document scroll on mobile). | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Pending CRM review moved off Home to `/notifications` (nav + empty state + Open review). Ready queue no longer shows the review-waiting banner. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Lead detail no longer shows Skip or the Context enrichment block; Home next-up card still has Skip. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Replaced the static Review CRM form with an assistant-ui review chat. Opening turn summarizes the stored proposal (quotes + current vs proposed); tools call existing approve/retry/skip/write. Playwright operator journey clicks Write to Sheet & next. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Rebranded operator UI to Mantis: logo favicon/app icon, PRODUCT_NAME, green accent scale from the mark (dark-on-neon primary, not blue). Repo/package names unchanged. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Knocked the black field out of the Mantis favicon/app icons so only the green mark remains on alpha. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Next-up mint opening grows with wrapped text (no max-height / inner scrollbar). Card pane can still scroll; Call/Skip/Refresh stay pinned. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Route boot skeletons match destination layout (Home queue, lead brief, analytics stats, notification rows, diagnostics cards, review chat, login form). Home keeps “Loading leads…”. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Home polish: dropped selling-line header, eligible count, and queue borders; search/filters are one supporting toolbar (quiet at rest). Next-up + Call stay primary. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Moved Edit offering out of the Home queue toolbar to sit beside the header campaign name so it reads as offering chrome, not a filter. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Review chat is thread + composer only: removed Write to Sheet & next / Retry / Skip / Discard page buttons. Operator confirms via in-thread “Write this update” (or typed equivalent); that turn still calls approveProposal. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Merged queue diagnostics into Notifications: one header link and badge (reviews + skipped Sheet rows). `/diagnostics` redirects to `/notifications#queue`; Home “need a phone fix” deep-links there. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Tightened Mantis favicon/app icons so the mark fills the canvas; header wordmark Link shows the same 20px icon in a 24px frame. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Home search focus ring is inset (no outline-offset) and the queue toolbar has 4px padding so SPLIT_PANE overflow no longer clips it. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Removed breadcrumbs from lead detail, analytics, notifications, and review. Navbar Mantis is the Home path; no nested crumb trails remain. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Redesigned Notifications (reviews vs queue, name-first cards, full-width issue list) and Analytics (quiet header + date cluster, hero counts, grouped daily bands). Still a ledger summary, no charts. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Header/analytics campaign Select: reserved chevron slot (pe-7) and ellipsis on the value so long names no longer collide with the indicator. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Boot/page skeletons now share each route’s real geometry (Home split, lead brief, analytics filters+stats, notification list, review thread, login card). No breadcrumb chrome; Home copy stays “Loading leads…”. Live PSTN still gated. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Review chat fills the main canvas (workspace lock + docked composer). Assistant is unboxed text; user is a quiet bubble; “Write this update” stays an in-thread chip. Skeleton matches the same column and pin. Footer Approve/Write/Retry/Skip still gone. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Next-up mint + lead-detail AI prospect brief lock to pane height while loading (`overflow-hidden`, skeleton fills). Loaded quote still grows without an inner scrollbar; long briefs scroll the card body so Call/Skip/Refresh stay pinned. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Operator navbar: Notifications and Analytics are icon-only (bell / chart) with aria-label + title; New campaign is the solid primary with a plus. Badge and Campaign / Edit offering names unchanged. Live PSTN still gated. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Campaign list tick no longer collides with long names: option label ellipsizes; HeroUI absolute indicator forced into a shrink-0 in-flow slot. | Slice 6 code complete; live smoke still blocked |

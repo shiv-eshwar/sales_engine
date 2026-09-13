@@ -1,21 +1,20 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@heroui/react";
 import { useSession } from "../state/session";
 import { selectLead } from "../state/api";
 import { CallingPanel } from "../components/CallingPanel";
 import { ProspectBrief } from "../components/ProspectBrief";
-import { Breadcrumbs } from "../components/Breadcrumbs";
 import { EmptyState } from "../components/EmptyState";
 import { BriefLoading } from "../components/LoadingSkeleton";
 import { ReadyContactCard } from "../components/ReadyContactCard";
 import { useLeadCall } from "../state/useLeadCall";
 import { EMPTY_COPY } from "../copy";
-import { SPLIT, SPLIT_PANE, SPLIT_RAIL } from "../layout/shell";
+import { SPLIT, SPLIT_RAIL } from "../layout/shell";
 
 export function LeadDetailPage() {
   const { leadId } = useParams();
-  const { data, setError, runQueue, liveCall } = useSession();
+  const { data, setError, runQueue } = useSession();
   const callButtonRef = useRef<HTMLButtonElement>(null);
 
   const decodedId = leadId ? decodeURIComponent(leadId) : null;
@@ -50,13 +49,6 @@ export function LeadDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [decodedId, data.selectedCampaignId]);
 
-  const crumbs = useMemo(
-    () => [
-      { label: "Home", to: liveCall ? undefined : "/leads" },
-      { label: lead?.fullName || decodedId || "Lead" }
-    ],
-    [decodedId, lead?.fullName, liveCall]
-  );
   const hasBriefPane = Boolean(campaign?.brief);
   const regenerateAction = (
     <Button
@@ -73,7 +65,6 @@ export function LeadDetailPage() {
   if (!decodedId) {
     return (
       <div>
-        <Breadcrumbs items={[{ label: "Home", to: "/leads" }, { label: "Lead" }]} />
         <div className="mt-16">
           <EmptyState
             icon="leads"
@@ -93,7 +84,6 @@ export function LeadDetailPage() {
   if (!lead) {
     return (
       <div>
-        <Breadcrumbs items={[{ label: "Home", to: "/leads" }, { label: decodedId }]} />
         <div className="mt-16">
           <EmptyState
             icon="leads"
@@ -126,9 +116,6 @@ export function LeadDetailPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5 lg:overflow-hidden">
-      <div className="shrink-0">
-        <Breadcrumbs items={crumbs} />
-      </div>
       <div className={hasBriefPane ? SPLIT : SPLIT_RAIL}>
         <div className={SPLIT_RAIL}>
           <ReadyContactCard
@@ -149,12 +136,10 @@ export function LeadDetailPage() {
         </div>
 
         {hasBriefPane ? (
-          <div className={SPLIT_PANE}>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:h-full lg:overflow-hidden">
             {campaign?.brief ? (
               preparation ? (
-                <div
-                  className={`transition-opacity duration-500 ease-out ${preparing ? "opacity-60" : "opacity-100"}`}
-                >
+                <div className={`flex h-full min-h-0 flex-col ${preparing ? "opacity-60" : "opacity-100"}`}>
                   <ProspectBrief
                     preparation={preparation}
                     error={prepError}

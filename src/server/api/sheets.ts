@@ -93,7 +93,7 @@ export async function registerSheets(app: FastifyInstance, ctx: AppContext): Pro
 
   app.post("/api/sheets/create", { preHandler: auth }, async (request, reply) => {
     const parsed = z.object({
-      title: z.string().trim().min(1).max(160).default("Sales Engine Leads"),
+      title: z.string().trim().min(1).max(160).default("Mantis Leads"),
       shareEmail: z.string().trim().max(320).optional(),
       requestId: z.uuid().optional(),
       campaignId: z.string().trim().min(1).max(200).optional()

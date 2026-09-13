@@ -157,12 +157,15 @@ export function useLeadCall(lead: PublicLead | null) {
   }
 
   const opening =
-    preparation?.brief.opening ?? campaign?.strategy?.opening ?? campaign?.openingContext ?? null;
+    preparation?.brief.opening ??
+    (preparing ? null : campaign?.strategy?.opening ?? campaign?.openingContext ?? null);
   const firstQuestion =
     preparation?.brief.questions.find((question) => question.required)?.prompt ??
-    campaign?.requiredQuestions.find((question) => question.required)?.prompt ??
-    campaign?.requiredQuestions[0]?.prompt ??
-    null;
+    (preparing
+      ? null
+      : campaign?.requiredQuestions.find((question) => question.required)?.prompt ??
+        campaign?.requiredQuestions[0]?.prompt ??
+        null);
 
   return {
     campaign,

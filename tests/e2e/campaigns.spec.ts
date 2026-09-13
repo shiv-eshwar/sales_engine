@@ -48,7 +48,10 @@ test("create different offerings, match leads by sheet tag, view cited preparati
   const server = await startE2eServer({ initialCampaigns: [], enqueueLlm: false, researchClient: fakeResearch });
   try {
     await page.goto(server.baseURL);
-    await expect(page.getByRole("link", { name: "Sales Engine" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Mantis" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Queue diagnostics/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /^Notifications/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Analytics" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Create a campaign" }).first()).toBeVisible();
     await expect(page.getByLabel("Campaign", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "New campaign", exact: true })).toBeVisible();
@@ -66,7 +69,7 @@ test("create different offerings, match leads by sheet tag, view cited preparati
     await expect(page.getByRole("button", { name: "Call", exact: true })).toBeEnabled();
     await page.screenshot({ path: "test-results/ai-campaigns-desktop.png", fullPage: true });
 
-    await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Home" }).click();
+    await page.getByRole("link", { name: "Mantis" }).click();
     await expect(page.getByRole("table", { name: "Leads" })).toBeVisible();
     await openCampaignChat(page, "New campaign");
     server.llm.enqueueJson(interviewTurn({ ...offering("Security training"), sheetCampaignValue: "lamina-sales" }));
@@ -79,7 +82,7 @@ test("create different offerings, match leads by sheet tag, view cited preparati
     await openFirstLead(page);
     await openPrep(page);
     await expect(page.getByLabel("AI prospect brief")).toContainText("recognize phishing");
-    await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Home" }).click();
+    await page.getByRole("link", { name: "Mantis" }).click();
     await page.getByLabel("Campaign", { exact: true }).click();
     await page.getByRole("option", { name: "Invoice collections", exact: true }).click();
     await openFirstLead(page);
@@ -87,7 +90,7 @@ test("create different offerings, match leads by sheet tag, view cited preparati
     await expect(page.getByLabel("AI prospect brief")).toContainText("invoice follow-up");
     await expect(page.getByLabel("AI prospect brief")).not.toContainText("recognize phishing");
 
-    await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Home" }).click();
+    await page.getByRole("link", { name: "Mantis" }).click();
     await page.getByRole("button", { name: "Edit offering" }).click();
     await expect(page.getByLabel("Campaign chat")).toBeVisible();
     server.llm.enqueueJson(interviewTurn({

@@ -1,0 +1,68 @@
+.campaign-select {
+  min-width: 0;
+}
+
+.campaign-select--header {
+  max-width: min(20rem, 100%);
+}
+
+.campaign-select:not(.campaign-select--header) .select,
+.campaign-select:not(.campaign-select--header) .select__trigger {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+.campaign-select--header .select,
+.campaign-select--header .select__trigger {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* HeroUI parks the chevron absolutely; keep pe-7 even if trigger utilities set padding. */
+.campaign-select .select__trigger {
+  padding-inline-end: 1.75rem;
+}
+
+.campaign-select .select__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.campaign-select .select__indicator {
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.campaign-select-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  /* Tick is in-flow; keep modest end padding only, not an overlay slot. */
+  padding-inline-end: 0.75rem !important;
+}
+
+.campaign-select-option-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+/* HeroUI parks the tick with position:absolute; padding does not clip overflowing text. */
+.campaign-select-option [data-slot="list-box-item-indicator"],
+.campaign-select-option .list-box-item__indicator {
+  position: static !important;
+  inset: auto !important;
+  top: auto !important;
+  translate: none !important;
+  transform: none !important;
+  flex-shrink: 0;
+  margin-inline-start: 0.125rem;
+}

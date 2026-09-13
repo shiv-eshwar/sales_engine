@@ -363,4 +363,103 @@ describe("Post-call CRM update", () => {
     expect(queue?.leads.some((lead) => lead.leadId === "L-100")).toBe(false);
     await app.close();
   });
+
+  it("bootstraps a review chat turn without the LLM and writes the Sheet on approve", async () => {
+    const llm = new FakeLlmClient();
+    llm.enqueueJson(
+      postCallOutput({
+        criteria: {
+          relevant_problem: { state: "yes", evidence: "verify user-facing behavior by hand", confidence: 0.8 },
+          meaningful_cost: { state: "unknown", evidence: null, confidence: 0 },
+          influence: { state: "unknown", evidence: null, confidence: 0 },
+          timing: { state: "unknown", evidence: null, confidence: 0 }
+        }
+      })
+    );
+    const { app, cookie, ctx, sessionId } = await startSession(llm);
+    applyTransportStatus(ctx.db, sessionId, "in_progress");
+    applyTransportStatus(ctx.db, sessionId, "completed");
+    insertUtterance(ctx.db, {
+      sessionId,
+      speaker: "contact",
+      text: "we currently verify user-facing behavior by hand",
+      startMs: 0,
+      endMs: 1000,
+      confidence: 0.9
+    });
+    const store = ctx.adapter?.store as MemorySheetStore;
+    const writesBefore = store.writeCount;
+    await app.inject({ method: "POST", url: `/api/calls/${sessionId}/finalize`, headers: { cookie } });
+    const llmCallsAfterFinalize = llm.calls.length;
+
+    const opened = await app.inject({
+      method: "POST",
+      url: `/api/calls/${sessionId}/review/interview`,
+      headers: { cookie },
+      payload: { bootstrap: true, messages: [] }
+    });
+    expect(opened.statusCode, opened.body).toBe(200);
+    expect(opened.json().text).toContain("Proposed");
+    expect(opened.json().text).toContain("Call Status");
+    expect(opened.json().wrote).toBe(false);
+    expect(store.writeCount).toBe(writesBefore);
+    expect(llm.calls.length).toBe(llmCallsAfterFinalize);
+
+    llm.enqueueJson({
+      message: "Updated next step to Tuesday and wrote the Sheet.",
+      action: "approve",
+      fields: { next_step: "Tuesday" }
+    });
+    const confirmed = await app.inject({
+      method: "POST",
+      url: `/api/calls/${sessionId}/review/interview`,
+      headers: { cookie },
+      payload: {
+        messages: [
+          { role: "assistant", content: opened.json().text },
+          { role: "user", content: "set next step to Tuesday and write it" }
+        ]
+      }
+    });
+    expect(confirmed.statusCode, confirmed.body).toBe(200);
+    expect(confirmed.json().wrote).toBe(true);
+    expect(confirmed.json().leftReview).toBe(true);
+    expect(confirmed.json().proposal.status).toBe("applied");
+    expect(store.writeCount).toBe(writesBefore + 1);
+    const rows = await store.getDataRows();
+    const row = rows.find((item) => item.values[0] === "L-100");
+    expect(row?.values[EXAMPLE_HEADERS.indexOf("Next Step")]).toBe("Tuesday");
+    await app.close();
+  });
+
+  it("writes the Sheet when the operator sends Write this update without another LLM turn", async () => {
+    const llm = new FakeLlmClient();
+    llm.enqueueJson(postCallOutput());
+    const { app, cookie, ctx, sessionId } = await startSession(llm);
+    applyTransportStatus(ctx.db, sessionId, "in_progress");
+    applyTransportStatus(ctx.db, sessionId, "completed");
+    insertUtterance(ctx.db, {
+      sessionId,
+      speaker: "contact",
+      text: "we currently verify user-facing behavior by hand",
+      startMs: 0,
+      endMs: 1000,
+      confidence: 0.9
+    });
+    const store = ctx.adapter?.store as MemorySheetStore;
+    const writesBefore = store.writeCount;
+    await app.inject({ method: "POST", url: `/api/calls/${sessionId}/finalize`, headers: { cookie } });
+    const llmCalls = llm.calls.length;
+    const confirmed = await app.inject({
+      method: "POST",
+      url: `/api/calls/${sessionId}/review/interview`,
+      headers: { cookie },
+      payload: { messages: [{ role: "user", content: "Write this update" }] }
+    });
+    expect(confirmed.statusCode, confirmed.body).toBe(200);
+    expect(confirmed.json().wrote).toBe(true);
+    expect(llm.calls.length).toBe(llmCalls);
+    expect(store.writeCount).toBe(writesBefore + 1);
+    await app.close();
+  });
 });

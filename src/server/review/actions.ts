@@ -90,6 +90,80 @@ export async function skipNonConnect(ctx: AppContext, proposalId: string) {
   return approveProposal(ctx, proposalId, { call_status: SKIPPED_CALL_STATUS });
 }
 
+const CONNECTED_EDIT_KEYS = [
+  "call_status",
+  "call_outcome",
+  "qualification",
+  "qualification_reason",
+  "objections",
+  "next_step",
+  "follow_up_at",
+  "call_summary"
+] as const;
+
+const NON_CONNECT_EDIT_KEYS = ["call_status", "call_outcome"] as const;
+
+function operatorEdits(kind: string, edits: WriteFields | undefined): WriteFields {
+  const allowed = kind === "non_connect" ? NON_CONNECT_EDIT_KEYS : CONNECTED_EDIT_KEYS;
+  const next: WriteFields = {};
+  if (!edits) return next;
+  for (const key of allowed) {
+    const value = edits[key];
+    if (value !== undefined) next[key] = value;
+  }
+  return next;
+}
+
+function syncOutcomeFromFields(body: ReturnType<typeof parseBody>, fields: WriteFields): void {
+  if (fields.call_outcome) {
+    body.outcome = { ...body.outcome, semanticOutcome: fields.call_outcome as typeof body.outcome.semanticOutcome };
+  }
+  if (fields.qualification) {
+    body.outcome = { ...body.outcome, qualification: fields.qualification as typeof body.outcome.qualification };
+  }
+  if (fields.qualification_reason !== undefined) {
+    body.outcome = { ...body.outcome, qualificationReason: fields.qualification_reason };
+  }
+  if (fields.objections !== undefined) {
+    body.outcome = {
+      ...body.outcome,
+      objections: fields.objections.split(";").map((item) => item.trim()).filter(Boolean)
+    };
+  }
+  if (fields.next_step !== undefined) {
+    body.outcome = { ...body.outcome, nextStep: fields.next_step };
+  }
+  if (fields.follow_up_at !== undefined) {
+    body.outcome = { ...body.outcome, followUpAt: fields.follow_up_at.trim() ? fields.follow_up_at : null };
+  }
+  if (fields.call_summary !== undefined) {
+    body.outcome = { ...body.outcome, summary: fields.call_summary };
+  }
+}
+
+export async function patchProposalFields(
+  ctx: AppContext,
+  proposalId: string,
+  edits: WriteFields
+): Promise<PublicProposal> {
+  if (!ctx.finalizer) {
+    throw new ReviewError("unconfigured", "Review is not configured", 503);
+  }
+  const row = getProposalOrThrow(ctx.db, proposalId);
+  if (row.status !== "pending_review" && row.status !== "pending_retry") {
+    throw new ReviewError("state", `Proposal cannot be edited in status ${row.status}`);
+  }
+  const body = parseBody(row);
+  const fields = operatorEdits(body.kind, edits);
+  if (Object.keys(fields).length === 0) {
+    throw new ReviewError("invalid_edits", "No application-owned fields to change");
+  }
+  body.fields = applyFieldEdits(body.fields, fields);
+  syncOutcomeFromFields(body, fields);
+  updateProposalBody(ctx.db, row.id, body, parseEvidence(row), row.status);
+  return ctx.finalizer.present(getProposalOrThrow(ctx.db, row.id));
+}
+
 export async function discardProposal(ctx: AppContext, proposalId: string): Promise<PublicProposal> {
   if (!ctx.finalizer) {
     throw new ReviewError("unconfigured", "Review is not configured", 503);

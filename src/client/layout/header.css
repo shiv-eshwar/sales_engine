@@ -1,0 +1,50 @@
+/* Operator header: one solid primary; sibling nav is icon-only and quieter. */
+
+.header-icon-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  color: var(--gray-400);
+  border-radius: var(--radius);
+}
+
+.header-icon-link:hover {
+  color: var(--foreground);
+}
+
+.header-icon-link.is-active {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.header-icon-badge {
+  position: absolute;
+  top: 0.125rem;
+  right: 0.125rem;
+  display: inline-flex;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.25rem;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.header-primary {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.375rem;
+  padding-inline: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
