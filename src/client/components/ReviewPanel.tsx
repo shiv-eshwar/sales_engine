@@ -11,9 +11,11 @@ import {
   fieldLabel,
   formatDisplayDate,
   formatUtteranceText,
+  humanizeId,
   outcomeLabel,
   qualificationLabel
 } from "../copy";
+import { SCROLL_X, SHELL } from "../layout/shell";
 
 type ReviewPanelProps = {
   proposal: PublicProposal;
@@ -37,6 +39,25 @@ const EDITABLE: WriteFieldKey[] = [
   "call_summary"
 ];
 
+const NON_CONNECT_EDITABLE: WriteFieldKey[] = ["call_status", "call_outcome"];
+
+const TRANSPORT_OUTCOME_LABELS: Record<string, string> = {
+  canceled: "Canceled",
+  "no-answer": "No answer",
+  busy: "Busy",
+  failed: "Failed",
+  completed: "Completed"
+};
+
+function reviewHeadline(proposal: PublicProposal): string {
+  if (proposal.kind === "non_connect") {
+    return humanizeId(proposal.transportOutcome || proposal.semanticOutcome);
+  }
+  const semantic = outcomeLabel(proposal.semanticOutcome);
+  if (semantic !== "Unknown") return semantic;
+  return humanizeId(proposal.transportOutcome || proposal.semanticOutcome);
+}
+
 export function ReviewPanel({
   proposal,
   pending,
@@ -51,63 +72,74 @@ export function ReviewPanel({
   const [draft, setDraft] = useState<PublicWriteFields>(proposal.proposedFields);
   const dnc = proposal.semanticOutcome === "do_not_contact" || proposal.proposedFields.call_status === "Do Not Contact";
   const failedWrite = proposal.status === "pending_retry";
-
-  const changedDiff = useMemo(() => proposal.diff.filter((row) => row.changed), [proposal.diff]);
-  const visibleDiff = (changedDiff.length > 0 ? changedDiff : proposal.diff).filter(
-    (row) => !TECHNICAL_FIELD_KEYS.has(row.key)
+  const shownCriteria = proposal.criteria.filter(
+    (item) => item.state !== "unknown" || Boolean(item.evidence)
   );
-  const technicalDiff = proposal.diff.filter((row) => TECHNICAL_FIELD_KEYS.has(row.key));
+  const findings = proposal.painOrResearchFindings.filter(Boolean);
+
+  const visibleDiff = useMemo(
+    () => proposal.diff.filter((row) => row.changed && !TECHNICAL_FIELD_KEYS.has(row.key)),
+    [proposal.diff]
+  );
+  const technicalDiff = proposal.diff.filter((row) => row.changed && TECHNICAL_FIELD_KEYS.has(row.key));
+  const showCurrent = visibleDiff.some((row) => Boolean(row.current));
+  const showStory = shownCriteria.length > 0 || findings.length > 0;
+  const editKeys = proposal.kind === "non_connect" ? NON_CONNECT_EDITABLE : EDITABLE;
+  const outcomeOptions = useMemo(() => {
+    const base = proposal.kind === "non_connect" ? TRANSPORT_OUTCOME_LABELS : SEMANTIC_OUTCOME_LABELS;
+    const current = draft.call_outcome ?? "";
+    if (current && !(current in base)) {
+      return { [current]: humanizeId(current), ...base };
+    }
+    return base;
+  }, [draft.call_outcome, proposal.kind]);
 
   function displayValue(key: WriteFieldKey, value: string): string {
     if (!value) return "—";
-    if (key === "call_outcome") return outcomeLabel(value);
+    if (key === "call_outcome") return TRANSPORT_OUTCOME_LABELS[value] ?? outcomeLabel(value);
     if (key === "qualification") return qualificationLabel(value);
     if (DATETIME_FIELD_KEYS.has(key)) return formatDisplayDate(value);
     return value;
   }
 
   return (
-    <section className="space-y-8 pb-28" aria-label="Call review">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Review</p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-tight">Review CRM update</h2>
-        <p className="mt-2 text-sm text-muted">
-          {proposal.contactName}. Nothing is written until you approve.
-        </p>
+    <section className="pb-28" aria-label="Call review">
+      <header className="max-w-[36em]">
+        <h2 className="text-2xl font-semibold tracking-tight">Review CRM update</h2>
+        <p className="mt-2 text-sm text-muted">Nothing is written until you approve.</p>
       </header>
 
       {dnc ? (
-        <Alert status="danger" role="alert">
+        <Alert status="danger" className="mt-6" role="alert">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>Do not contact. Approving this proposal writes a suppression status so this lead will not return to the eligible queue.</Alert.Title>
+            <Alert.Title>Do not contact. Approving this writes a suppression status so this lead will not return to the queue.</Alert.Title>
           </Alert.Content>
         </Alert>
       ) : null}
 
       {proposal.warnings.length > 0 ? (
-        <ul className="rounded-lg bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" aria-label="Warnings">
-          {proposal.warnings.map((warning) => (
-            <li key={warning}>{warning}</li>
-          ))}
+        <div className="mt-6 rounded-lg bg-warning-soft px-5 py-4 text-sm text-warning-soft-foreground" aria-label="Warnings">
+          <ul className="space-y-2">
+            {proposal.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
           {proposal.kind === "connected" ? (
-            <li className="mt-2">
-              <Button variant="ghost" size="sm" className="rounded-lg!" isDisabled={pending} onPress={onRetryProcessing}>
-                Retry processing
-              </Button>
-            </li>
+            <button
+              type="button"
+              className="mt-3 text-sm font-semibold hover:underline hover:underline-offset-4 disabled:opacity-50"
+              disabled={pending}
+              onClick={onRetryProcessing}
+            >
+              Retry processing
+            </button>
           ) : null}
-        </ul>
-      ) : proposal.kind === "connected" ? (
-        <p>
-          <Button variant="ghost" size="sm" className="rounded-lg!" isDisabled={pending} onPress={onRetryProcessing}>
-            Retry processing
-          </Button>
-        </p>
+        </div>
       ) : null}
 
       {failedWrite ? (
-        <Alert status="danger" role="alert">
+        <Alert status="danger" className="mt-6" role="alert">
           <Alert.Indicator />
           <Alert.Content>
             <Alert.Title>Sheet write failed and is waiting for retry. {proposal.lastError}</Alert.Title>
@@ -116,7 +148,7 @@ export function ReviewPanel({
       ) : null}
 
       {error ? (
-        <Alert status="danger" role="alert">
+        <Alert status="danger" className="mt-6" role="alert">
           <Alert.Indicator />
           <Alert.Content>
             <Alert.Title>{error}</Alert.Title>
@@ -124,107 +156,78 @@ export function ReviewPanel({
         </Alert>
       ) : null}
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <section>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Outcomes</p>
-          <p className="mt-2 text-xl font-semibold tracking-tight">
-            {outcomeLabel(proposal.semanticOutcome)}
-          </p>
-          <p className="mt-2 text-sm text-muted">
-            {qualificationLabel(proposal.qualification)}
-            {proposal.transportOutcome ? ` · ${proposal.transportOutcome.replaceAll("_", " ")}` : ""}
-          </p>
-          {proposal.qualificationReason ? (
-            <p className="mt-3 max-w-[32em] text-sm leading-relaxed text-muted">{proposal.qualificationReason}</p>
-          ) : null}
-        </section>
-        <section>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Next step</p>
-          <p className="mt-2 text-lg font-semibold leading-snug">
-            {proposal.nextStep || "None proposed"}
-          </p>
-          <p className="mt-2 text-sm text-muted">Follow-up {formatDisplayDate(proposal.followUpAt)}</p>
-          {proposal.summary ? <p className="mt-3 max-w-[32em] text-sm leading-relaxed text-muted">{proposal.summary}</p> : null}
-        </section>
-      </div>
+      <div className="mt-10 max-w-4xl">
+        {showStory ? (
+          <div>
+            <p className="text-xl font-semibold tracking-tight">{reviewHeadline(proposal)}</p>
+            {shownCriteria.length > 0 ? (
+              <ul className="mt-8 max-w-[36em] space-y-4 text-sm">
+                {shownCriteria.map((item) => (
+                  <li key={item.id}>
+                    <p>
+                      <span className="font-medium">{item.prompt || humanizeId(item.id)}</span>
+                      <span className="text-muted"> · {item.state}</span>
+                    </p>
+                    {item.evidence ? <p className="mt-1 leading-relaxed text-muted">{item.evidence}</p> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {findings.length > 0 ? (
+              <p className="mt-8 max-w-[36em] text-sm leading-relaxed text-muted">{findings.join("; ")}</p>
+            ) : null}
+          </div>
+        ) : null}
 
-      {proposal.criteria.length > 0 ? (
-        <section>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Qualification evidence</p>
-          <ul className="mt-3 max-w-2xl space-y-3 text-sm">
-            {proposal.criteria.map((item) => (
-              <li key={item.id}>
-                <span className="font-semibold">{item.prompt || item.id.replaceAll("_", " ")}</span>
-                <span className="text-sm text-muted"> · {item.state}</span>
-                {item.evidence ? <p className="mt-1 text-sm text-muted">{item.evidence}</p> : null}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {(proposal.objections.length > 0 || proposal.painOrResearchFindings.length > 0) && (
-        <section className="max-w-2xl text-sm">
-          {proposal.objections.length > 0 ? (
-            <p>
-              <span className="font-semibold">Objections. </span>
-              {proposal.objections.join("; ")}
-            </p>
-          ) : null}
-          {proposal.painOrResearchFindings.length > 0 ? (
-            <p className={proposal.objections.length > 0 ? "mt-3" : undefined}>
-              <span className="font-semibold">Findings. </span>
-              {proposal.painOrResearchFindings.join("; ")}
-            </p>
-          ) : null}
-        </section>
-      )}
-
-      <section>
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Sheet diff</p>
-        <div className="mt-3 overflow-hidden rounded-lg bg-surface shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-separator">
-                <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Field</th>
-                <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Current</th>
-                <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Proposed</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleDiff.map((row) => (
-                <tr key={row.key} className={`border-b border-separator last:border-0 ${row.changed ? "bg-accent-soft" : ""}`}>
-                  <td className="px-4 py-3">{fieldLabel(row.key, row.header)}</td>
-                  <td className="px-4 py-3 text-muted">{displayValue(row.key, row.current)}</td>
-                  <td className="px-4 py-3 font-medium">{displayValue(row.key, row.proposed)}</td>
+        {visibleDiff.length > 0 ? (
+          <div className={`${showStory ? "mt-8" : ""} w-max max-w-full ${SCROLL_X} rounded-lg bg-surface shadow-sm`}>
+            <table className="w-max max-w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-separator">
+                  <th className="px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Field</th>
+                  {showCurrent ? (
+                    <th className="px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Current</th>
+                  ) : null}
+                  <th className="px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Proposed</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {visibleDiff.map((row) => (
+                  <tr key={row.key} className="border-b border-separator bg-accent-soft last:border-0">
+                    <td className="whitespace-nowrap px-5 py-3.5 pr-16">{fieldLabel(row.key, row.header)}</td>
+                    {showCurrent ? (
+                      <td className="px-5 py-3.5 pr-16 text-muted">{displayValue(row.key, row.current)}</td>
+                    ) : null}
+                    <td className="px-5 py-3.5 font-medium">{displayValue(row.key, row.proposed)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className={`${showStory ? "mt-8" : ""} text-sm text-muted`}>No Sheet fields change.</p>
+        )}
+
         {technicalDiff.length > 0 ? (
-          <details className="mt-3">
+          <details className="mt-4">
             <summary className="cursor-pointer text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4">Technical details</summary>
-            <table className="mt-2 w-full text-left text-sm">
+            <table className="mt-3 w-full text-left text-sm">
               <tbody>
                 {technicalDiff.map((row) => (
                   <tr key={row.key} className="border-b border-separator last:border-0">
-                    <td className="px-4 py-3">{FIELD_LABELS[row.key]}</td>
-                    <td className="px-4 py-3 text-muted">{row.current || "—"}</td>
-                    <td className="px-4 py-3 font-mono text-xs">{row.proposed || "—"}</td>
+                    <td className="py-2.5 pr-4">{FIELD_LABELS[row.key]}</td>
+                    <td className="py-2.5 pr-4 text-muted">{row.current || "—"}</td>
+                    <td className="py-2.5 font-mono text-xs">{row.proposed || "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </details>
         ) : null}
-      </section>
 
-      {editing ? (
-        <section>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Edit proposed values</p>
-          <div className="mt-4 flex max-w-2xl flex-col gap-6 sm:grid sm:grid-cols-2 sm:gap-5">
-            {EDITABLE.map((key) => (
+        {editing ? (
+          <div className={`mt-8 flex flex-col gap-6 ${editKeys.length > 2 ? "sm:grid sm:grid-cols-2 sm:gap-x-6 sm:gap-y-5" : "max-w-md"}`}>
+            {editKeys.map((key) => (
               <label key={key} className="flex flex-col gap-2 text-sm">
                 <span className="text-sm text-muted">{FIELD_LABELS[key]}</span>
                 {key === "call_outcome" ? (
@@ -233,14 +236,14 @@ export function ReviewPanel({
                     value={draft[key] ?? ""}
                     onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
                   >
-                    {Object.entries(SEMANTIC_OUTCOME_LABELS).map(([value, label]) => (
+                    {Object.entries(outcomeOptions).map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
                   </select>
                 ) : key === "qualification" ? (
                   <select
                     className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
-                    value={draft[key] ?? ""}
+                    value={draft[key] || "unknown"}
                     onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
                   >
                     {Object.entries(QUALIFICATION_LABELS).map(([value, label]) => (
@@ -269,63 +272,68 @@ export function ReviewPanel({
               </label>
             ))}
           </div>
-        </section>
-      ) : null}
+        ) : null}
 
-      {proposal.utterances.length > 0 ? (
-        <details>
-          <summary className="cursor-pointer text-sm font-semibold">Transcript</summary>
-          <ol className="mt-3 max-w-2xl space-y-2 text-sm">
-            {proposal.utterances.map((utterance) => (
-              <li key={utterance.id}>
-                <span className="font-semibold">{utterance.speaker === "contact" ? "Contact" : "Caller"}: </span>
-                {formatUtteranceText(utterance.text, utterance.startedAtMs, utterance.endedAtMs)}
-              </li>
-            ))}
-          </ol>
-        </details>
-      ) : null}
+        {proposal.utterances.length > 0 ? (
+          <details className="mt-8">
+            <summary className="cursor-pointer text-sm font-semibold text-muted hover:text-foreground">Transcript</summary>
+            <ol className="mt-4 max-w-[36em] space-y-2.5 text-sm">
+              {proposal.utterances.map((utterance) => (
+                <li key={utterance.id}>
+                  <span className="font-medium">{utterance.speaker === "contact" ? "Contact" : "Caller"}: </span>
+                  {formatUtteranceText(utterance.text, utterance.startedAtMs, utterance.endedAtMs)}
+                </li>
+              ))}
+            </ol>
+          </details>
+        ) : null}
 
-      {proposal.coachingReplay.length > 0 ? (
-        <details>
-          <summary className="cursor-pointer text-sm font-semibold">Coaching replay</summary>
-          <ol className="mt-3 max-w-2xl space-y-2 text-sm">
-            {proposal.coachingReplay.map((event, index) => (
-              <li key={`${event.stage}-${index}`}>
-                {event.stage}: {event.cue ?? "(hidden)"} {event.reason ? `— ${event.reason}` : ""}
-              </li>
-            ))}
-          </ol>
-        </details>
-      ) : null}
+        {proposal.coachingReplay.length > 0 ? (
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm font-semibold text-muted hover:text-foreground">Coaching replay</summary>
+            <ol className="mt-4 max-w-[36em] space-y-2.5 text-sm text-muted">
+              {proposal.coachingReplay.map((event, index) => (
+                <li key={`${event.stage}-${index}`}>
+                  {humanizeId(event.stage)}
+                  {event.cue ? `: ${event.cue}` : " (hidden)"}
+                  {event.reason ? ` — ${event.reason}` : ""}
+                </li>
+              ))}
+            </ol>
+          </details>
+        ) : null}
+      </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 bg-background px-4 py-3 shadow-lg sm:px-6 lg:px-8">
-        <div className="mx-auto flex w-full flex-wrap items-center gap-3">
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 bg-background py-3 shadow-[0_-8px_24px_-12px_hsl(220_20%_12%/0.18)]"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      >
+        <div className={`${SHELL} flex flex-wrap items-center gap-3`}>
           {failedWrite ? (
-            <Button className="rounded-lg!" isDisabled={pending} onPress={onRetryWrite}>
+            <Button className="min-h-11 rounded-lg!" isDisabled={pending} onPress={onRetryWrite}>
               Retry write
             </Button>
           ) : (
-            <Button className="rounded-lg!" isDisabled={pending} onPress={() => onApprove(editing ? draft : undefined)}>
+            <Button className="min-h-11 rounded-lg!" isDisabled={pending} onPress={() => onApprove(editing ? draft : undefined)}>
               Approve & next
             </Button>
           )}
           {proposal.kind === "non_connect" && !failedWrite ? (
             <>
-              <Button variant="outline" className="rounded-lg!" isDisabled={pending} onPress={() => onApprove({ ...proposal.proposedFields, call_status: "Retry" })}>
+              <Button variant="outline" className="min-h-11 rounded-lg!" isDisabled={pending} onPress={() => onApprove({ ...proposal.proposedFields, call_status: "Retry" })}>
                 Retry
               </Button>
-              <Button variant="outline" className="rounded-lg!" isDisabled={pending} onPress={onSkip}>
+              <Button variant="outline" className="min-h-11 rounded-lg!" isDisabled={pending} onPress={onSkip}>
                 Skip
               </Button>
             </>
           ) : null}
-          <Button variant="ghost" className="rounded-lg!" isDisabled={pending} onPress={() => setEditing((value) => !value)}>
+          <Button variant="ghost" className="min-h-11 rounded-lg!" isDisabled={pending} onPress={() => setEditing((value) => !value)}>
             {editing ? "Hide edit" : "Edit"}
           </Button>
           <button
             type="button"
-            className="ml-auto text-sm font-semibold text-danger hover:underline hover:underline-offset-4"
+            className="ml-auto min-h-11 text-sm font-semibold text-danger hover:underline hover:underline-offset-4"
             disabled={pending}
             onClick={() => {
               if (window.confirm("Discard this proposal without writing to the Sheet?")) {

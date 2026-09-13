@@ -21,8 +21,8 @@ export function DiagnosticsPage() {
 
   return (
     <div>
-      <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: "Queue diagnostics" }]} />
-      <h1 className="mt-8 text-2xl font-semibold tracking-tight">Queue diagnostics</h1>
+      <Breadcrumbs items={[{ label: "Home", to: "/leads" }, { label: "Queue diagnostics" }]} />
+      <h1 className="mt-5 text-2xl font-semibold tracking-tight sm:mt-8">Queue diagnostics</h1>
       <p className="mt-3 max-w-[32em] text-sm leading-relaxed text-muted">
         {blocking
           ? "The sheet needs a fix before calling."
@@ -45,7 +45,7 @@ export function DiagnosticsPage() {
           {issues.map((item, index) => {
             const meta = diagnosticMeta(item);
             return (
-              <li key={`${item.code}-${index}`} className="rounded-lg bg-surface px-7 py-7 shadow-sm">
+              <li key={`${item.code}-${index}`} className="rounded-lg bg-surface px-5 py-5 shadow-sm sm:px-7 sm:py-7">
                 <div className="flex items-start gap-3">
                   <Icon
                     name={diagnosticIcon(item.code)}

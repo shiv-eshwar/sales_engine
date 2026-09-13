@@ -8,10 +8,12 @@ import { LeadsPage } from "./pages/LeadsPage";
 import { LeadDetailPage } from "./pages/LeadDetailPage";
 import { ReviewPage } from "./pages/ReviewPage";
 import { DiagnosticsPage } from "./pages/DiagnosticsPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { EmptyState } from "./components/EmptyState";
 import { ContactCardSkeleton, BriefLoading, QueueTableSkeleton } from "./components/LoadingSkeleton";
 import { EMPTY_COPY, PRODUCT_NAME } from "./copy";
-import { SHELL, SPLIT, SPLIT_RAIL } from "./layout/shell";
+import { SHELL, SPLIT, SPLIT_PANE, SPLIT_RAIL } from "./layout/shell";
 
 export function App() {
   const [bootstrap, setBootstrap] = useState<BootstrapResponse | null>(null);
@@ -38,7 +40,7 @@ export function App() {
 
   if (error) {
     return (
-      <div className="min-h-screen">
+      <div className="flex min-h-dvh flex-col">
         <header className="sticky top-0 z-50 bg-background">
           <div className="h-[3px] bg-accent" />
           <div className={`${SHELL} flex h-14 items-center`}>
@@ -59,14 +61,14 @@ export function App() {
 
   if (!bootstrap) {
     return (
-      <div className="min-h-screen">
+      <div className="flex min-h-dvh flex-col lg:h-dvh lg:overflow-hidden">
         <header className="sticky top-0 z-50 bg-background">
           <div className="h-[3px] bg-accent" />
           <div className={`${SHELL} flex h-14 items-center`}>
             <p className="text-[15px] font-semibold tracking-tight">{PRODUCT_NAME}</p>
           </div>
         </header>
-        <main className={`${SHELL} py-8`}>
+        <main className={`${SHELL} flex min-h-0 flex-1 flex-col py-4 sm:py-5 lg:overflow-hidden lg:pb-5`}>
           <BootScreen />
         </main>
       </div>
@@ -83,6 +85,8 @@ export function App() {
             <Route path="/leads/:leadId" element={<LeadDetailPage />} />
             <Route path="/calls/:sessionId/review" element={<ReviewPage />} />
             <Route path="/diagnostics" element={<DiagnosticsPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/review" element={<Navigate to="/leads" replace />} />
             <Route path="*" element={<Navigate to="/leads" replace />} />
           </Route>
@@ -94,6 +98,16 @@ export function App() {
 
 function BootScreen() {
   const path = window.location.pathname;
+  if (path.startsWith("/analytics") || path.startsWith("/notifications")) {
+    return (
+      <div role="status" aria-label="Loading leads…">
+        <div className="h-3.5 w-32 animate-pulse rounded-full bg-surface-secondary" />
+        <div className="mt-8 h-7 w-40 animate-pulse rounded-full bg-surface-secondary" />
+        <div className="mt-3 h-3.5 w-64 animate-pulse rounded-full bg-surface-secondary" />
+        <div className="mt-10 h-48 rounded-lg bg-surface shadow-sm" />
+      </div>
+    );
+  }
   if (path.startsWith("/diagnostics")) {
     return (
       <div role="status" aria-label="Loading leads…">
@@ -113,28 +127,22 @@ function BootScreen() {
   }
   if (/^\/leads\/[^/]+/.test(path)) {
     return (
-      <div className="flex flex-col gap-8">
-        <div className="h-3.5 w-40 animate-pulse rounded-full bg-surface-secondary" />
+      <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5 lg:overflow-hidden">
+        <div className="h-3.5 w-40 shrink-0 animate-pulse rounded-full bg-surface-secondary" />
         <div className={SPLIT}>
           <div className={SPLIT_RAIL}>
             <ContactCardSkeleton />
           </div>
-          <section className="min-w-0">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-              <div className="h-3.5 w-12 animate-pulse rounded-full bg-surface-secondary" />
-              <div className="h-8 w-32 animate-pulse rounded-lg bg-surface-secondary" />
-            </div>
-            <div className="mt-6">
-              <BriefLoading title="Researching the company…" detail="Preparing the call brief." />
-            </div>
+          <section className={SPLIT_PANE}>
+            <BriefLoading title="Researching the company…" detail="Preparing the call brief." />
           </section>
         </div>
       </div>
     );
   }
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5 lg:overflow-hidden">
+      <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-3">
         <div className="h-3.5 w-72 animate-pulse rounded-full bg-surface-secondary" />
         <div className="h-3.5 w-24 animate-pulse rounded-full bg-surface-secondary" />
       </div>
@@ -142,7 +150,9 @@ function BootScreen() {
         <div className={SPLIT_RAIL}>
           <ContactCardSkeleton />
         </div>
-        <QueueTableSkeleton />
+        <div className={SPLIT_PANE}>
+          <QueueTableSkeleton />
+        </div>
       </div>
     </div>
   );

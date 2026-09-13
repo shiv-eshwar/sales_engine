@@ -5,6 +5,7 @@ import {
   ThreadPrimitive
 } from "@assistant-ui/react";
 import { Alert } from "@heroui/react";
+import { SCROLL } from "../layout/shell";
 
 function UserMessage() {
   return (
@@ -39,7 +40,7 @@ export function CampaignThread({
   return (
     <div className="flex h-full min-h-0 flex-col" aria-label="Campaign chat">
       <ThreadPrimitive.Root className="flex h-full min-h-0 flex-col">
-        <ThreadPrimitive.Viewport className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto py-2">
+        <ThreadPrimitive.Viewport className={`flex min-h-0 flex-1 flex-col gap-3 ${SCROLL} py-2`}>
           <ThreadPrimitive.Messages
             components={{
               UserMessage,

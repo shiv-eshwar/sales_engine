@@ -5,7 +5,7 @@ import { approveProposal, fetchProposalBySession, skipProposal, retryProposalWri
 import { ReviewPanel } from "../components/ReviewPanel";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { EmptyState } from "../components/EmptyState";
-import { ContactCardSkeleton } from "../components/LoadingSkeleton";
+import { ReviewSkeleton } from "../components/LoadingSkeleton";
 import { EMPTY_COPY, nextLeadPath } from "../copy";
 import type { PublicProposal, PublicWriteFields } from "../../shared/contracts";
 
@@ -71,7 +71,7 @@ export function ReviewPage() {
   if (!sessionId) {
     return (
       <div>
-        <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: "Review" }]} />
+        <Breadcrumbs items={[{ label: "Home", to: "/leads" }, { label: "Review" }]} />
         <div className="mt-8">
           <EmptyState
             icon="review"
@@ -90,7 +90,7 @@ export function ReviewPage() {
 
   const leadName = proposal?.contactName ?? data.leads.find((item) => item.leadId === proposal?.leadId)?.fullName;
   const crumbs = [
-    { label: "Ready", to: "/leads" },
+    { label: "Home", to: "/leads" },
     ...(proposal ? [{ label: leadName || proposal.leadId, to: `/leads/${encodeURIComponent(proposal.leadId)}` }] : []),
     { label: "Review" },
   ];
@@ -99,8 +99,8 @@ export function ReviewPage() {
     return (
       <div>
         <Breadcrumbs items={crumbs} />
-        <div className="mt-10">
-          <ContactCardSkeleton />
+        <div className="mt-8">
+          <ReviewSkeleton />
         </div>
       </div>
     );
@@ -131,34 +131,36 @@ export function ReviewPage() {
   return (
     <div>
       <Breadcrumbs items={crumbs} />
-      <ReviewPanel
-        proposal={proposalValue}
-        pending={busy}
-        error={error}
-        onApprove={(fields) => void onApprove(fields)}
-        onRetryWrite={() => void withLocal(async () => {
-          const bootstrap = await afterWrite(await retryProposalWrite(proposalValue.id));
-          if (bootstrap) {
-            const next = bootstrap.leads.find((item) => item.dialable) ?? bootstrap.lead;
+      <div className="mt-8">
+        <ReviewPanel
+          proposal={proposalValue}
+          pending={busy}
+          error={error}
+          onApprove={(fields) => void onApprove(fields)}
+          onRetryWrite={() => void withLocal(async () => {
+            const bootstrap = await afterWrite(await retryProposalWrite(proposalValue.id));
+            if (bootstrap) {
+              const next = bootstrap.leads.find((item) => item.dialable) ?? bootstrap.lead;
+              navigate(nextLeadPath(next));
+            }
+          })}
+          onRetryProcessing={() => void withLocal(async () => {
+            setProposal(await retryProposalProcessing(proposalValue.id));
+          })}
+          onSkip={() => void withLocal(async () => {
+            const bootstrap = await afterWrite(await skipProposal(proposalValue.id));
+            const next = bootstrap?.leads.find((item) => item.dialable) ?? bootstrap?.lead ?? null;
             navigate(nextLeadPath(next));
-          }
-        })}
-        onRetryProcessing={() => void withLocal(async () => {
-          setProposal(await retryProposalProcessing(proposalValue.id));
-        })}
-        onSkip={() => void withLocal(async () => {
-          const bootstrap = await afterWrite(await skipProposal(proposalValue.id));
-          const next = bootstrap?.leads.find((item) => item.dialable) ?? bootstrap?.lead ?? null;
-          navigate(nextLeadPath(next));
-        })}
-        onDiscard={() => void withLocal(async () => {
-          await discardProposal(proposalValue.id);
-          setProposal(null);
-          setReview(null);
-          await refresh();
-          navigate("/leads");
-        })}
-      />
+          })}
+          onDiscard={() => void withLocal(async () => {
+            await discardProposal(proposalValue.id);
+            setProposal(null);
+            setReview(null);
+            await refresh();
+            navigate("/leads");
+          })}
+        />
+      </div>
     </div>
   );
 }

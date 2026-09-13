@@ -47,7 +47,8 @@ export function ReadinessChip({
         )
       ) : diagnosticCount > 0 ? (
         <Link to="/diagnostics" className="truncate font-medium text-muted hover:text-foreground hover:underline hover:underline-offset-4">
-          Queue diagnostics ({diagnosticCount})
+          <span className="sm:hidden">Diagnostics ({diagnosticCount})</span>
+          <span className="hidden sm:inline">Queue diagnostics ({diagnosticCount})</span>
         </Link>
       ) : null}
       {twilioConfigured ? (

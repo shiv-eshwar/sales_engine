@@ -1,15 +1,13 @@
 import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { Alert, Button } from "@heroui/react";
 import { useSession } from "../state/session";
-import { DailySummaryPanel } from "../components/DailySummaryPanel";
 import { EmptyState } from "../components/EmptyState";
 import { LeadsTable, filterLeads, sortLeads, type LeadSortKey } from "../components/LeadsTable";
 import { ReadyContactCard } from "../components/ReadyContactCard";
 import { CallingPanel } from "../components/CallingPanel";
 import { AI_DISCONNECTED_COPY, EMPTY_COPY } from "../copy";
 import { useLeadCall } from "../state/useLeadCall";
-import { SPLIT, SPLIT_RAIL } from "../layout/shell";
+import { SPLIT, SPLIT_PANE, SPLIT_RAIL } from "../layout/shell";
 
 export function LeadsPage() {
   const { data, pending, campaignBusy, setEditor } = useSession();
@@ -22,7 +20,7 @@ export function LeadsPage() {
   const nextLead = data.leads.find((item) => item.dialable) ?? null;
   const {
     campaign, call, setCall, callError, starting, disabledReason, sheetBlocking,
-    opening, firstQuestion, preparing, onCall, onSkip, onRefresh, openReview
+    preparation, opening, firstQuestion, preparing, onCall, onSkip, onRefresh, openReview
   } = useLeadCall(nextLead);
 
   const visible = useMemo(() => {
@@ -54,6 +52,9 @@ export function LeadsPage() {
       <CallingPanel
         session={call}
         recordingNotice={data.recordingNotice}
+        preparation={preparation}
+        opening={opening}
+        firstQuestion={firstQuestion}
         onSession={setCall}
         onTerminal={() => void openReview(call.id)}
       />
@@ -61,9 +62,9 @@ export function LeadsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5 lg:overflow-hidden">
       {campaign ? (
-        <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
+        <header className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
           <div>
             {nextLead ? null : <h1 className="text-2xl font-semibold tracking-tight">Ready</h1>}
             <p className={`text-sm text-muted ${nextLead ? "" : "mt-1"}`}>
@@ -132,13 +133,12 @@ export function LeadsPage() {
               callButtonRef={callButtonRef}
             />
           </div>
-          <div className="flex min-w-0 flex-col gap-8">
+          <div className={SPLIT_PANE}>
             <QueueAlerts
               aiStatus={data.ai.status}
               aiMessage={data.ai.message}
               researchStatus={data.research.status}
               researchMessage={data.research.message}
-              pendingProposal={data.pendingProposal}
             />
             {data.leads.length > 0 ? (
               <LeadsQueue
@@ -155,7 +155,6 @@ export function LeadsPage() {
                 tableEmpty={tableEmpty}
               />
             ) : null}
-            <DailySummaryPanel summary={data.summary} />
           </div>
         </div>
       ) : data.leads.length === 0 ? (
@@ -172,13 +171,12 @@ export function LeadsPage() {
           />
         </div>
       ) : (
-        <div className="flex min-w-0 flex-col gap-8">
+        <div className="flex min-w-0 flex-col gap-6">
           <QueueAlerts
             aiStatus={data.ai.status}
             aiMessage={data.ai.message}
             researchStatus={data.research.status}
             researchMessage={data.research.message}
-            pendingProposal={data.pendingProposal}
           />
           <LeadsQueue
             query={query}
@@ -193,7 +191,6 @@ export function LeadsPage() {
             undialableCount={undialableCount}
             tableEmpty={tableEmpty}
           />
-          <DailySummaryPanel summary={data.summary} />
         </div>
       )}
     </div>
@@ -204,14 +201,12 @@ function QueueAlerts({
   aiStatus,
   aiMessage,
   researchStatus,
-  researchMessage,
-  pendingProposal
+  researchMessage
 }: {
   aiStatus: string;
   aiMessage: string;
   researchStatus: string;
   researchMessage: string;
-  pendingProposal: { contactName: string; leadId: string; sessionId: string } | null;
 }) {
   return (
     <>
@@ -228,22 +223,6 @@ function QueueAlerts({
           <Alert.Indicator />
           <Alert.Content>
             <Alert.Title>{researchMessage}</Alert.Title>
-          </Alert.Content>
-        </Alert>
-      ) : null}
-      {pendingProposal ? (
-        <Alert status="accent">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Title>
-              Review waiting for {pendingProposal.contactName || pendingProposal.leadId}.{" "}
-              <Link
-                to={`/calls/${encodeURIComponent(pendingProposal.sessionId)}/review`}
-                className="font-semibold underline underline-offset-2"
-              >
-                Open review
-              </Link>
-            </Alert.Title>
           </Alert.Content>
         </Alert>
       ) : null}
@@ -277,9 +256,9 @@ function LeadsQueue({
   tableEmpty: { title: string; description: string } | null;
 }) {
   return (
-    <section aria-label="All leads">
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="min-w-52 flex-1 text-sm">
+    <section aria-label="All leads" className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+        <label className="w-full min-w-0 flex-1 text-sm lg:min-w-52">
           <span className="sr-only">Search leads</span>
           <input
             type="search"
@@ -303,7 +282,7 @@ function LeadsQueue({
             {undialableCount} need a phone fix
           </button>
         ) : null}
-        <div className="ml-auto flex items-center gap-1 text-sm" role="group" aria-label="Sort leads">
+        <div className="flex flex-wrap items-center gap-1 lg:ml-auto" role="group" aria-label="Sort leads">
           {([["name", "Name"], ["company", "Company"], ["status", "Status"]] as Array<[LeadSortKey, string]>).map(([key, label]) => (
             <Button
               key={key}

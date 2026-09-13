@@ -29,8 +29,12 @@ async function sendCampaignChat(page: Page, text: string) {
 
 async function openPrep(page: Page) {
   const brief = page.getByLabel("AI prospect brief");
-  if (await brief.isVisible()) return;
-  await page.getByText("Prep", { exact: true }).first().click();
+  if (!(await brief.isVisible())) {
+    const prep = page.getByText("Prep", { exact: true });
+    if (await prep.count()) {
+      await prep.first().click();
+    }
+  }
   await expect(brief).toBeVisible();
 }
 
@@ -62,7 +66,7 @@ test("create different offerings, match leads by sheet tag, view cited preparati
     await expect(page.getByRole("button", { name: "Call", exact: true })).toBeEnabled();
     await page.screenshot({ path: "test-results/ai-campaigns-desktop.png", fullPage: true });
 
-    await page.getByRole("link", { name: "Back to ready" }).click();
+    await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Home" }).click();
     await expect(page.getByRole("table", { name: "Leads" })).toBeVisible();
     await openCampaignChat(page, "New campaign");
     server.llm.enqueueJson(interviewTurn({ ...offering("Security training"), sheetCampaignValue: "lamina-sales" }));
@@ -75,14 +79,15 @@ test("create different offerings, match leads by sheet tag, view cited preparati
     await openFirstLead(page);
     await openPrep(page);
     await expect(page.getByLabel("AI prospect brief")).toContainText("recognize phishing");
-    await page.getByRole("link", { name: "Back to ready" }).click();
-    await page.getByLabel("Campaign", { exact: true }).selectOption({ label: "Invoice collections" });
+    await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Home" }).click();
+    await page.getByLabel("Campaign", { exact: true }).click();
+    await page.getByRole("option", { name: "Invoice collections", exact: true }).click();
     await openFirstLead(page);
     await openPrep(page);
     await expect(page.getByLabel("AI prospect brief")).toContainText("invoice follow-up");
     await expect(page.getByLabel("AI prospect brief")).not.toContainText("recognize phishing");
 
-    await page.getByRole("link", { name: "Back to ready" }).click();
+    await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Home" }).click();
     await page.getByRole("button", { name: "Edit offering" }).click();
     await expect(page.getByLabel("Campaign chat")).toBeVisible();
     server.llm.enqueueJson(interviewTurn({
@@ -122,6 +127,7 @@ test("generation failures retain the offering input and retry creates an AI camp
     server.llm.enqueueJson(interviewTurn(offering("Invoice assistant")));
     server.llm.enqueueJson(strategy("Invoice collections"));
     await sendCampaignChat(page, "Please try again.");
+    await page.getByLabel("Campaign", { exact: true }).click();
     await expect(page.getByRole("option", { name: "Invoice collections", exact: true })).toHaveCount(1);
     await expect(page.getByText("Web research unavailable; preparation will use CRM context only.")).toBeVisible();
   } finally { await server.close(); }

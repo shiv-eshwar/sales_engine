@@ -80,6 +80,10 @@ export const EMPTY_COPY = {
     title: "Missing call session",
     description: "Open a lead, finish a call, then review its CRM update here."
   },
+  notifications: {
+    title: "Nothing waiting",
+    description: "Pending CRM reviews and failed Sheet writes show up here after a call."
+  },
   sheet: {
     title: "Sheet needs a fix",
     description: "The queue cannot load until the Sheet mapping and headers are valid."

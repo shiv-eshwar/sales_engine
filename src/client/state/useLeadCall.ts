@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { ProspectPreparation } from "../../shared/campaigns";
 import type { PublicLead } from "../../shared/contracts";
 import { finalizeCall, prepareLead, refreshLeads } from "./api";
@@ -14,6 +14,7 @@ import { useSession } from "./session";
 
 export function useLeadCall(lead: PublicLead | null) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { data, pending, deviceStatus, runQueue, handleSkipLead, setReview, setLiveCall } = useSession();
   const [call, setCall] = useState<CallSessionView | null>(null);
   const [callError, setCallError] = useState<string | null>(null);
@@ -142,6 +143,8 @@ export function useLeadCall(lead: PublicLead | null) {
   async function onSkip() {
     if (!lead) return;
     const result = await handleSkipLead(lead.leadId);
+    // Home queue: stay on /leads so Skip only advances the next-up card.
+    if (location.pathname === "/leads") return;
     if (result?.lead && result.lead.leadId !== lead.leadId) {
       navigate(`/leads/${encodeURIComponent(result.lead.leadId)}`);
     } else {

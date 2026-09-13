@@ -86,7 +86,7 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
       leads: next.leads,
       recordingNotice: ctx.env.RECORDING_NOTICE,
       pendingProposal: pendingProposal(ctx),
-      summary: buildDailySummary(ctx.db, ctx.playbook, ctx.campaigns)
+      summary: buildDailySummary(ctx.db, ctx.playbook)
     };
     return body;
   });

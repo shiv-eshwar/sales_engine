@@ -275,5 +275,10 @@ export const discardProposalRequestSchema = z.object({
   confirm: z.literal(true)
 });
 
+export const summaryQuerySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  campaignId: z.string().min(1).optional()
+});
+
 export type PostCallOutcome = z.infer<typeof postCallOutcomeSchema>;
 export type WriteFieldsInput = z.infer<typeof writeFieldsSchema>;

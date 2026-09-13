@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import {
   approveProposalRequestSchema,
-  discardProposalRequestSchema
+  discardProposalRequestSchema,
+  summaryQuerySchema
 } from "../../shared/schemas.js";
 import type { AppContext } from "../context.js";
 import { requireSession } from "../auth/routes.js";
@@ -120,7 +121,11 @@ export async function registerReviewApi(app: FastifyInstance, ctx: AppContext): 
     }
   });
 
-  app.get("/api/summary", { preHandler: auth }, async () => {
-    return buildDailySummary(ctx.db, ctx.playbook, ctx.campaigns);
+  app.get("/api/summary", { preHandler: auth }, async (request, reply) => {
+    const parsed = summaryQuerySchema.safeParse(request.query ?? {});
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Summary date must be YYYY-MM-DD" });
+    }
+    return buildDailySummary(ctx.db, ctx.playbook, parsed.data.date, parsed.data.campaignId);
   });
 }

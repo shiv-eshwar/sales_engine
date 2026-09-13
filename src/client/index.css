@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@heroui/styles";
+@plugin "tailwind-scrollbar";
 
 @theme inline {
   --radius-3xl: var(--radius);
@@ -79,9 +80,13 @@ html,
 body,
 #root {
   min-height: 100%;
+  min-height: 100dvh;
 }
 
 html {
+  overflow-x: clip;
+  scrollbar-gutter: stable;
+  @apply scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border scrollbar-hover:scrollbar-thumb-muted;
   font-family:
     Inter,
     -apple-system,

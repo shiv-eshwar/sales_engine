@@ -378,3 +378,13 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-12 | Operator whitespace pass: roomier next-up/lead-detail/diagnostics, named queue diagnostics, page spinner instead of a loading card, and a fade-in call brief. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-12 | Dropped redundant labels (kickers, Opening, Ask first, Your call brief, Ready to call). Phone/role/company/quotes/issues use muted icons instead of em-dash copy. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Operator canvas is full-bleed: next-up card stays a readable rail, queue/brief/diagnostics fill the remaining width in a two-column split. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Independent column scroll: Call stays on screen, queue/brief scroll in a viewport-tall pane. Compact stacked layout for phones. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Route changes start at the top; Call focus no longer yanks the pane. Lead detail drops the extra Back to ready link in favor of breadcrumbs. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Lead brief is one card: regenerate lives in the header, Prep label and the duplicate Questions list are gone. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Live call uses the same light theme as Ready/review: prep, transcript, and cue sit in a three-pane calling layout. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Contained long openings on the next-up card and themed thin scrollbars (`tailwind-scrollbar`) to match the HSL tokens. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Daily summary moved to `/analytics` with date and campaign filters; Ready queue no longer shows the stats strip. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Campaign selector uses HeroUI Select/ListBox with theme tokens instead of the native OS menu. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Nested breadcrumbs now start with Home (route still `/leads`); e2e breadcrumb clicks updated. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Pending CRM review moved off Home to `/notifications` (nav + empty state + Open review). Ready queue no longer shows the review-waiting banner. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Lead detail no longer shows Skip or the Context enrichment block; Home next-up card still has Skip. | Slice 6 code complete; live smoke still blocked |

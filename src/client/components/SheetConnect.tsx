@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Alert, Button } from "@heroui/react";
 import type { SheetInfo } from "../../shared/contracts";
 import { EMPTY_COPY } from "../copy";
+import { SCROLL } from "../layout/shell";
 import { createLeadsSheet, linkLeadsSheet } from "../state/api";
 
 const choiceClass =
@@ -49,7 +50,7 @@ export function SheetConnect({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto">
+    <div className={`flex h-full min-h-0 flex-col gap-5 ${SCROLL}`}>
       <p className="max-w-[32em] text-sm leading-relaxed text-muted">{copy.description}</p>
       {error ? (
         <Alert status="danger" role="alert">

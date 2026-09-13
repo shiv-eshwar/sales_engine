@@ -1,27 +1,30 @@
-import type { CampaignConfig, PlaybookConfig } from "../../shared/schemas.js";
+import type { PlaybookConfig } from "../../shared/schemas.js";
 import type { DailySummary } from "../../shared/contracts.js";
 import type Database from "better-sqlite3";
 import { computeTalkRatio } from "../coach/talkRatio.js";
 import { listUtterances } from "../transcript/utterances.js";
 import { parseBody } from "./store.js";
 
-function dayStamp(date = new Date()): string {
+export function dayStamp(date = new Date()): string {
   return date.toISOString().slice(0, 10);
 }
 
 export function buildDailySummary(
   db: Database.Database,
   playbook: PlaybookConfig | null,
-  _campaigns: CampaignConfig[],
-  date = dayStamp()
+  date = dayStamp(),
+  campaignId?: string | null
 ): DailySummary {
+  const campaignClause = campaignId ? "AND s.campaign_id = ?" : "";
+  const params = campaignId ? [date, campaignId] : [date];
+
   const sessions = db
     .prepare(
-      `SELECT id, status, transport_outcome, connected_at, started_at, created_at
-       FROM call_sessions
-       WHERE substr(created_at, 1, 10) = ?`
+      `SELECT s.id, s.status, s.transport_outcome, s.connected_at, s.started_at, s.created_at
+       FROM call_sessions s
+       WHERE substr(s.created_at, 1, 10) = ? ${campaignClause}`
     )
-    .all(date) as Array<{
+    .all(...params) as Array<{
     id: string;
     status: string;
     transport_outcome: string | null;
@@ -32,11 +35,12 @@ export function buildDailySummary(
 
   const proposals = db
     .prepare(
-      `SELECT proposed_json, approved_json, status
-       FROM post_call_proposals
-       WHERE substr(created_at, 1, 10) = ? AND status = 'applied'`
+      `SELECT p.proposed_json, p.approved_json, p.status
+       FROM post_call_proposals p
+       JOIN call_sessions s ON s.id = p.session_id
+       WHERE substr(s.created_at, 1, 10) = ? ${campaignClause} AND p.status = 'applied'`
     )
-    .all(date) as Array<{ proposed_json: string; approved_json: string | null; status: string }>;
+    .all(...params) as Array<{ proposed_json: string; approved_json: string | null; status: string }>;
 
   let qualified = 0;
   let disqualified = 0;
@@ -107,11 +111,13 @@ export function buildDailySummary(
 
   const observation = db
     .prepare(
-      `SELECT cue, reason FROM coaching_events
-       WHERE shown_at IS NOT NULL AND cue IS NOT NULL AND substr(created_at, 1, 10) = ?
-       ORDER BY created_at DESC LIMIT 1`
+      `SELECT e.cue, e.reason FROM coaching_events e
+       JOIN call_sessions s ON s.id = e.session_id
+       WHERE e.shown_at IS NOT NULL AND e.cue IS NOT NULL
+         AND substr(s.created_at, 1, 10) = ? ${campaignClause}
+       ORDER BY e.created_at DESC LIMIT 1`
     )
-    .get(date) as { cue: string; reason: string | null } | undefined;
+    .get(...params) as { cue: string; reason: string | null } | undefined;
 
   return {
     date,

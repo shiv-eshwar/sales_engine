@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 import type { PublicLead } from "../../shared/contracts";
 import { Icon } from "./Icon";
+import { SCROLL, SCROLL_X } from "../layout/shell";
 
 export type LeadSortKey = "name" | "company" | "status";
 
@@ -49,12 +50,12 @@ export function LeadsTable({
 
   return (
     <>
-      <ul className="mt-4 space-y-3 md:hidden" aria-label="Leads">
+      <ul className="mt-4 space-y-3 lg:hidden" aria-label="Leads">
         {leads.map((lead) => (
           <li key={lead.leadId}>
             <Link
               to={`/leads/${encodeURIComponent(lead.leadId)}`}
-              className="block rounded-lg bg-surface px-4 py-3 shadow-sm"
+              className="block min-h-11 rounded-lg bg-surface px-4 py-3 shadow-sm"
               aria-label={`Open ${lead.fullName || lead.leadId}`}
             >
               <p className="font-semibold">{lead.fullName || "Unnamed contact"}</p>
@@ -74,7 +75,7 @@ export function LeadsTable({
           </li>
         ))}
       </ul>
-      <div className="mt-4 hidden overflow-hidden rounded-lg bg-surface shadow-sm md:block">
+      <div className={`mt-4 hidden min-h-0 flex-1 ${SCROLL} ${SCROLL_X} rounded-lg bg-surface shadow-sm lg:block`}>
         <table className="w-full text-left text-sm" aria-label="Leads">
           <thead>
             <tr className="border-b border-separator">

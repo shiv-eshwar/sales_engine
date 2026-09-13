@@ -5,12 +5,13 @@ import { fetchBootstrap } from "../state/api";
 import { fetchCallSession } from "../state/calls";
 import { hangUpTwilioCall } from "../twilio/device";
 import { CampaignDrawer } from "../components/CampaignDrawer";
+import { CampaignSelect } from "../components/CampaignSelect";
 import { CallingPanel } from "../components/CallingPanel";
 import { ReadinessChip } from "../components/ReadinessChip";
 import { PRODUCT_NAME } from "../copy";
-import { SHELL } from "./shell";
+import { SHELL, isWorkspacePath } from "./shell";
 import type { CallSessionView } from "../state/calls";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 export function AppLayout() {
   const {
@@ -26,6 +27,26 @@ export function AppLayout() {
   const hideCampaignChrome = Boolean(liveCall) || onReview;
   const hasCampaigns = data.campaigns.length > 0;
   const selectedCampaign = data.campaigns.find((item) => item.id === data.selectedCampaignId);
+  const lockWorkspace = isWorkspacePath(location.pathname) && !liveCall && !inboundCall;
+
+  useLayoutEffect(() => {
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+    const reset = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      const root = document.getElementById("root");
+      if (root) root.scrollTop = 0;
+      for (const node of document.querySelectorAll<HTMLElement>("main, [class*='overflow-y-auto']")) {
+        node.scrollTop = 0;
+      }
+    };
+    reset();
+    const frame = requestAnimationFrame(reset);
+    return () => cancelAnimationFrame(frame);
+  }, [location.pathname]);
 
   function guardLeadsNav(event: React.MouseEvent<HTMLAnchorElement>) {
     if (!liveCall) return;
@@ -59,10 +80,10 @@ export function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className={`flex min-h-dvh flex-col ${lockWorkspace ? "lg:h-dvh lg:overflow-hidden lg:overscroll-none" : ""}`}>
       <header className={`sticky top-0 z-50 bg-background ${liveCall ? "hidden" : ""}`}>
         <div className="h-[3px] bg-accent" />
-        <div className={`${SHELL} flex h-14 min-w-0 items-center gap-3 sm:gap-6`}>
+        <div className={`${SHELL} flex h-14 min-w-0 items-center gap-2 sm:gap-6`}>
           <Link
             to="/leads"
             className="shrink-0 text-[15px] font-semibold tracking-tight text-foreground"
@@ -71,26 +92,22 @@ export function AppLayout() {
             {PRODUCT_NAME}
           </Link>
           {hasCampaigns ? (
-            <select
+            <CampaignSelect
               id="campaign"
-              aria-label="Campaign"
+              appearance="header"
+              ariaLabel="Campaign"
+              campaigns={data.campaigns}
+              className="min-w-0 flex-1"
+              isDisabled={pending || campaignBusy || Boolean(editor) || Boolean(liveCall)}
               title={selectedCampaign?.name}
-              className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-[15px] font-medium text-foreground"
               value={data.selectedCampaignId ?? ""}
-              disabled={pending || campaignBusy || Boolean(editor) || Boolean(liveCall)}
-              onChange={(event) => {
-                void handleSelectCampaign(event.target.value);
+              onChange={(campaignId) => {
+                void handleSelectCampaign(campaignId);
               }}
-            >
-              {data.campaigns.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+            />
           ) : null}
 
-          <div className="ml-auto flex min-w-0 max-w-[58%] shrink-0 items-center justify-end gap-3 sm:max-w-none sm:gap-4">
+          <div className="ml-auto flex min-w-0 max-w-[62%] shrink-0 items-center justify-end gap-2 sm:max-w-none sm:gap-4">
             <ReadinessChip
               sheet={data.sheet}
               twilioConfigured={twilioConfigured}
@@ -102,14 +119,46 @@ export function AppLayout() {
                 {data.twilio.callerId}
               </p>
             ) : null}
+            <Link
+              to="/notifications"
+              aria-label={
+                data.pendingProposal
+                  ? "Notifications, 1 waiting"
+                  : "Notifications"
+              }
+              className={`shrink-0 text-sm font-semibold ${
+                location.pathname.startsWith("/notifications")
+                  ? "text-foreground"
+                  : "text-muted hover:text-foreground hover:underline hover:underline-offset-4"
+              }`}
+            >
+              Notifications
+              {data.pendingProposal ? (
+                <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-lg bg-accent-soft px-1 text-xs font-semibold text-accent">
+                  1
+                </span>
+              ) : null}
+            </Link>
+            <Link
+              to="/analytics"
+              className={`shrink-0 text-sm font-semibold ${
+                location.pathname.startsWith("/analytics")
+                  ? "text-foreground"
+                  : "text-muted hover:text-foreground hover:underline hover:underline-offset-4"
+              }`}
+            >
+              Analytics
+            </Link>
             {hideCampaignChrome ? null : (
               <button
                 type="button"
+                aria-label="New campaign"
                 className="shrink-0 text-sm font-semibold text-muted hover:text-foreground disabled:opacity-50"
                 disabled={pending || campaignBusy || Boolean(editor)}
                 onClick={() => setEditor("new")}
               >
-                New campaign
+                <span className="sm:hidden" aria-hidden="true">New</span>
+                <span className="hidden sm:inline">New campaign</span>
               </button>
             )}
           </div>
@@ -124,10 +173,10 @@ export function AppLayout() {
               <Alert.Title>Incoming call from {incoming.from}</Alert.Title>
               <Alert.Description>Answer to talk in your browser, or decline to send them away.</Alert.Description>
               <div className="mt-4 flex flex-wrap gap-3">
-                <Button className="rounded-lg!" isDisabled={pending} onPress={() => void onAnswer()}>
+                <Button className="min-h-11 rounded-lg!" isDisabled={pending} onPress={() => void onAnswer()}>
                   Answer
                 </Button>
-                <Button variant="outline" className="rounded-lg!" onPress={declineIncoming}>
+                <Button variant="outline" className="min-h-11 rounded-lg!" onPress={declineIncoming}>
                   Decline
                 </Button>
               </div>
@@ -156,7 +205,13 @@ export function AppLayout() {
         />
       ) : null}
 
-      <main className={`${SHELL} py-8`}>
+      <main
+        className={`${SHELL} flex min-h-0 flex-1 flex-col py-4 sm:py-5 ${
+          lockWorkspace
+            ? "pb-[max(1rem,env(safe-area-inset-bottom))] lg:overflow-hidden lg:pb-5"
+            : "pb-8"
+        }`}
+      >
         <Outlet />
       </main>
 

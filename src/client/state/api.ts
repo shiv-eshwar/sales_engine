@@ -212,6 +212,21 @@ export async function discardProposal(id: string): Promise<PublicProposal> {
 
 export type { DailySummary };
 
+export async function fetchSummary(input: {
+  date?: string;
+  campaignId?: string | null;
+} = {}): Promise<DailySummary> {
+  const params = new URLSearchParams();
+  if (input.date) params.set("date", input.date);
+  if (input.campaignId) params.set("campaignId", input.campaignId);
+  const query = params.toString();
+  const response = await fetch(`/api/summary${query ? `?${query}` : ""}`, { credentials: "include" });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return (await response.json()) as DailySummary;
+}
+
 async function campaignRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(path, {
     ...options,

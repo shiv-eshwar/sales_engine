@@ -50,7 +50,7 @@ export function CampaignDrawer({
     <Modal.Backdrop isOpen={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <Modal.Container size="lg">
           <Modal.Dialog
-            className={`flex flex-col rounded-lg ${needsSheet ? "h-auto max-h-[min(80vh,40rem)]" : "h-[min(86vh,760px)]"}`}
+            className={`flex flex-col rounded-lg ${needsSheet ? "h-auto max-h-[min(80dvh,40rem)]" : "h-[min(92dvh,760px)] sm:h-[min(86dvh,760px)]"}`}
             aria-label={mode === "edit" ? "Edit offering" : needsSheet ? EMPTY_COPY.sheetConnect.title : "Create a campaign"}
           >
           <Modal.CloseTrigger aria-label="Close" />

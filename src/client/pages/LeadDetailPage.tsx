@@ -11,8 +11,7 @@ import { BriefLoading } from "../components/LoadingSkeleton";
 import { ReadyContactCard } from "../components/ReadyContactCard";
 import { useLeadCall } from "../state/useLeadCall";
 import { EMPTY_COPY } from "../copy";
-import { Icon } from "../components/Icon";
-import { SPLIT, SPLIT_RAIL } from "../layout/shell";
+import { SPLIT, SPLIT_PANE, SPLIT_RAIL } from "../layout/shell";
 
 export function LeadDetailPage() {
   const { leadId } = useParams();
@@ -26,7 +25,7 @@ export function LeadDetailPage() {
 
   const {
     campaign, call, setCall, callError, starting, pending, disabledReason, sheetBlocking,
-    preparation, preparing, prepError, opening, firstQuestion, onCall, onSkip, onRefresh, openReview, regeneratePrep
+    preparation, preparing, prepError, opening, firstQuestion, onCall, onRefresh, openReview, regeneratePrep
   } = useLeadCall(lead ?? null);
 
   useEffect(() => {
@@ -53,16 +52,28 @@ export function LeadDetailPage() {
 
   const crumbs = useMemo(
     () => [
-      { label: "Ready", to: liveCall ? undefined : "/leads" },
+      { label: "Home", to: liveCall ? undefined : "/leads" },
       { label: lead?.fullName || decodedId || "Lead" }
     ],
     [decodedId, lead?.fullName, liveCall]
+  );
+  const hasBriefPane = Boolean(campaign?.brief);
+  const regenerateAction = (
+    <Button
+      variant="outline"
+      size="sm"
+      className="min-h-11 rounded-lg! sm:min-h-0"
+      isDisabled={preparing || pending}
+      onPress={regeneratePrep}
+    >
+      {prepError ? "Retry preparation" : "Regenerate brief"}
+    </Button>
   );
 
   if (!decodedId) {
     return (
       <div>
-        <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: "Lead" }]} />
+        <Breadcrumbs items={[{ label: "Home", to: "/leads" }, { label: "Lead" }]} />
         <div className="mt-16">
           <EmptyState
             icon="leads"
@@ -82,7 +93,7 @@ export function LeadDetailPage() {
   if (!lead) {
     return (
       <div>
-        <Breadcrumbs items={[{ label: "Ready", to: "/leads" }, { label: decodedId }]} />
+        <Breadcrumbs items={[{ label: "Home", to: "/leads" }, { label: decodedId }]} />
         <div className="mt-16">
           <EmptyState
             icon="leads"
@@ -104,6 +115,9 @@ export function LeadDetailPage() {
       <CallingPanel
         session={call}
         recordingNotice={data.recordingNotice}
+        preparation={preparation}
+        opening={opening}
+        firstQuestion={firstQuestion}
         onSession={setCall}
         onTerminal={() => void openReview(call.id)}
       />
@@ -111,9 +125,11 @@ export function LeadDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <Breadcrumbs items={crumbs} />
-      <div className={campaign?.brief || lead.enrichment || (campaign?.requiredQuestions.length ?? 0) > 0 ? SPLIT : undefined}>
+    <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5 lg:overflow-hidden">
+      <div className="shrink-0">
+        <Breadcrumbs items={crumbs} />
+      </div>
+      <div className={hasBriefPane ? SPLIT : SPLIT_RAIL}>
         <div className={SPLIT_RAIL}>
           <ReadyContactCard
             lead={lead}
@@ -127,75 +143,32 @@ export function LeadDetailPage() {
             callError={callError}
             sheetBlocking={sheetBlocking}
             onCall={() => void onCall()}
-            onSkip={() => void onSkip()}
             onRefresh={onRefresh}
             callButtonRef={callButtonRef}
           />
-          <Link
-            to="/leads"
-            className="mt-6 inline-block w-fit text-sm font-semibold text-muted hover:text-foreground hover:underline hover:underline-offset-4"
-          >
-            Back to ready
-          </Link>
         </div>
 
-        {campaign?.brief || lead.enrichment || (campaign?.requiredQuestions.length ?? 0) > 0 ? (
-          <div className="flex min-w-0 flex-col gap-8">
+        {hasBriefPane ? (
+          <div className={SPLIT_PANE}>
             {campaign?.brief ? (
-              <section>
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-                  <p className="text-sm font-semibold">Prep</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-lg!"
-                    isDisabled={preparing || pending}
-                    onPress={regeneratePrep}
-                  >
-                    {prepError ? "Retry preparation" : "Regenerate brief"}
-                  </Button>
+              preparation ? (
+                <div
+                  className={`transition-opacity duration-500 ease-out ${preparing ? "opacity-60" : "opacity-100"}`}
+                >
+                  <ProspectBrief
+                    preparation={preparation}
+                    error={prepError}
+                    action={regenerateAction}
+                  />
                 </div>
-                {prepError ? <p role="alert" className="mt-4 text-sm font-medium text-danger">{prepError}</p> : null}
-                <div className="mt-6">
-                  {preparation ? (
-                    <div
-                      className={`transition-opacity duration-500 ease-out ${preparing ? "opacity-60" : "opacity-100"}`}
-                    >
-                      <ProspectBrief preparation={preparation} />
-                    </div>
-                  ) : (
-                    <BriefLoading
-                      title={`Researching ${lead.company || "the company"}…`}
-                      detail={`Preparing questions for ${lead.fullName || "this prospect"}. This can take a minute or two.`}
-                    />
-                  )}
-                </div>
-              </section>
-            ) : null}
-
-            {lead.enrichment || (campaign?.requiredQuestions.length ?? 0) > 0 ? (
-              <div className="flex flex-col gap-3">
-                {lead.enrichment ? (
-                  <details>
-                    <summary className="cursor-pointer py-1 text-sm font-semibold">Context</summary>
-                    <p className="mt-4 max-w-[32em] whitespace-pre-wrap text-sm leading-relaxed text-muted">{lead.enrichment}</p>
-                  </details>
-                ) : null}
-
-                {(campaign?.requiredQuestions.length ?? 0) > 0 ? (
-                  <details>
-                    <summary className="cursor-pointer py-1 text-sm font-semibold">Questions</summary>
-                    <ul className="mt-4 space-y-3 text-sm">
-                      {(campaign?.requiredQuestions ?? []).map((question) => (
-                        <li key={question.id} className="flex items-start gap-2">
-                          {question.required ? <Icon name="flag" className="mt-0.5 text-accent" title="Priority" /> : null}
-                          <span>{question.prompt}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                ) : null}
-              </div>
+              ) : (
+                <BriefLoading
+                  title={`Researching ${lead.company || "the company"}…`}
+                  detail={`Preparing questions for ${lead.fullName || "this prospect"}. This can take a minute or two.`}
+                  action={regenerateAction}
+                  error={prepError}
+                />
+              )
             ) : null}
           </div>
         ) : null}

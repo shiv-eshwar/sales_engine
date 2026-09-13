@@ -14,6 +14,11 @@ async function login(page: import("@playwright/test").Page, baseURL: string) {
   await expect(page.getByRole("link", { name: "Sales Engine" })).toBeVisible();
 }
 
+async function chooseCampaign(page: import("@playwright/test").Page, name: string) {
+  await page.getByLabel("Campaign", { exact: true }).click();
+  await page.getByRole("option", { name, exact: true }).click();
+}
+
 async function openLead(page: import("@playwright/test").Page, name: string) {
   await page.getByRole("link", { name: new RegExp(`Open ${name}`) }).first().click();
   await expect(page.getByRole("heading", { name })).toBeVisible();
@@ -52,7 +57,7 @@ async function connectLiveCall(page: import("@playwright/test").Page, server: E2
 
 test("login through approve loads the next lead", async ({ page, server }) => {
   await login(page, server.baseURL);
-  await page.getByLabel("Campaign").selectOption("lamina-sales");
+  await chooseCampaign(page, "Lamina founder sales");
   await expect(page.getByRole("table", { name: "Leads" })).toContainText("Alex Rivera");
 
   await openLead(page, "Alex Rivera");
@@ -96,7 +101,7 @@ test("login through approve loads the next lead", async ({ page, server }) => {
 
 test("open a specific lead from the table, search and navigate", async ({ page, server }) => {
   await login(page, server.baseURL);
-  await page.getByLabel("Campaign").selectOption("lamina-sales");
+  await chooseCampaign(page, "Lamina founder sales");
   await expect(page.getByRole("table", { name: "Leads" })).toContainText("Alex Rivera");
 
   // Search filters the table.
@@ -109,7 +114,7 @@ test("open a specific lead from the table, search and navigate", async ({ page, 
   await openLead(page, "Jordan Chen");
   await expect(page).toHaveURL(/\/leads\/L-101/);
   await expect(page.getByRole("heading", { name: "Jordan Chen" })).toBeVisible();
-  await page.getByRole("link", { name: "Back to ready" }).click();
+  await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Home" }).click();
   await expect(page.getByRole("table", { name: "Leads" })).toBeVisible();
 
   await openLead(page, "Alex Rivera");
@@ -118,7 +123,7 @@ test("open a specific lead from the table, search and navigate", async ({ page, 
 
 test("Deepgram drop shows interruption while Mute and Hang Up stay enabled", async ({ page, server }) => {
   await login(page, server.baseURL);
-  await page.getByLabel("Campaign").selectOption("lamina-sales");
+  await chooseCampaign(page, "Lamina founder sales");
   await openLead(page, "Alex Rivera");
   const live = await connectLiveCall(page, server);
   live.outbound?.fail(new Error("deepgram drop"));
