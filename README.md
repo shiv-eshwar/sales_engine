@@ -175,7 +175,7 @@ npm run test:e2e
 
 ## Production deploy (Azure VM)
 
-Pushes to `main` run `.github/workflows/deploy.yml`. GitHub Actions SSHs into the VM, resets `/opt/sales-engine/control` to `origin/main`, builds a timestamped release under `/opt/sales-engine/releases/`, points `/opt/sales-engine/current` at it, restarts `sales-engine`, and checks `/health/live` plus `/health/ready`. It does **not** restart `sales-engine-tunnel`. Secrets stay in `/opt/sales-engine/shared/.env`; SQLite stays in `/opt/sales-engine/shared/data`.
+Pushes to `main` run `.github/workflows/deploy.yml`. GitHub Actions SSHs into the VM, resets `/opt/sales-engine/control` to `origin/main`, builds a timestamped release under `/opt/sales-engine/releases/`, points `/opt/sales-engine/current` at it, restarts `sales-engine`, and checks `/health/live` plus `/health/ready`. It does **not** restart `sales-engine-tunnel`. Secrets stay in `/opt/sales-engine/shared/.env`; SQLite and `sheets.yaml` stay in `/opt/sales-engine/shared/data`. Production binds `HOST=127.0.0.1` so nginx (basic auth + Twilio `/twilio/` bypass) is the public entry. Unit file and nginx templates live in `infra/`; deploys do not rewrite `/etc`.
 
 One-time VM setup (SSH in as `azureuser`). Safer if the VM checkout is still behind GitHub or has local commits:
 

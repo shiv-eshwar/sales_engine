@@ -1,0 +1,22 @@
+[Unit]
+Description=Sales Engine application
+After=network-online.target docker.service nginx.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=azureuser
+Group=azureuser
+WorkingDirectory=/opt/sales-engine/current
+EnvironmentFile=-/opt/sales-engine/shared/.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=90
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
