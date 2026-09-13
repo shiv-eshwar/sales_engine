@@ -31,7 +31,22 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 | Slice | 6 (code complete; live PSTN smoke gated) |
 | Status | `blocked` |
 | Next action | Confirm public `APP_BASE_URL` (ngrok) matches TwiML App, then run §19 live PSTN smoke and fill speaker mapping in `VERIFICATION.md`. |
-| Blocked on | Live controlled PSTN smoke / speaker mapping. Google Sheet is connected; Twilio Voice credentials present in local `.env`. |
+| Blocked on | Live controlled PSTN smoke / speaker mapping. Google Sheet is connected; Twilio Voice credentials present in local `.env`. Azure auto-deploy needs VM SSH + GitHub secrets (see below). |
+
+---
+
+## Azure auto-deploy (ops)
+
+Does not replace Slice 6 live smoke. Proof of done: a `main` push shows a green **Deploy Sales Engine** workflow and `/health/ready` on the VM.
+
+- [x] `scripts/deploy-production.sh` (fetch `origin/main`, `npm ci` + build, release symlink, restart `sales-engine`, health checks)
+- [x] `scripts/install-github-actions-ssh.sh` (VM: Actions SSH key + passwordless `systemctl` for this service)
+- [x] `.github/workflows/deploy.yml` (SSH on push to `main` and `workflow_dispatch`)
+- [ ] VM: run the installer as `azureuser`
+- [ ] GitHub secrets `AZURE_HOST`, `AZURE_USER`, `AZURE_SSH_KEY`
+- [ ] VM `git fetch origin main` works without a password prompt
+- [ ] Reconcile VM-only commits (push them or accept `reset --hard origin/main`)
+- [ ] First green production deploy
 
 ---
 
@@ -329,7 +344,7 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | Campaign definitions (sales / research / networking) | `not_started` | Objective, claims, questions, qualification, outcomes |
 | Allowed calling countries | `not_started` | |
 | Recording notice policy and retention | `not_started` | Default ledger retention 90 days until specified |
-| Runtime credentials in local/deploy secrets | `in_progress` | Local `.env` has Google SA + Sheet config (gitignored), Twilio Voice fields, Deepgram, LLM. Rotate any keys that were pasted in chat. |
+| Runtime credentials in local/deploy secrets | `in_progress` | Local `.env` has Google SA + Sheet config (gitignored), Twilio Voice fields, Deepgram, LLM. GitHub Actions deploy still needs `AZURE_HOST`, `AZURE_USER`, `AZURE_SSH_KEY`. Rotate any keys that were pasted in chat. |
 
 ---
 
@@ -420,3 +435,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-13 | Operator navbar: Notifications and Analytics are icon-only (bell / chart) with aria-label + title; New campaign is the solid primary with a plus. Badge and Campaign / Edit offering names unchanged. Live PSTN still gated. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Campaign list tick no longer collides with long names: option label ellipsizes; HeroUI absolute indicator forced into a shrink-0 in-flow slot. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Book skills moved under each eve agent (`skills/`); loader preloads cheatsheets only. System prompts rewritten. Pre-call brief is a short scan card. Typecheck + Vitest. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | GitHub Actions SSH deploy: `scripts/deploy-production.sh`, VM bootstrap `scripts/install-github-actions-ssh.sh`, workflow `.github/workflows/deploy.yml`. Auto-deploy is blocked until Azure SSH secrets exist and the VM can `git fetch origin main`. | Slice 6 code complete; live smoke still blocked; Azure auto-deploy pending secrets |

@@ -162,6 +162,7 @@ Production `npm start` listens on `PORT` (default 3000) and serves the SPA. `npm
 | `npm start` | `NODE_ENV=production` Fastify serving API + `dist/client` |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run hash-password` | Generate `APP_PASSWORD_HASH` |
+| `./scripts/deploy-production.sh` | Azure VM only: fetch `origin/main`, build, switch `/opt/sales-engine/current`, restart `sales-engine` |
 
 Migrations in `migrations/` run automatically on process start. SQLite defaults to `DATABASE_PATH=./data/ledger.sqlite` (WAL mode).
 
@@ -171,6 +172,42 @@ First Playwright run on a machine:
 npx playwright install chromium
 npm run test:e2e
 ```
+
+## Production deploy (Azure VM)
+
+Pushes to `main` run `.github/workflows/deploy.yml`. GitHub Actions SSHs into the VM, resets `/opt/sales-engine/control` to `origin/main`, builds a timestamped release under `/opt/sales-engine/releases/`, points `/opt/sales-engine/current` at it, restarts `sales-engine`, and checks `/health/live` plus `/health/ready`. It does **not** restart `sales-engine-tunnel`. Secrets stay in `/opt/sales-engine/shared/.env`; SQLite stays in `/opt/sales-engine/shared/data`.
+
+One-time VM setup (SSH in as `azureuser`). Safer if the VM checkout is still behind GitHub or has local commits:
+
+```bash
+cd /opt/sales-engine/control
+git fetch origin main
+git checkout origin/main -- scripts/install-github-actions-ssh.sh
+# Run as azureuser (not root); the script sudoes only for sudoers.
+bash scripts/install-github-actions-ssh.sh
+```
+
+Then add GitHub Actions secrets (`Settings → Secrets and variables → Actions`):
+
+| Secret | Value |
+|---|---|
+| `AZURE_HOST` | VM public IP or DNS |
+| `AZURE_USER` | `azureuser` |
+| `AZURE_SSH_KEY` | Private key from `~/.ssh/github_actions_sales_engine` **on the VM** |
+
+From a laptop that can SSH to the VM:
+
+```bash
+gh secret set AZURE_HOST --body "YOUR_VM_PUBLIC_IP"
+gh secret set AZURE_USER --body "azureuser"
+ssh azureuser@YOUR_VM_PUBLIC_IP 'cat ~/.ssh/github_actions_sales_engine' | gh secret set AZURE_SSH_KEY
+```
+
+The VM clone must `git fetch origin main` without a prompt (HTTPS credential or a read-only GitHub deploy key). Local commits that are not on GitHub are discarded on deploy (`git reset --hard origin/main`). Untracked files such as `config/sheets.yaml` are kept.
+
+Allow inbound SSH (port 22) from GitHub Actions. After secrets are set, use **Actions → Deploy Sales Engine → Run workflow**, or push to `main`.
+
+A Cloudflare quick tunnel URL can change if `sales-engine-tunnel` restarts; prefer a named tunnel or a stable domain for Twilio `APP_BASE_URL`.
 
 ## Docker
 
