@@ -31,7 +31,7 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 | Slice | 6 (code complete; live PSTN smoke gated) |
 | Status | `blocked` |
 | Next action | Confirm public `APP_BASE_URL` (ngrok) matches TwiML App, then run §19 live PSTN smoke and fill speaker mapping in `VERIFICATION.md`. |
-| Blocked on | Live controlled PSTN smoke / speaker mapping. Google Sheet is connected; Twilio Voice credentials present in local `.env`. Azure auto-deploy secrets are set; first green production deploy pending. |
+| Blocked on | Live controlled PSTN smoke / speaker mapping. Google Sheet is connected; Twilio Voice credentials present in local `.env`. Azure auto-deploy from `main` is live. |
 
 ---
 
@@ -46,7 +46,7 @@ Does not replace Slice 6 live smoke. Proof of done: a `main` push shows a green 
 - [x] GitHub secrets `AZURE_HOST`, `AZURE_USER`, `AZURE_SSH_KEY`
 - [x] VM `git fetch origin main` works without a password prompt
 - [x] Reconcile VM-only commits (push them or accept `reset --hard origin/main`)
-- [ ] First green production deploy
+- [x] First green production deploy (`b93d418` → `/opt/sales-engine/releases/20260913113855`, `/health/ready` ok)
 
 ---
 
@@ -437,3 +437,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-13 | Book skills moved under each eve agent (`skills/`); loader preloads cheatsheets only. System prompts rewritten. Pre-call brief is a short scan card. Typecheck + Vitest. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | GitHub Actions SSH deploy: `scripts/deploy-production.sh`, VM bootstrap `scripts/install-github-actions-ssh.sh`, workflow `.github/workflows/deploy.yml`. Auto-deploy is blocked until Azure SSH secrets exist and the VM can `git fetch origin main`. | Slice 6 code complete; live smoke still blocked; Azure auto-deploy pending secrets |
 | 2026-09-13 | Azure VM installer run; `AZURE_HOST` / `AZURE_USER` / `AZURE_SSH_KEY` set. Preserved nginx/systemd templates and `HOST` bind so production stays on loopback behind nginx. First Actions deploy pending. | Slice 6 code complete; live smoke still blocked; Azure auto-deploy pending first green run |
+| 2026-09-13 | First GitHub Actions production deploy succeeded (`b93d418` on VM `/opt/sales-engine/current`, `/health/live` and `/health/ready` ok). Pushes to `main` now auto-deploy. | Slice 6 code complete; live smoke still blocked; Azure auto-deploy live |
