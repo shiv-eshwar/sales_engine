@@ -8,6 +8,7 @@ import { LeadsPage } from "./pages/LeadsPage";
 import { LeadDetailPage } from "./pages/LeadDetailPage";
 import { ReviewPage } from "./pages/ReviewPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { EmptyState } from "./components/EmptyState";
 import { bootSkeleton, LoginSkeleton } from "./components/LoadingSkeleton";

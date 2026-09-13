@@ -229,7 +229,7 @@ async function main() {
   process.on("SIGINT", () => {
     void shutdown();
   });
-  await app.listen({ port: env.PORT, host: "0.0.0.0" });
+  await app.listen({ port: env.PORT, host: env.HOST ?? "0.0.0.0" });
 }
 
 const isDirect = process.argv[1]?.includes("src/server/index.ts") || process.argv[1]?.includes("dist/server/index.js");

@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
@@ -31,10 +32,8 @@ const sheetEmpty: SheetInfo = {
 const providerOk = { status: "ok" as const, message: "Ready", callerId: "+15555550100" };
 const providerOff = { status: "not_configured" as const, message: "Not configured" };
 
-function markup(view: Parameters<typeof SettingsView>[0]) {
-  return renderToStaticMarkup(
-    MemoryRouter({ children: SettingsView(view) })
-  );
+function html(props: Parameters<typeof SettingsView>[0]): string {
+  return renderToStaticMarkup(createElement(MemoryRouter, null, createElement(SettingsView, props)));
 }
 
 describe("Settings page", () => {
@@ -44,7 +43,7 @@ describe("Settings page", () => {
   });
 
   it("shows Calendar empty state with Connect when OAuth is configured", () => {
-    const html = markup({
+    const markup = html({
       calendar: { configured: true, connected: false, email: null },
       sheet: sheetEmpty,
       campaignName: null,
@@ -58,15 +57,15 @@ describe("Settings page", () => {
       deepgram: "Deepgram not configured; transcription will be interrupted",
       flash: null
     });
-    expect(html).toContain(SETTINGS_COPY.calendar.disconnectedTitle);
-    expect(html).toContain(SETTINGS_COPY.calendar.connect);
-    expect(html).not.toContain(SETTINGS_COPY.calendar.disconnect);
-    expect(html).toContain(SETTINGS_COPY.twilio.emptyTitle);
-    expect(html).not.toContain("keypad");
+    expect(markup).toContain(SETTINGS_COPY.calendar.disconnectedTitle);
+    expect(markup).toContain(SETTINGS_COPY.calendar.connect);
+    expect(markup).not.toContain(SETTINGS_COPY.calendar.disconnect);
+    expect(markup).toContain(SETTINGS_COPY.twilio.emptyTitle);
+    expect(markup).toContain(SETTINGS_COPY.twilio.emptyHint);
   });
 
   it("shows connected Calendar email and Disconnect", () => {
-    const html = markup({
+    const markup = html({
       calendar: { configured: true, connected: true, email: "op@example.com" },
       sheet: sheetOk,
       campaignName: "Lamina founder sales",
@@ -80,11 +79,11 @@ describe("Settings page", () => {
       deepgram: "Deepgram API key is set",
       flash: null
     });
-    expect(html).toContain("op@example.com");
-    expect(html).toContain(SETTINGS_COPY.calendar.disconnect);
-    expect(html).not.toContain(SETTINGS_COPY.calendar.connect);
-    expect(html).toContain(SETTINGS_COPY.sheet.sample);
-    expect(html).toContain(SETTINGS_COPY.twilio.registered);
-    expect(html).toContain(SETTINGS_COPY.providers.ai);
+    expect(markup).toContain("op@example.com");
+    expect(markup).toContain(SETTINGS_COPY.calendar.disconnect);
+    expect(markup).not.toContain(SETTINGS_COPY.calendar.connect);
+    expect(markup).toContain(SETTINGS_COPY.sheet.sample);
+    expect(markup).toContain(SETTINGS_COPY.twilio.registered);
+    expect(markup).toContain(SETTINGS_COPY.providers.ai);
   });
 });

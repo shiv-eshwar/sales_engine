@@ -31,7 +31,22 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 | Slice | 7 (code complete; Slice 6 live PSTN smoke still gated) |
 | Status | `completed` |
 | Next action | Confirm public `APP_BASE_URL` (ngrok) matches TwiML App, then run §19 live PSTN smoke and fill speaker mapping in `VERIFICATION.md`. |
-| Blocked on | Slice 6 live controlled PSTN smoke / speaker mapping. Calendar OAuth is optional until the operator connects Google. |
+| Blocked on | Slice 6 live controlled PSTN smoke / speaker mapping. Calendar OAuth is optional until the operator connects Google. Google Sheet is connected; Twilio Voice credentials present in local `.env`. Azure auto-deploy from `main` is live. |
+
+---
+
+## Azure auto-deploy (ops)
+
+Does not replace Slice 6 live smoke. Proof of done: a `main` push shows a green **Deploy Sales Engine** workflow and `/health/ready` on the VM.
+
+- [x] `scripts/deploy-production.sh` (fetch `origin/main`, `npm ci` + build, release symlink, restart `sales-engine`, health checks)
+- [x] `scripts/install-github-actions-ssh.sh` (VM: Actions SSH key + passwordless `systemctl` for this service)
+- [x] `.github/workflows/deploy.yml` (SSH on push to `main` and `workflow_dispatch`)
+- [x] VM: run the installer as `azureuser`
+- [x] GitHub secrets `AZURE_HOST`, `AZURE_USER`, `AZURE_SSH_KEY`
+- [x] VM `git fetch origin main` works without a password prompt
+- [x] Reconcile VM-only commits (push them or accept `reset --hard origin/main`)
+- [x] First green production deploy (`b93d418` → `/opt/sales-engine/releases/20260913113855`, `/health/ready` ok)
 
 ---
 
@@ -355,7 +370,7 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | Campaign definitions (sales / research / networking) | `not_started` | Objective, claims, questions, qualification, outcomes |
 | Allowed calling countries | `not_started` | |
 | Recording notice policy and retention | `not_started` | Default ledger retention 90 days until specified |
-| Runtime credentials in local/deploy secrets | `in_progress` | Local `.env` has Google SA + Sheet config (gitignored), Twilio Voice fields, Deepgram, LLM. Rotate any keys that were pasted in chat. |
+| Runtime credentials in local/deploy secrets | `in_progress` | Local `.env` has Google SA + Sheet config (gitignored), Twilio Voice fields, Deepgram, LLM. GitHub Actions secrets `AZURE_HOST`, `AZURE_USER`, `AZURE_SSH_KEY` are set. Rotate any keys that were pasted in chat. |
 
 ---
 
@@ -446,6 +461,9 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-13 | Operator navbar: Notifications and Analytics are icon-only (bell / chart) with aria-label + title; New campaign is the solid primary with a plus. Badge and Campaign / Edit offering names unchanged. Live PSTN still gated. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Campaign list tick no longer collides with long names: option label ellipsizes; HeroUI absolute indicator forced into a shrink-0 in-flow slot. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Book skills moved under each eve agent (`skills/`); loader preloads cheatsheets only. System prompts rewritten. Pre-call brief is a short scan card. Typecheck + Vitest. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | GitHub Actions SSH deploy: `scripts/deploy-production.sh`, VM bootstrap `scripts/install-github-actions-ssh.sh`, workflow `.github/workflows/deploy.yml`. Auto-deploy is blocked until Azure SSH secrets exist and the VM can `git fetch origin main`. | Slice 6 code complete; live smoke still blocked; Azure auto-deploy pending secrets |
+| 2026-09-13 | Azure VM installer run; `AZURE_HOST` / `AZURE_USER` / `AZURE_SSH_KEY` set. Preserved nginx/systemd templates and `HOST` bind so production stays on loopback behind nginx. First Actions deploy pending. | Slice 6 code complete; live smoke still blocked; Azure auto-deploy pending first green run |
+| 2026-09-13 | First GitHub Actions production deploy succeeded (`b93d418` on VM `/opt/sales-engine/current`, `/health/live` and `/health/ready` ok). Pushes to `main` now auto-deploy. | Slice 6 code complete; live smoke still blocked; Azure auto-deploy live |
 | 2026-09-13 | After Hang Up, review opens with `window.open(..., "_blank", "noopener,noreferrer")` from the click (not after finalize). Operator stays on Home/lead detail. Review page polls until the proposal exists. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Per-route `document.title` via `usePageTitle` (`Ready · Mantis`, `{name} · Mantis`, `Review · {name} · Mantis`, Analytics/Notifications/Sign in). Campaign drawer is not a route. Slice 6 still blocked on live smoke. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Lead-detail AI prospect brief uses a Cursor-like working state (writing lines, caret, staged Say/Ask/push-back/Leave sections) for first generate and regenerate. Card stays `h-full`/`overflow-hidden`; 320ms crossfade; reduced-motion falls back to a calm pulse. | Slice 6 code complete; live smoke still blocked |
@@ -454,3 +472,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-13 | Brief loading is only the white card chrome pulsing (`brief-card-pulse`). No mint bars, researching copy, or staged sections. Same surface for generate and regenerate. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Mint quote is opener-only: Company/Prospect sit-up facts moved out of `ProspectBrief` accent-soft block into the 2-col brief body. Home next-up quote was already opener-only. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Slice 7: append-only coach feed + composer, operator Google Calendar OAuth with Approve-only send, shared CalendarEventCard on live coach and call-review. Typecheck + 162 Vitest + 7 Playwright (Calendar fakes). Unattended auto-send still forbidden. Slice 6 live PSTN smoke remains a holdout. | Slice 7 code complete; Slice 6 live smoke still blocked |
+| 2026-09-13 | Operator Settings page at `/settings` (Calendar connect/disconnect, campaign Sheet status, Twilio device, AI/Deepgram/research). Navbar Calendar OAuth control replaced with a Settings icon. OAuth callback lands on Settings. Slice 6 live PSTN smoke unchanged. | Slice 7 code complete; Slice 6 live smoke still blocked |

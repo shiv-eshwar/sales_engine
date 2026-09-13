@@ -1,0 +1,35 @@
+name: Deploy Sales Engine
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Azure VM
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.AZURE_HOST }}
+          username: ${{ secrets.AZURE_USER }}
+          key: ${{ secrets.AZURE_SSH_KEY }}
+          command_timeout: 20m
+          timeout: 1m
+          request_pty: true
+          script: |
+            set -euo pipefail
+            cd /opt/sales-engine/control
+            git -c safe.directory=/opt/sales-engine/control fetch origin main
+            git -c safe.directory=/opt/sales-engine/control reset --hard origin/main
+            chmod +x /opt/sales-engine/control/scripts/deploy-production.sh
+            exec /opt/sales-engine/control/scripts/deploy-production.sh
