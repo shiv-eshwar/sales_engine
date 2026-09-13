@@ -56,6 +56,40 @@ export type ProviderStatus = {
   callerId?: string | null;
 };
 
+export type CalendarConnectionStatus = {
+  configured: boolean;
+  connected: boolean;
+  email: string | null;
+};
+
+export type CalendarProposalStatus = "pending" | "sent" | "dismissed" | "failed";
+
+export type PublicCalendarProposal = {
+  id: string;
+  sessionId: string | null;
+  source: "live_coach" | "call_review";
+  status: CalendarProposalStatus;
+  title: string;
+  start: string;
+  end: string;
+  timezone: string;
+  attendees: string[];
+  meet: boolean;
+  notes: string;
+  htmlLink: string | null;
+  lastError: string | null;
+};
+
+export type PublicCoachMessage = {
+  id: string;
+  sessionId: string;
+  role: "assistant" | "user" | "system";
+  text: string;
+  basedOnSequence: number | null;
+  calendarProposal: PublicCalendarProposal | null;
+  createdAt: string;
+};
+
 export type BootstrapResponse = {
   campaigns: PublicCampaign[];
   selectedCampaignId: string | null;
@@ -63,6 +97,7 @@ export type BootstrapResponse = {
   twilio: ProviderStatus;
   ai: ProviderStatus;
   research: ProviderStatus;
+  calendar: CalendarConnectionStatus;
   lead: PublicLead | null;
   leads: PublicLead[];
   recordingNotice: string;
@@ -188,36 +223,36 @@ export type DailySummary = {
   coachingObservation: string | null;
 };
 
+export type CoachLiveSnapshot = {
+  stage: string;
+  cue: {
+    text: string;
+    cueType: string;
+    reason: string;
+    shouldShow: boolean;
+    basedOnSequence: number;
+  } | null;
+  qualification: Array<{
+    id: string;
+    prompt: string;
+    state: "yes" | "no" | "unknown";
+    evidence: string | null;
+  }>;
+  recommendedOutcome: string | null;
+  talkRatio: {
+    callerShare: number;
+    contactShare: number;
+    callerMs: number;
+    contactMs: number;
+    connectedSeconds: number;
+    warn: boolean;
+  };
+  priorObjections: string[];
+};
+
 export type CallLiveEvent =
   | { type: "interim"; speaker: "caller" | "contact"; text: string }
   | { type: "final"; utterance: PublicUtterance }
   | { type: "health"; status: TranscriptionHealth }
-  | {
-      type: "coach";
-      snapshot: {
-        stage: string;
-        cue: {
-          text: string;
-          cueType: string;
-          reason: string;
-          shouldShow: boolean;
-          basedOnSequence: number;
-        } | null;
-        qualification: Array<{
-          id: string;
-          prompt: string;
-          state: "yes" | "no" | "unknown";
-          evidence: string | null;
-        }>;
-        recommendedOutcome: string | null;
-        talkRatio: {
-          callerShare: number;
-          contactShare: number;
-          callerMs: number;
-          contactMs: number;
-          connectedSeconds: number;
-          warn: boolean;
-        };
-        priorObjections: string[];
-      };
-    };
+  | { type: "coach"; snapshot: CoachLiveSnapshot }
+  | { type: "coach_message"; message: PublicCoachMessage };

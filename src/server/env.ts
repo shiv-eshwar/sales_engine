@@ -13,6 +13,8 @@ const envSchema = z.object({
   PLAYBOOK_PATH: z.string().default("./config/playbooks/cold-calling.yaml"),
   SHEETS_BACKEND: z.enum(["google", "memory", "none"]).optional(),
   GOOGLE_SERVICE_ACCOUNT_JSON_BASE64: z.string().optional(),
+  GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_API_KEY_SID: z.string().optional(),
   TWILIO_API_KEY_SECRET: z.string().optional(),

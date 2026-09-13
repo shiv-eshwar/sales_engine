@@ -29,12 +29,18 @@ const dtmfSchema = z.object({
   digits: z.string().min(1).max(32)
 });
 
+const coachChatSchema = z.object({
+  text: z.string().trim().min(1).max(2000)
+});
+
 function serializeCall(ctx: AppContext, row: CallSessionRow) {
   return {
     ...publicCallSession(row),
     transcriptionHealth: ctx.mediaHub.getHealth(row.id),
     utterances: listUtterances(ctx.db, row.id),
-    coach: ctx.coachEngine.getSnapshot(row.id)
+    coach: ctx.coachEngine.getSnapshot(row.id),
+    coachMessages: ctx.coachEngine.listMessages(row.id),
+    calendar: ctx.calendar.status()
   };
 }
 
@@ -141,6 +147,9 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
     if (coach) {
       socket.send(JSON.stringify({ type: "coach", snapshot: coach }));
     }
+    for (const message of ctx.coachEngine.listMessages(id)) {
+      socket.send(JSON.stringify({ type: "coach_message", message }));
+    }
     for (const utterance of listUtterances(ctx.db, id)) {
       socket.send(JSON.stringify({ type: "final", utterance }));
     }
@@ -204,5 +213,28 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
       return reply.code(502).send({ error: "Failed to send digits" });
     }
     return { ok: true, digits: parsed.data.digits, callSid: targetSid };
+  });
+
+  app.post("/api/calls/:id/coach/chat", { preHandler: auth }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const row = getSession(ctx.db, id);
+    if (!row) {
+      return reply.code(404).send({ error: "Call session not found" });
+    }
+    const parsed = coachChatSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "text is required" });
+    }
+    try {
+      const result = await ctx.coachEngine.chat(id, parsed.data.text);
+      return {
+        ...serializeCall(ctx, getSession(ctx.db, id) ?? row),
+        messages: result.messages
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Coach chat failed";
+      const code = message.includes("not connected") ? 409 : 400;
+      return reply.code(code).send({ error: message });
+    }
   });
 }

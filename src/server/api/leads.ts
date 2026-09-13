@@ -1,6 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import type { BootstrapResponse, PublicCampaign } from "../../shared/contracts.js";
-import { refreshLeadRequestSchema, selectLeadRequestSchema, skipLeadRequestSchema } from "../../shared/schemas.js";
+import { clampLeadsLimit, paginateLeads } from "../../shared/leadsQueue.js";
+import {
+  leadsListQuerySchema,
+  refreshLeadRequestSchema,
+  selectLeadRequestSchema,
+  skipLeadRequestSchema
+} from "../../shared/schemas.js";
 import type { AppContext } from "../context.js";
 import { twilioVoiceConfigured } from "../twilio/config.js";
 import { requireSession } from "../auth/routes.js";
@@ -82,6 +88,7 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
       research: ctx.researchClient
         ? { status: "ok", message: "Web research configured" }
         : { status: "not_configured", message: "Web research unavailable; preparation will use CRM context only." },
+      calendar: ctx.calendar.status(),
       lead: next.lead,
       leads: next.leads,
       recordingNotice: ctx.env.RECORDING_NOTICE,
@@ -92,16 +99,32 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
   });
 
   app.get("/api/leads", { preHandler: auth }, async (request, reply) => {
-    const campaignId = (request.query as { campaignId?: string } | undefined)?.campaignId;
-    if (campaignId && !ctx.campaigns.some(c => c.id === campaignId)) {
+    const parsed = leadsListQuerySchema.safeParse(request.query ?? {});
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Invalid leads query" });
+    }
+    const { campaignId, q, dialable, sort, dir, cursor, limit } = parsed.data;
+    if (!applyCampaignSelection(ctx, campaignId)) {
       return reply.code(400).send({ error: "Unknown campaign" });
     }
-    if (campaignId) {
-      ctx.operator.selectedCampaignId = campaignId;
-      ctx.operator.selectedLeadId = null;
-    }
     const next = await loadNextLead(ctx);
-    return { lead: next.lead, leads: next.leads, sheet: next.sheetStatus };
+    const page = paginateLeads(next.leads, {
+      q,
+      dialableOnly: dialable === "1" || dialable === "true",
+      sort,
+      dir: dir === "desc" ? -1 : 1,
+      cursor,
+      limit: clampLeadsLimit(limit)
+    });
+    return {
+      lead: next.lead,
+      leads: page.items,
+      sheet: next.sheetStatus,
+      nextCursor: page.nextCursor,
+      total: page.total,
+      queueSize: page.queueSize,
+      undialableCount: page.undialableCount
+    };
   });
 
   app.get("/api/leads/next", { preHandler: auth }, async () => {

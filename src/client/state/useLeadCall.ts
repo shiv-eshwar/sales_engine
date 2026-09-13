@@ -10,6 +10,7 @@ import {
   type CallSessionView
 } from "./calls";
 import { connectTwilioCall, hangUpTwilioCall } from "../twilio/device";
+import { openCallReviewTab } from "./openCallReview";
 import { useSession } from "./session";
 
 export function useLeadCall(lead: PublicLead | null) {
@@ -109,11 +110,11 @@ export function useLeadCall(lead: PublicLead | null) {
       try {
         await connectTwilioCall(session.id);
       } catch (connectError) {
+        openCallReviewTab(session.id);
         await cancelCallSession(session.id);
         try {
           setReview(await finalizeCall(session.id));
           setCall(null);
-          navigate(`/calls/${session.id}/review`);
           return;
         } catch {
           setCall(null);
@@ -129,11 +130,13 @@ export function useLeadCall(lead: PublicLead | null) {
 
   async function openReview(sessionId: string) {
     hangUpTwilioCall();
+    // Hang Up already opened the tab in the click handler. Remote hangup still
+    // needs this (may be popup-blocked). Deduped per session id.
+    openCallReviewTab(sessionId);
     try {
       const proposal = await finalizeCall(sessionId);
       setReview(proposal);
       setCall(null);
-      navigate(`/calls/${sessionId}/review`);
     } catch (err) {
       setCallError(err instanceof Error ? err.message : "Could not prepare review");
       setCall(null);

@@ -1,13 +1,15 @@
 import { type FormEvent, useState } from "react";
 import { Button } from "@heroui/react";
 import { login } from "../state/api";
-import { PRODUCT_NAME } from "../copy";
+import { PAGE_TITLES, PRODUCT_NAME } from "../copy";
+import { usePageTitle } from "../usePageTitle";
 
 type LoginPageProps = {
   onLoggedIn: () => void;
 };
 
 export function LoginPage({ onLoggedIn }: LoginPageProps) {
+  usePageTitle(PAGE_TITLES.login);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);

@@ -24,6 +24,8 @@ describe("route boot skeletons", () => {
 
   it("uses destination labels without breadcrumb chrome", () => {
     expect(html("/leads/L-100")).toContain("Loading lead…");
+    expect(html("/leads/L-100")).toContain("brief-card-pulse");
+    expect(html("/leads/L-100")).not.toContain("brief-working");
     expect(html("/analytics")).toContain("Loading analytics…");
     expect(html("/notifications")).toContain("Loading notifications…");
     expect(html("/diagnostics")).toContain("Loading notifications…");

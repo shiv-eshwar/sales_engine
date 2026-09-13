@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { SPLIT, SPLIT_PANE, SPLIT_RAIL } from "../layout/shell";
 import { REVIEW_COLUMN, REVIEW_COMPOSER } from "./reviewChatLayout";
 
@@ -84,61 +83,20 @@ export function ContactCardSkeleton({
   );
 }
 
-export function BriefLoading({
-  title,
-  detail,
-  action,
-  error
-}: {
-  title: string;
-  detail: string;
-  action?: ReactNode;
-  error?: string | null;
-}) {
+export function BriefLoading({ error }: { error?: string | null } = {}) {
   return (
     <section
-      className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-surface shadow-sm"
+      className="brief-card-pulse flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-surface shadow-sm"
       role="status"
       aria-label="AI prospect brief"
+      aria-busy="true"
       data-brief-state="loading"
     >
-      <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-3 px-5 pt-5 sm:px-8 sm:pt-8">
-        <div className="flex min-w-0 items-center gap-3">
-          <span
-            aria-hidden="true"
-            className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-border border-t-accent"
-          />
-          <p className="text-sm font-medium">{title}</p>
-        </div>
-        {action}
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pb-5 pt-8 sm:px-8 sm:pb-8">
-        {error ? <p role="alert" className="shrink-0 text-sm font-medium text-danger">{error}</p> : null}
-        <p className="max-w-[32em] shrink-0 text-sm leading-relaxed text-muted">{detail}</p>
-        <div className="mt-8 grid shrink-0 gap-6 sm:grid-cols-2" aria-hidden="true">
-          <div className="space-y-3">
-            <Pulse className="h-3.5 w-20" />
-            <Pulse className="h-3 w-full" />
-            <Pulse className="h-3 w-5/6" />
-            <Pulse className="h-3 w-2/3" />
-          </div>
-          <div className="space-y-3">
-            <Pulse className="h-3.5 w-20" />
-            <Pulse className="h-3 w-full" />
-            <Pulse className="h-3 w-4/5" />
-            <Pulse className="h-3 w-3/5" />
-          </div>
-        </div>
-        <div className="mt-8 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-accent-soft p-5" aria-hidden="true">
-          <div className="min-h-0 flex-1 space-y-3 overflow-hidden">
-            <Pulse className="h-3 w-full bg-accent/15" />
-            <Pulse className="h-3 w-5/6 bg-accent/15" />
-            <Pulse className="h-3 w-2/3 bg-accent/15" />
-            <Pulse className="h-3 w-11/12 bg-accent/15" />
-            <Pulse className="h-3 w-3/4 bg-accent/15" />
-          </div>
-        </div>
-      </div>
+      {error ? (
+        <p role="alert" className="shrink-0 px-5 pt-5 text-sm font-medium text-danger sm:px-8 sm:pt-8">
+          {error}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -146,42 +104,10 @@ export function BriefLoading({
 export function BriefCardSkeleton() {
   return (
     <section
-      className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-surface shadow-sm"
+      className="brief-card-pulse flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-surface shadow-sm"
       aria-hidden="true"
       data-brief-state="loading"
-    >
-      <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-3 px-5 pt-5 sm:px-8 sm:pt-8">
-        <Pulse className="h-3.5 w-48" />
-        <Pulse className="h-9 w-32 rounded-lg" />
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pb-5 pt-8 sm:px-8 sm:pb-8">
-        <div className="grid shrink-0 gap-6 sm:grid-cols-2">
-          <div className="space-y-3">
-            <Pulse className="h-3.5 w-20" />
-            <Pulse className="h-3 w-full" />
-            <Pulse className="h-3 w-5/6" />
-          </div>
-          <div className="space-y-3">
-            <Pulse className="h-3.5 w-20" />
-            <Pulse className="h-3 w-full" />
-            <Pulse className="h-3 w-4/5" />
-          </div>
-        </div>
-        <div className="mt-8 shrink-0">
-          <Pulse className="h-3.5 w-44" />
-          <Pulse className="mt-2 h-3 w-full" />
-          <Pulse className="mt-2 h-3 w-5/6" />
-        </div>
-        <div className="mt-8 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-accent-soft p-5">
-          <div className="min-h-0 flex-1 space-y-3 overflow-hidden">
-            <Pulse className="h-3 w-full bg-accent/15" />
-            <Pulse className="h-3 w-4/5 bg-accent/15" />
-            <Pulse className="h-3 w-2/3 bg-accent/15" />
-            <Pulse className="h-3 w-11/12 bg-accent/15" />
-          </div>
-        </div>
-      </div>
-    </section>
+    />
   );
 }
 

@@ -1,52 +1,65 @@
 import { Link } from "react-router-dom";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 import type { PublicLead } from "../../shared/contracts";
+import { filterLeads, sortLeads, type LeadSortKey } from "../../shared/leadsQueue";
 import { Icon } from "./Icon";
 import { SCROLL, SCROLL_X } from "../layout/shell";
 
-export type LeadSortKey = "name" | "company" | "status";
+export type { LeadSortKey };
+export { filterLeads, sortLeads };
 
-export function sortLeads(leads: PublicLead[], key: LeadSortKey, dir: 1 | -1): PublicLead[] {
-  const pick = (lead: PublicLead): string => {
-    if (key === "company") return `${lead.company} ${lead.fullName}`.toLowerCase();
-    if (key === "status") return `${lead.callStatus} ${lead.crmStatus} ${lead.fullName}`.toLowerCase();
-    return `${lead.fullName} ${lead.company}`.toLowerCase();
-  };
-  return [...leads].sort((a, b) => {
-    const left = pick(a);
-    const right = pick(b);
-    if (left < right) return -1 * dir;
-    if (left > right) return 1 * dir;
-    return 0;
-  });
-}
+function LoadSentinel({
+  disabled,
+  onVisible,
+  rootRef
+}: {
+  disabled: boolean;
+  onVisible: () => void;
+  rootRef?: RefObject<Element | null>;
+}) {
+  const nodeRef = useRef<HTMLDivElement>(null);
+  const onVisibleRef = useRef(onVisible);
+  onVisibleRef.current = onVisible;
 
-export function filterLeads(
-  leads: PublicLead[],
-  query: string,
-  dialableOnly: boolean
-): PublicLead[] {
-  const needle = query.trim().toLowerCase();
-  return leads.filter((lead) => {
-    if (dialableOnly && !lead.dialable) return false;
-    if (!needle) return true;
-    return [lead.fullName, lead.company, lead.role, lead.phone, lead.phoneE164 ?? "", lead.leadId]
-      .join(" ")
-      .toLowerCase()
-      .includes(needle);
-  });
+  useEffect(() => {
+    if (disabled) return;
+    const node = nodeRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) onVisibleRef.current();
+      },
+      { root: rootRef?.current ?? null, rootMargin: "96px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [disabled, rootRef]);
+
+  return <div ref={nodeRef} aria-hidden className="h-px w-full" />;
 }
 
 export function LeadsTable({
   leads,
-  empty
+  empty,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore
 }: {
   leads: PublicLead[];
   empty?: ReactNode;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }) {
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+
   if (leads.length === 0) {
     return <div>{empty}</div>;
   }
+
+  const sentinel = onLoadMore ? (
+    <LoadSentinel disabled={!hasMore || loadingMore} onVisible={onLoadMore} rootRef={tableScrollRef} />
+  ) : null;
 
   return (
     <>
@@ -74,8 +87,17 @@ export function LeadsTable({
             </Link>
           </li>
         ))}
+        {onLoadMore ? (
+          <li>
+            <LoadSentinel disabled={!hasMore || loadingMore} onVisible={onLoadMore} />
+            {loadingMore ? <p className="py-2 text-center text-sm text-muted">Loading…</p> : null}
+          </li>
+        ) : null}
       </ul>
-      <div className={`hidden min-h-0 flex-1 ${SCROLL} ${SCROLL_X} rounded-lg bg-surface shadow-sm lg:block`}>
+      <div
+        ref={tableScrollRef}
+        className={`hidden min-h-0 flex-1 ${SCROLL} ${SCROLL_X} rounded-lg bg-surface shadow-sm lg:block`}
+      >
         <table className="w-full text-left text-sm" aria-label="Leads">
           <thead className="sticky top-0 z-10 bg-surface">
             <tr>
@@ -119,6 +141,8 @@ export function LeadsTable({
             })}
           </tbody>
         </table>
+        {sentinel}
+        {loadingMore ? <p className="px-4 py-2 text-sm text-muted">Loading…</p> : null}
       </div>
     </>
   );

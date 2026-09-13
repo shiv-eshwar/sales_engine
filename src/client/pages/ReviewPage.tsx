@@ -5,8 +5,32 @@ import { fetchProposalBySession } from "../state/api";
 import { ReviewChat } from "../components/ReviewChat";
 import { EmptyState } from "../components/EmptyState";
 import { ReviewSkeleton } from "../components/LoadingSkeleton";
-import { EMPTY_COPY } from "../copy";
+import { EMPTY_COPY, PAGE_TITLES } from "../copy";
+import { usePageTitle } from "../usePageTitle";
 import type { PublicProposal } from "../../shared/contracts";
+
+const PROPOSAL_WAIT_MS = 45_000;
+const PROPOSAL_POLL_MS = 400;
+
+async function waitForProposal(sessionId: string, isCancelled: () => boolean): Promise<PublicProposal> {
+  const deadline = Date.now() + PROPOSAL_WAIT_MS;
+  let lastError: Error | null = null;
+  while (Date.now() < deadline) {
+    if (isCancelled()) {
+      throw lastError ?? new Error("Proposal is not ready");
+    }
+    try {
+      return await fetchProposalBySession(sessionId);
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error("Proposal is not ready");
+      if (!/not ready/i.test(lastError.message)) {
+        throw lastError;
+      }
+      await new Promise((resolve) => setTimeout(resolve, PROPOSAL_POLL_MS));
+    }
+  }
+  throw lastError ?? new Error("Proposal is not ready");
+}
 
 export function ReviewPage() {
   const { sessionId } = useParams();
@@ -15,6 +39,7 @@ export function ReviewPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const navigate = useNavigate();
+  usePageTitle(PAGE_TITLES.review(proposal?.contactName));
 
   useEffect(() => {
     if (!sessionId) {
@@ -24,7 +49,7 @@ export function ReviewPage() {
     let cancelled = false;
     setLoading(true);
     setFetchError(null);
-    void fetchProposalBySession(sessionId)
+    void waitForProposal(sessionId, () => cancelled)
       .then((result) => {
         if (cancelled) return;
         setProposal(result);

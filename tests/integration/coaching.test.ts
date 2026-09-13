@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyTransportStatus, getSession } from "../../src/server/calls/ledger.js";
 import { listCoachingEvents } from "../../src/server/coach/store.js";
+import { listCoachMessages } from "../../src/server/coach/messages.js";
 import { expectedTwilioSignature } from "../../src/server/twilio/signature.js";
 import {
   extractStreamToken,
@@ -146,6 +147,64 @@ describe("Live coaching", () => {
       }
     ).coach.qualification;
     expect(qual.find((item) => item.id === "relevant_problem")?.state).toBe("unknown");
+    await app.close();
+  });
+
+  it("appends coach turns and drops a stale slower response from the feed", async () => {
+    const llm = new FakeLlmClient();
+    llm.enqueueJson(coachOutput({ basedOnSequence: 1, cue: "How do you currently verify user-facing behavior?" }));
+    llm.enqueueJson(coachOutput({ basedOnSequence: 2, cue: "What does a miss cost in a typical week?" }));
+    const { app, cookie, ctx, sessionId, outbound } = await startCall(llm);
+    outbound?.emitFinal("we currently verify user-facing behavior by hand");
+    await vi.waitFor(() => {
+      expect(listCoachMessages(ctx.db, sessionId).filter((item) => item.role === "assistant")).toHaveLength(1);
+    });
+    outbound?.emitFinal("the misses still hurt every week");
+    await vi.waitFor(() => {
+      expect(listCoachMessages(ctx.db, sessionId).filter((item) => item.role === "assistant")).toHaveLength(2);
+    });
+    const texts = listCoachMessages(ctx.db, sessionId)
+      .filter((item) => item.role === "assistant")
+      .map((item) => item.text);
+    expect(texts).toEqual([
+      "How do you currently verify user-facing behavior?",
+      "What does a miss cost in a typical week?"
+    ]);
+
+    llm.enqueueJson(coachOutput({ basedOnSequence: 3, cue: "Old stale cue" }), 80);
+    llm.enqueueJson(coachOutput({ basedOnSequence: 4, cue: "Ask about timing this quarter." }));
+    outbound?.emitFinal("we ship weekly");
+    outbound?.emitFinal("next quarter is already planned");
+    await vi.waitFor(() => {
+      expect(llm.calls.length).toBe(4);
+    });
+    await vi.waitFor(() => {
+      const assistant = listCoachMessages(ctx.db, sessionId).filter((item) => item.role === "assistant").map((item) => item.text);
+      expect(assistant).toContain("Ask about timing this quarter.");
+      expect(assistant).not.toContain("Old stale cue");
+    });
+    const loaded = await app.inject({ method: "GET", url: `/api/calls/${sessionId}`, headers: { cookie } });
+    expect((loaded.json() as { coachMessages: Array<{ text: string }> }).coachMessages.map((item) => item.text)).not.toContain(
+      "Old stale cue"
+    );
+    await app.close();
+  });
+
+  it("runs an operator composer turn without the transcript rate limit", async () => {
+    const llm = new FakeLlmClient();
+    llm.enqueueJson(coachOutput({ cue: "Offer Thursday at 2pm and wait." }));
+    const { app, cookie, sessionId } = await startCall(llm);
+    const chat = await app.inject({
+      method: "POST",
+      url: `/api/calls/${sessionId}/coach/chat`,
+      headers: { cookie },
+      payload: { text: "offer Thursday 2pm" }
+    });
+    expect(chat.statusCode, chat.body).toBe(200);
+    const body = chat.json() as { coachMessages: Array<{ role: string; text: string }> };
+    expect(body.coachMessages.some((item) => item.role === "user" && item.text === "offer Thursday 2pm")).toBe(true);
+    expect(body.coachMessages.some((item) => item.role === "assistant" && /Thursday/i.test(item.text))).toBe(true);
+    expect(llm.calls.length).toBe(1);
     await app.close();
   });
 });

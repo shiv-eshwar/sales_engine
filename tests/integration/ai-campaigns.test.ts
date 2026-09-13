@@ -114,6 +114,17 @@ describe("AI campaigns and prospect preparation", () => {
     expect(still.json().lead.leadId).toBe("L-101");
     const listed = await app.inject({ url: "/api/leads", headers: { cookie } });
     expect(listed.json().leads.map((lead: { leadId: string }) => lead.leadId)).toEqual(["L-100", "L-101", "L-102"]);
+    const paged = await app.inject({ url: "/api/leads?limit=2&sort=name&dir=asc", headers: { cookie } });
+    expect(paged.statusCode).toBe(200);
+    expect(paged.json().leads).toHaveLength(2);
+    expect(paged.json().total).toBe(3);
+    expect(paged.json().nextCursor).toBe("2");
+    const rest = await app.inject({
+      url: `/api/leads?limit=2&cursor=${paged.json().nextCursor}&sort=name&dir=asc`,
+      headers: { cookie }
+    });
+    expect(rest.json().leads).toHaveLength(1);
+    expect(rest.json().nextCursor).toBeNull();
   });
 
   it("requires the correct fresh preparation, and freezes generated questions and criteria for coaching and review", async () => {

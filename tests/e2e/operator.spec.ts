@@ -58,9 +58,11 @@ async function connectLiveCall(page: import("@playwright/test").Page, server: E2
 test("login through approve loads the next lead", async ({ page, server }) => {
   await login(page, server.baseURL);
   await chooseCampaign(page, "Lamina founder sales");
+  await expect(page).toHaveTitle("Ready · Mantis");
   await expect(page.getByRole("table", { name: "Leads" })).toContainText("Alex Rivera");
 
   await openLead(page, "Alex Rivera");
+  await expect(page).toHaveTitle("Alex Rivera · Mantis");
 
   const live = await connectLiveCall(page, server);
   live.outbound?.emitFinal("we currently verify user-facing behavior by hand");
@@ -82,6 +84,7 @@ test("login through approve loads the next lead", async ({ page, server }) => {
   await page.getByRole("button", { name: "Unmute" }).click();
   await expect(page.getByRole("button", { name: "Mute" })).toBeVisible();
 
+  const reviewPagePromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Hang Up" }).click();
   const completed = await server.signedPost("/twilio/voice/status", {
     sessionId: live.sessionId,
@@ -90,20 +93,31 @@ test("login through approve loads the next lead", async ({ page, server }) => {
   });
   expect(completed.status).toBe(204);
 
-  await expect(page.getByLabel("Review chat")).toBeVisible();
-  await expect(page.getByLabel("Review chat")).toContainText("Proposed");
-  await expect(page.getByLabel("Review chat")).toContainText("Call Status");
-  await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
+  const reviewPage = await reviewPagePromise;
+  await expect(page).toHaveURL(/\/leads\/L-100/);
+  await expect(page.getByRole("button", { name: "Hang Up" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Alex Rivera" })).toBeVisible();
+  await expect(page.getByLabel("Review chat")).toHaveCount(0);
 
-  await expect(page.getByRole("button", { name: "Write to Sheet & next" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Write this update" }).click();
-  await expect(page.getByRole("heading", { name: "Jordan Chen" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Call" })).toBeVisible();
+  await expect(reviewPage).toHaveURL(/\/calls\/.+\/review/);
+  await expect(reviewPage.getByLabel("Review chat")).toBeVisible();
+  await expect(reviewPage).toHaveTitle("Review · Alex Rivera · Mantis");
+  await expect(reviewPage.getByLabel("Review chat")).toContainText("Proposed");
+  await expect(reviewPage.getByLabel("Review chat")).toContainText("Call Status");
+  await expect(reviewPage.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
+
+  await expect(reviewPage.getByRole("button", { name: "Write to Sheet & next" })).toHaveCount(0);
+  await expect(reviewPage.getByRole("button", { name: "Approve & next" })).toHaveCount(0);
+  await reviewPage.getByRole("button", { name: "Write this update" }).click();
+  await expect(reviewPage.getByRole("heading", { name: "Jordan Chen" })).toBeVisible();
+  await expect(reviewPage.getByRole("button", { name: "Call" })).toBeVisible();
 });
 
 test("open a specific lead from the table, search and navigate", async ({ page, server }) => {
   await login(page, server.baseURL);
   await chooseCampaign(page, "Lamina founder sales");
+  await expect(page.getByRole("table", { name: "Leads" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Open Alex Rivera/ }).first()).toBeVisible();
   await expect(page.getByRole("table", { name: "Leads" })).toContainText("Alex Rivera");
 
   // Search filters the table.
@@ -115,6 +129,7 @@ test("open a specific lead from the table, search and navigate", async ({ page, 
   // Click into a lead detail page and back.
   await openLead(page, "Jordan Chen");
   await expect(page).toHaveURL(/\/leads\/L-101/);
+  await expect(page).toHaveTitle("Jordan Chen · Mantis");
   await expect(page.getByRole("heading", { name: "Jordan Chen" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
   await page.getByRole("link", { name: "Mantis" }).click();
@@ -156,6 +171,7 @@ test("notifications lists queue issues and replaces diagnostics nav", async ({ p
   await page.getByRole("link", { name: /need a phone fix/ }).click();
   await expect(page).toHaveURL(/\/notifications#queue/);
   await expect(page.getByRole("heading", { name: "Notifications" })).toBeVisible();
+  await expect(page).toHaveTitle("Notifications · Mantis");
   await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
   await expect(page.getByText("Sam Patel")).toBeVisible();
   await expect(page.getByText("Can't be dialed")).toBeVisible();
@@ -163,6 +179,9 @@ test("notifications lists queue issues and replaces diagnostics nav", async ({ p
   await page.goto(`${server.baseURL}/diagnostics`);
   await expect(page).toHaveURL(/\/notifications#queue/);
   await expect(page.getByRole("heading", { name: "Notifications" })).toBeVisible();
+  await page.goto(`${server.baseURL}/analytics`);
+  await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
+  await expect(page).toHaveTitle("Analytics · Mantis");
 });
 
 invalidSheet("invalid Sheet headers block Call", async ({ page, server }) => {

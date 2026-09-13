@@ -22,8 +22,9 @@ export function validateLiveCoachOutput(
   }
 ): ValidationResult {
   const { campaign, playbook, utterances, snapshot, firstObjection } = input;
-  const maxChars = playbook?.cue_max_characters ?? 160;
-  if (output.cue.length > maxChars) {
+  const say = (output.say?.trim() || output.cue).trim();
+  const maxChars = playbook?.cue_max_characters ?? 400;
+  if (say.length > maxChars) {
     return { ok: false, reason: "cue too long" };
   }
   for (const update of output.qualificationUpdates) {
@@ -44,7 +45,7 @@ export function validateLiveCoachOutput(
   if (output.detectedObjection && playbook && !playbook.objections.includes(output.detectedObjection)) {
     return { ok: false, reason: "unknown objection" };
   }
-  if (!cueClaimsApproved(output.cue, campaign)) {
+  if (!cueClaimsApproved(say, campaign)) {
     return { ok: false, reason: "unapproved claim" };
   }
   if (firstObjection && output.detectedObjection && !FIRST_OBJECTION_OK.has(output.cueType)) {

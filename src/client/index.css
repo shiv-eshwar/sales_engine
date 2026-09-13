@@ -17,10 +17,25 @@
   }
 }
 
+@keyframes brief-card-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.78;
+  }
+}
+
+.brief-card-pulse {
+  animation: brief-card-pulse 2.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,
   .animate-pulse,
-  .animate-spin {
+  .animate-spin,
+  .brief-card-pulse {
     animation: none !important;
   }
 }

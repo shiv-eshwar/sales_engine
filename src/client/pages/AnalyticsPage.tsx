@@ -6,6 +6,8 @@ import { AnalyticsStatsSkeleton } from "../components/LoadingSkeleton";
 import { useSession } from "../state/session";
 import { fetchSummary } from "../state/api";
 import type { DailySummary } from "../../shared/contracts";
+import { PAGE_TITLES } from "../copy";
+import { usePageTitle } from "../usePageTitle";
 
 const presetClass = "min-h-9 rounded-md px-3 text-sm font-semibold text-muted hover:text-foreground";
 const presetActiveClass = "min-h-9 rounded-md bg-surface px-3 text-sm font-semibold text-foreground shadow-sm";
@@ -38,6 +40,7 @@ function formatDayHeading(iso: string): string {
 }
 
 export function AnalyticsPage() {
+  usePageTitle(PAGE_TITLES.analytics);
   const { data } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const today = utcDayStamp();

@@ -33,5 +33,14 @@ describe("ProspectBrief scan card", () => {
     expect(markup).toContain("Why it may be relevant");
     expect(markup).not.toContain(">Questions<");
     expect(markup).not.toContain("These are prompts, not a script.");
+
+    const opening = "Alex, could I ask how Northwind QA handles invoice follow-up?";
+    const mintStart = markup.indexOf("bg-accent-soft");
+    const openingEnd = markup.indexOf(opening) + opening.length;
+    const mintSlice = markup.slice(mintStart, openingEnd);
+    expect(mintSlice).toContain(opening);
+    expect(mintSlice).not.toContain("Company");
+    expect(markup.indexOf("Company")).toBeGreaterThan(openingEnd);
+    expect(markup.indexOf("Company")).toBeLessThan(markup.indexOf("Ask this"));
   });
 });

@@ -75,6 +75,14 @@ export async function registerHealth(app: FastifyInstance, ctx: AppContext): Pro
       ok: true,
       message: ctx.researchClient ? "Web research is configured" : "Web research unavailable; prospect briefs will use CRM context only"
     };
+    checks.calendar = {
+      ok: true,
+      message: ctx.calendar.status().connected
+        ? "Google Calendar connected"
+        : ctx.calendar.status().configured
+          ? "Google Calendar OAuth configured; not connected"
+          : "Google Calendar OAuth not configured"
+    };
 
     const ready = Object.values(checks).every((check) => check.ok);
     const body: HealthReadyResponse = { status: ready ? "ok" : "not_ready", checks };

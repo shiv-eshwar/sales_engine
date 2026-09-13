@@ -41,7 +41,9 @@ export function ReadinessChip({
             {state.label}
           </Link>
         ) : (
-          <span className="truncate font-medium text-danger">{state.label}</span>
+          <Link to="/settings" className="truncate font-medium text-danger hover:underline hover:underline-offset-4">
+            {state.label}
+          </Link>
         )
       ) : null}
       {twilioConfigured ? (

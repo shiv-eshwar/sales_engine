@@ -7,6 +7,7 @@ import { expectedTwilioSignature } from "../../src/server/twilio/signature.js";
 import { extractStreamToken, startTestApp, TEST_AUTH_TOKEN, TEST_PASSWORD } from "../helpers/app.js";
 import { createFakeDeepgramFactory, type FakeDeepgramConnection } from "../helpers/deepgram.js";
 import { coachOutput, FakeLlmClient, postCallOutput } from "../helpers/llm.js";
+import { FakeCalendarClient } from "../../src/server/calendar/memory.js";
 import type { CampaignConfig } from "../../src/shared/schemas.js";
 import type { ResearchClient } from "../../src/server/research/client.js";
 
@@ -112,7 +113,8 @@ export async function startE2eServer(options: { sheetsConfigPath?: string; enque
       ...(options.initialCampaigns ? { initialCampaigns: options.initialCampaigns } : {}),
       ...(options.researchClient !== undefined ? { researchClient: options.researchClient } : {}),
       disableLogger: true,
-      clientDir
+      clientDir,
+      calendarClient: new FakeCalendarClient({ connected: true })
     }
   );
 

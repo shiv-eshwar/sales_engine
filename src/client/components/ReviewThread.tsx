@@ -1,7 +1,8 @@
 import { AuiIf, ComposerPrimitive, MessagePrimitive, ThreadPrimitive } from "@assistant-ui/react";
 import { SCROLL } from "../layout/shell";
-import type { PublicProposal } from "../../shared/contracts";
+import type { CalendarConnectionStatus, PublicCalendarProposal, PublicProposal } from "../../shared/contracts";
 import { REVIEW_COLUMN, REVIEW_COMPOSER } from "./reviewChatLayout";
+import { CalendarEventCard } from "./CalendarEventCard";
 
 function UserMessage() {
   return (
@@ -82,11 +83,17 @@ function SuggestionChips({
 export function ReviewThread({
   proposal,
   who,
-  disabled
+  disabled,
+  calendar,
+  calendarProposals,
+  onCalendarProposal
 }: {
   proposal: PublicProposal;
   who: string;
   disabled?: boolean;
+  calendar: CalendarConnectionStatus;
+  calendarProposals: PublicCalendarProposal[];
+  onCalendarProposal: (next: PublicCalendarProposal) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col" aria-label="Review chat">
@@ -104,6 +111,13 @@ export function ReviewThread({
                 AssistantMessage
               }}
             />
+            {calendarProposals.length > 0 ? (
+              <div className="flex flex-col gap-4" aria-label="Calendar drafts">
+                {calendarProposals.map((item) => (
+                  <CalendarEventCard key={item.id} proposal={item} calendar={calendar} onProposal={onCalendarProposal} />
+                ))}
+              </div>
+            ) : null}
             <AuiIf condition={(state) => !state.thread.isRunning}>
               <SuggestionChips proposal={proposal} disabled={disabled} />
             </AuiIf>

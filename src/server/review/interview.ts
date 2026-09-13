@@ -4,11 +4,13 @@ import {
   type ReviewInterviewAction,
   type WriteFieldsInput
 } from "../../shared/schemas.js";
-import type { BootstrapResponse, PublicLead, PublicProposal } from "../../shared/contracts.js";
+import type { BootstrapResponse, PublicCalendarProposal, PublicLead, PublicProposal } from "../../shared/contracts.js";
 import { openingReviewMessage } from "../../shared/reviewOpening.js";
 import type { LlmClient } from "../llm/types.js";
 import { renderAgentSystem } from "../agents/loader.js";
 import type { AppContext } from "../context.js";
+import { draftFromUnknown } from "../calendar/draft.js";
+import { insertCalendarProposal } from "../calendar/proposals.js";
 import {
   approveProposal,
   discardProposal,
@@ -28,6 +30,7 @@ export type ReviewInterviewResult = {
   lead: PublicLead | null;
   leads: PublicLead[];
   sheet: BootstrapResponse["sheet"] | null;
+  calendarProposal: PublicCalendarProposal | null;
 };
 
 function compactProposal(proposal: PublicProposal) {
@@ -63,7 +66,7 @@ export async function interviewReviewTurn(
   messages: ReviewChatMessage[],
   proposal: PublicProposal,
   timeoutMs: number
-): Promise<{ message: string; action: ReviewInterviewAction; fields?: WriteFieldsInput }> {
+): Promise<{ message: string; action: ReviewInterviewAction; fields?: WriteFieldsInput; calendarProposal?: z.infer<typeof reviewInterviewTurnSchema>["calendarProposal"] }> {
   const raw = await llm.completeJson({
     system: renderAgentSystem("call-review", JSON.stringify(z.toJSONSchema(reviewInterviewTurnSchema))),
     user: JSON.stringify({
@@ -93,7 +96,8 @@ export function bootstrapReviewReply(proposal: PublicProposal): ReviewInterviewR
     leftReview: false,
     lead: null,
     leads: [],
-    sheet: null
+    sheet: null,
+    calendarProposal: null
   };
 }
 
@@ -102,8 +106,20 @@ export async function applyReviewInterviewAction(
   proposal: PublicProposal,
   action: ReviewInterviewAction,
   fields: WriteFieldsInput | undefined,
-  message: string
+  message: string,
+  calendarDraft?: z.infer<typeof reviewInterviewTurnSchema>["calendarProposal"]
 ): Promise<ReviewInterviewResult> {
+  let calendarProposal: PublicCalendarProposal | null = null;
+  if (calendarDraft) {
+    const draft = draftFromUnknown(calendarDraft, proposal.contactName || "Meeting");
+    if (draft) {
+      calendarProposal = insertCalendarProposal(ctx.db, {
+        sessionId: proposal.sessionId,
+        source: "call_review",
+        draft
+      });
+    }
+  }
   if (action === "none") {
     return {
       text: message,
@@ -112,7 +128,8 @@ export async function applyReviewInterviewAction(
       leftReview: false,
       lead: null,
       leads: [],
-      sheet: null
+      sheet: null,
+      calendarProposal
     };
   }
   if (action === "propose_fields") {
@@ -124,7 +141,8 @@ export async function applyReviewInterviewAction(
       leftReview: false,
       lead: null,
       leads: [],
-      sheet: null
+      sheet: null,
+      calendarProposal
     };
   }
   if (action === "retry_processing") {
@@ -136,7 +154,8 @@ export async function applyReviewInterviewAction(
       leftReview: false,
       lead: null,
       leads: [],
-      sheet: null
+      sheet: null,
+      calendarProposal
     };
   }
   if (action === "discard") {
@@ -148,7 +167,8 @@ export async function applyReviewInterviewAction(
       leftReview: true,
       lead: null,
       leads: [],
-      sheet: null
+      sheet: null,
+      calendarProposal
     };
   }
 
@@ -163,7 +183,8 @@ export async function applyReviewInterviewAction(
     leftReview: applied,
     lead: result.lead,
     leads: result.leads,
-    sheet: result.sheet
+    sheet: result.sheet,
+    calendarProposal
   };
 }
 

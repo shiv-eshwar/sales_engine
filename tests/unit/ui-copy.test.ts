@@ -4,7 +4,9 @@ import {
   diagnosticHeading,
   EMPTY_COPY,
   NAV_COPY,
+  PAGE_TITLES,
   formatUtteranceText,
+  pageTitle,
   notificationsNavLabel,
   outcomeLabel,
   qualificationLabel
@@ -44,10 +46,24 @@ describe("caller-facing copy", () => {
     expect(NAV_COPY.notifications).toBe("Notifications");
     expect(NAV_COPY.analytics).toBe("Analytics");
     expect(NAV_COPY.newCampaign).toBe("New campaign");
+    expect(NAV_COPY.calendar).toBe("Calendar");
     expect(NAV_COPY.campaign).toBe("Campaign");
     expect(NAV_COPY.editOffering).toBe("Edit offering");
     expect(notificationsNavLabel(0)).toBe("Notifications");
     expect(notificationsNavLabel(3)).toBe("Notifications, 3 waiting");
+  });
+
+  it("builds distinct browser tab titles", () => {
+    expect(pageTitle()).toBe("Mantis");
+    expect(PAGE_TITLES.home).toBe("Ready · Mantis");
+    expect(PAGE_TITLES.login).toBe("Sign in · Mantis");
+    expect(PAGE_TITLES.analytics).toBe("Analytics · Mantis");
+    expect(PAGE_TITLES.notifications).toBe("Notifications · Mantis");
+    expect(PAGE_TITLES.campaignNew).toBe("New campaign · Mantis");
+    expect(PAGE_TITLES.lead("Alex Rivera")).toBe("Alex Rivera · Mantis");
+    expect(PAGE_TITLES.lead("  ")).toBe("Mantis");
+    expect(PAGE_TITLES.review("Alex Rivera")).toBe("Review · Alex Rivera · Mantis");
+    expect(PAGE_TITLES.review()).toBe("Review · Mantis");
   });
 
   it("keeps empty-state copy operator-facing", () => {

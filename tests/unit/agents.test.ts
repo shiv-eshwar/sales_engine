@@ -34,7 +34,7 @@ describe("eve agent instructions", () => {
 
   it("keeps identity, stakes, and the output contract", () => {
     expect(renderAgentSystem("live-coach", "S")).toContain("in-ear coach");
-    expect(renderAgentSystem("live-coach", "S")).toContain("160-character");
+    expect(renderAgentSystem("live-coach", "S")).toContain("400 characters");
     expect(renderAgentSystem("post-call", "S")).toContain("forensic CRM extractor");
     expect(renderAgentSystem("campaign-generation", "S")).toContain("campaign architect");
     expect(renderAgentSystem("campaign-interview", "S")).toContain("You do not generate strategy");

@@ -29,6 +29,7 @@ export const SPLIT_PANE =
 export function isWorkspacePath(pathname: string): boolean {
   return (
     pathname === "/leads" ||
+    pathname === "/settings" ||
     /^\/leads\/[^/]+$/.test(pathname) ||
     /^\/calls\/[^/]+\/review$/.test(pathname)
   );

@@ -36,6 +36,8 @@ export function buildCoachPrompt(input: {
   priorObjections: string[];
   sequence: number;
   connectedSeconds: number;
+  calendarAvailability?: string;
+  operatorNote?: string;
 }): { system: string; user: string } {
   const { summary, recent } = rollingTranscript(input.utterances);
   // Static instructions come from agents/live-coach/instructions.md; the
@@ -88,7 +90,13 @@ export function buildCoachPrompt(input: {
       speaker: row.speaker,
       text: row.text,
       sequence: row.sequence
-    }))
+    })),
+    calendarAvailability: input.calendarAvailability ?? null,
+    operatorNote: input.operatorNote ?? null,
+    tools: {
+      get_calendar_availability: "Already resolved into calendarAvailability (read-only).",
+      propose_calendar_event: "Set calendarProposal on the JSON output. Never sends. Operator must Approve."
+    }
   });
 
   return { system, user };

@@ -20,6 +20,8 @@ export async function makeTestEnv(overrides: Partial<Env> = {}): Promise<Env> {
     PLAYBOOK_PATH: "./config/playbooks/cold-calling.yaml",
     SHEETS_BACKEND: "memory",
     GOOGLE_SERVICE_ACCOUNT_JSON_BASE64: undefined,
+    GOOGLE_OAUTH_CLIENT_ID: undefined,
+    GOOGLE_OAUTH_CLIENT_SECRET: undefined,
     TWILIO_ACCOUNT_SID: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     TWILIO_API_KEY_SID: "SKaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     TWILIO_API_KEY_SECRET: "test-api-key-secret",

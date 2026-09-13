@@ -1,17 +1,23 @@
-import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Alert, Button } from "@heroui/react";
 import { useSession } from "../state/session";
 import { EmptyState } from "../components/EmptyState";
-import { LeadsTable, filterLeads, sortLeads, type LeadSortKey } from "../components/LeadsTable";
+import { LeadsTable, type LeadSortKey } from "../components/LeadsTable";
+import type { PublicLead } from "../../shared/contracts";
 import { ReadyContactCard } from "../components/ReadyContactCard";
 import { CallingPanel } from "../components/CallingPanel";
-import { AI_DISCONNECTED_COPY, EMPTY_COPY } from "../copy";
+import { AI_DISCONNECTED_COPY, EMPTY_COPY, PAGE_TITLES } from "../copy";
 import { useLeadCall } from "../state/useLeadCall";
+import { usePaginatedLeads } from "../state/usePaginatedLeads";
+import { usePageTitle } from "../usePageTitle";
+import { clampLeadsLimit } from "../../shared/leadsQueue";
 import { SPLIT, SPLIT_PANE, SPLIT_RAIL } from "../layout/shell";
 
 export function LeadsPage() {
   const { data, pending, campaignBusy, setEditor } = useSession();
+  usePageTitle(PAGE_TITLES.home);
+  const [searchParams] = useSearchParams();
   const [query, setQuery] = useState("");
   const [dialableOnly, setDialableOnly] = useState(true);
   const [sortKey, setSortKey] = useState<LeadSortKey>("name");
@@ -24,14 +30,21 @@ export function LeadsPage() {
     preparation, opening, firstQuestion, preparing, onCall, onSkip, onRefresh, openReview
   } = useLeadCall(nextLead);
 
-  const visible = useMemo(() => {
-    const filtered = filterLeads(data.leads, query, dialableOnly);
-    return sortLeads(filtered, sortKey, sortDir);
-  }, [data.leads, query, dialableOnly, sortKey, sortDir]);
-
-  const undialableCount = data.leads.filter((lead) => !lead.dialable).length;
   const sheetUnconfigured = data.sheet.status === "error" || data.sheet.status === "unconfigured";
-  const tableEmpty = visible.length === 0
+  const queueStamp = data.leads.map((lead) => lead.leadId).join(",");
+  const page = usePaginatedLeads({
+    campaignId: data.selectedCampaignId,
+    query,
+    dialableOnly,
+    sortKey,
+    sortDir,
+    enabled: Boolean(data.selectedCampaignId) && !sheetUnconfigured,
+    queueStamp,
+    limit: clampLeadsLimit(searchParams.get("pageSize"))
+  });
+  const visible = page.rows;
+  const undialableCount = page.undialableCount;
+  const tableEmpty = !page.loading && visible.length === 0
     ? query.trim()
       ? EMPTY_COPY.search
       : dialableOnly
@@ -113,7 +126,7 @@ export function LeadsPage() {
               researchStatus={data.research.status}
               researchMessage={data.research.message}
             />
-            {data.leads.length > 0 ? (
+            {data.leads.length > 0 || page.queueSize > 0 || visible.length > 0 ? (
               <LeadsQueue
                 query={query}
                 setQuery={setQuery}
@@ -123,9 +136,12 @@ export function LeadsPage() {
                 sortDir={sortDir}
                 toggleSort={toggleSort}
                 visible={visible}
-                leadsCount={data.leads.length}
+                leadsCount={page.total}
                 undialableCount={undialableCount}
                 tableEmpty={tableEmpty}
+                hasMore={page.hasMore}
+                loadingMore={page.loadingMore}
+                onLoadMore={page.loadMore}
               />
             ) : null}
           </div>
@@ -160,9 +176,12 @@ export function LeadsPage() {
             sortDir={sortDir}
             toggleSort={toggleSort}
             visible={visible}
-            leadsCount={data.leads.length}
+            leadsCount={page.total}
             undialableCount={undialableCount}
             tableEmpty={tableEmpty}
+            hasMore={page.hasMore}
+            loadingMore={page.loadingMore}
+            onLoadMore={page.loadMore}
             onRefresh={onRefresh}
             refreshDisabled={pending || campaignBusy}
           />
@@ -217,6 +236,9 @@ function LeadsQueue({
   leadsCount,
   undialableCount,
   tableEmpty,
+  hasMore,
+  loadingMore,
+  onLoadMore,
   onRefresh,
   refreshDisabled
 }: {
@@ -227,10 +249,13 @@ function LeadsQueue({
   sortKey: LeadSortKey;
   sortDir: 1 | -1;
   toggleSort: (key: LeadSortKey) => void;
-  visible: ReturnType<typeof filterLeads>;
+  visible: PublicLead[];
   leadsCount: number;
   undialableCount: number;
   tableEmpty: { title: string; description: string } | null;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
   onRefresh?: () => void;
   refreshDisabled?: boolean;
 }) {
@@ -297,6 +322,9 @@ function LeadsQueue({
       </p>
       <LeadsTable
         leads={visible}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        onLoadMore={onLoadMore}
         empty={
           tableEmpty ? (
             <EmptyState

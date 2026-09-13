@@ -1,4 +1,4 @@
-import type { CallLiveEvent, PublicLead, PublicUtterance, TranscriptionHealth } from "../../shared/contracts";
+import type { CallLiveEvent, CalendarConnectionStatus, PublicCoachMessage, PublicLead, PublicUtterance, TranscriptionHealth } from "../../shared/contracts";
 import type { ProspectPreparation } from "../../shared/campaigns";
 
 export type CoachSnapshot = Extract<CallLiveEvent, { type: "coach" }>["snapshot"];
@@ -21,6 +21,8 @@ export type CallSessionView = {
   transcriptionHealth: TranscriptionHealth;
   utterances: PublicUtterance[];
   coach: CoachSnapshot | null;
+  coachMessages?: PublicCoachMessage[];
+  calendar?: CalendarConnectionStatus;
 };
 
 export type DeviceStatus = "offline" | "registering" | "registered" | "error";
@@ -90,6 +92,19 @@ export async function sendCallDigits(id: string, digits: string): Promise<void> 
   if (!response.ok) {
     throw new Error(await parseError(response));
   }
+}
+
+export async function sendCoachChat(id: string, text: string): Promise<CallSessionView> {
+  const response = await fetch(`/api/calls/${id}/coach/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ text })
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return (await response.json()) as CallSessionView;
 }
 
 export function callEventsUrl(sessionId: string): string {

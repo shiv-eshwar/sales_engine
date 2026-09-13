@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Chip } from "@heroui/react";
+import { Alert, Button } from "@heroui/react";
 import { ProspectBrief } from "./ProspectBrief";
 import { QuoteMark } from "./Icon";
-import type { CallLiveEvent, PublicUtterance, TranscriptionHealth } from "../../shared/contracts";
+import { CoachThread } from "./CoachThread";
+import type { CallLiveEvent, PublicCoachMessage, PublicUtterance, TranscriptionHealth } from "../../shared/contracts";
 import type { ProspectPreparation } from "../../shared/campaigns";
 import type { CallSessionView, CoachSnapshot } from "../state/calls";
-import { callEventsUrl, cancelCallSession, fetchCallSession, sendCallDigits } from "../state/calls";
+import { callEventsUrl, cancelCallSession, fetchCallSession, sendCallDigits, sendCoachChat } from "../state/calls";
 import { hangUpTwilioCall, sendTwilioDigits, setTwilioMuted } from "../twilio/device";
+import { openCallReviewTab } from "../state/openCallReview";
 import { formatUtteranceText, humanizeId, isWarningCue } from "../copy";
 import { SCROLL, SCROLLBAR, SHELL } from "../layout/shell";
 
@@ -18,6 +20,8 @@ type CallingPanelProps = {
   firstQuestion?: string | null;
   onTerminal: () => void;
   onSession: (session: CallSessionView) => void;
+  /** Operator calls: open `/calls/:id/review` in a new tab on Hang Up (user gesture). */
+  reviewOnHangUp?: boolean;
 };
 
 const TERMINAL = new Set(["completed", "busy", "failed", "no-answer", "canceled"]);
@@ -73,6 +77,13 @@ function healthLabel(health: TranscriptionHealth): string {
   }
 }
 
+function mergeMessages(current: PublicCoachMessage[], incoming: PublicCoachMessage[]): PublicCoachMessage[] {
+  const byId = new Map<string, PublicCoachMessage>();
+  for (const message of current) byId.set(message.id, message);
+  for (const message of incoming) byId.set(message.id, message);
+  return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
 function mergeUtterances(current: PublicUtterance[], incoming: PublicUtterance[]): PublicUtterance[] {
   const byId = new Map<string, PublicUtterance>();
   for (const utterance of current) {
@@ -95,7 +106,8 @@ export function CallingPanel({
   opening,
   firstQuestion,
   onTerminal,
-  onSession
+  onSession,
+  reviewOnHangUp = true
 }: CallingPanelProps) {
   const [muted, setMuted] = useState(false);
   const [, setTick] = useState(0);
@@ -103,6 +115,8 @@ export function CallingPanel({
   const [utterances, setUtterances] = useState<PublicUtterance[]>(session.utterances ?? []);
   const [interims, setInterims] = useState<{ caller?: string; contact?: string }>({});
   const [coach, setCoach] = useState<CoachSnapshot | null>(session.coach ?? null);
+  const [coachMessages, setCoachMessages] = useState<PublicCoachMessage[]>(session.coachMessages ?? []);
+  const [coachPending, setCoachPending] = useState(false);
   const [sentDigits, setSentDigits] = useState("");
   const [dtmfError, setDtmfError] = useState<string | null>(null);
   const [dtmfPending, setDtmfPending] = useState<string | null>(null);
@@ -170,6 +184,9 @@ export function CallingPanel({
     if (session.coach) {
       setCoach(session.coach);
     }
+    if (session.coachMessages) {
+      setCoachMessages((current) => mergeMessages(current, session.coachMessages ?? []));
+    }
   }, [session]);
 
   useEffect(() => {
@@ -199,6 +216,10 @@ export function CallingPanel({
       }
       if (parsed.type === "coach") {
         setCoach(parsed.snapshot);
+        return;
+      }
+      if (parsed.type === "coach_message") {
+        setCoachMessages((current) => mergeMessages(current, [parsed.message]));
       }
     };
     return () => {
@@ -217,6 +238,8 @@ export function CallingPanel({
   const warningCue = Boolean(
     coach?.cue?.shouldShow && isWarningCue(coach.cue.cueType, coach.cue.text, coach.cue.reason)
   );
+  const dncMessage = [...coachMessages].reverse().find((item) => isWarningCue("warning", item.text));
+  const calendar = session.calendar ?? { configured: false, connected: false, email: null };
   const duration = formatDuration(session.connectedAt ?? session.startedAt);
   const callerShare = Math.round((coach?.talkRatio.callerShare ?? 0) * 100);
   const prep = session.preparation ?? preparation ?? null;
@@ -258,6 +281,9 @@ export function CallingPanel({
               variant="danger"
               className={warningCue ? "min-h-11 rounded-lg! ring-2 ring-danger ring-offset-2 ring-offset-background" : "min-h-11 rounded-lg!"}
               onPress={() => {
+                if (reviewOnHangUp) {
+                  openCallReviewTab(session.id);
+                }
                 hangUpTwilioCall();
                 if (session.status !== "in_progress") {
                   void cancelCallSession(session.id);
@@ -349,30 +375,41 @@ export function CallingPanel({
             </Alert>
           ) : null}
 
-          {ringing && !connected ? (
-            <article className="flex min-h-[10rem] items-center justify-center rounded-lg bg-surface p-5 shadow-sm lg:min-h-[14rem]" aria-label="Live coaching cue">
-              <p className="animate-pulse text-center text-3xl font-semibold tracking-tight text-accent lg:text-4xl">
-                Ringing…
-              </p>
-            </article>
-          ) : warningCue && coach?.cue ? (
-            <article className="rounded-lg bg-danger-soft p-5" aria-label="Live coaching cue" role="alert">
+          {warningCue || dncMessage ? (
+            <article className="rounded-lg bg-danger-soft p-5" role="alert">
               <p className="text-sm font-semibold text-danger">End the call — do not contact</p>
-              <p className="mt-3 text-xl font-semibold leading-snug sm:text-2xl">{coach.cue.text}</p>
-            </article>
-          ) : health !== "interrupted" && coach?.cue?.shouldShow ? (
-            <article className="rounded-lg border-t-[3px] border-t-accent bg-surface p-5 shadow-sm" aria-label="Live coaching cue">
-              <p className="text-sm text-muted">{humanizeId(coach.cue.cueType)} · {humanizeId(coach.stage ?? "opener")}</p>
-              <p className="mt-3 text-xl font-semibold leading-snug tracking-tight sm:text-2xl">{coach.cue.text}</p>
-            </article>
-          ) : (
-            <article className="rounded-lg bg-surface p-5 shadow-sm" aria-label="Live coaching cue">
-              <p className="text-sm text-muted">{humanizeId(coach?.stage ?? "opener")}</p>
-              <p className="mt-3 text-xl text-muted">
-                {health === "interrupted" ? "Cue hidden while transcription is interrupted." : "No cue right now."}
+              <p className="mt-3 text-xl font-semibold leading-snug sm:text-2xl">
+                {coach?.cue?.text ?? dncMessage?.text}
               </p>
             </article>
-          )}
+          ) : null}
+
+          <div className="flex min-h-0 flex-1 flex-col" aria-label="Live coaching cue">
+            <CoachThread
+              messages={coachMessages}
+              connected={connected}
+              interrupted={health === "interrupted"}
+              calendar={calendar}
+              pending={coachPending || terminal}
+              onSend={async (text) => {
+                setCoachPending(true);
+                try {
+                  const next = await sendCoachChat(session.id, text);
+                  onSession(next);
+                  if (next.coachMessages) {
+                    setCoachMessages((current) => mergeMessages(current, next.coachMessages ?? []));
+                  }
+                } finally {
+                  setCoachPending(false);
+                }
+              }}
+              onProposal={(messageId, nextProposal) => {
+                setCoachMessages((current) =>
+                  current.map((item) => (item.id === messageId ? { ...item, calendarProposal: nextProposal } : item))
+                );
+              }}
+            />
+          </div>
 
           <div className="flex flex-wrap items-start justify-between gap-3 text-sm">
             <div aria-label="Talk ratio">
@@ -380,11 +417,6 @@ export function CallingPanel({
                 {callerShare}% you
                 {coach?.talkRatio.contactShare != null ? ` · ${Math.round(coach.talkRatio.contactShare * 100)}% them` : null}
               </p>
-              {coach?.talkRatio.warn ? (
-                <p className="mt-1 font-medium text-warning" role="status">
-                  You are talking more than 40% after a minute. Let the contact speak.
-                </p>
-              ) : null}
             </div>
             {health !== "interrupted" ? (
               <p className="text-xs text-muted" aria-label={`Transcription health ${healthLabel(health)}`}>
@@ -392,18 +424,6 @@ export function CallingPanel({
               </p>
             ) : null}
           </div>
-
-          {coach && coach.qualification.length > 0 ? (
-            <ul className="flex flex-wrap gap-2" aria-label="Qualification criteria">
-              {coach.qualification.map((item) => (
-                <li key={item.id} aria-label={`${item.id} ${item.state}`} title={item.prompt}>
-                  <Chip size="sm" variant="soft" color={item.state === "yes" ? "success" : item.state === "no" ? "danger" : "default"}>
-                    <Chip.Label>{humanizeId(item.id)}: {item.state}</Chip.Label>
-                  </Chip>
-                </li>
-              ))}
-            </ul>
-          ) : null}
 
           {warningCue ? null : (
             <details className="rounded-lg bg-surface p-4 shadow-sm">

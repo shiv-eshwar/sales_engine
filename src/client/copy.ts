@@ -9,7 +9,27 @@ export const NAV_COPY = {
   editOffering: "Edit offering",
   notifications: "Notifications",
   analytics: "Analytics",
+  settings: "Settings",
+  calendar: "Calendar",
   newCampaign: "New campaign"
+} as const;
+
+export function pageTitle(...parts: Array<string | null | undefined>): string {
+  const segments = parts.map((part) => part?.trim()).filter((part): part is string => Boolean(part));
+  if (segments.length === 0) return PRODUCT_NAME;
+  if (segments[segments.length - 1] === PRODUCT_NAME) return segments.join(" · ");
+  return [...segments, PRODUCT_NAME].join(" · ");
+}
+
+export const PAGE_TITLES = {
+  home: pageTitle("Ready"),
+  login: pageTitle("Sign in"),
+  analytics: pageTitle("Analytics"),
+  notifications: pageTitle("Notifications"),
+  settings: pageTitle("Settings"),
+  campaignNew: pageTitle("New campaign"),
+  lead: (name?: string | null) => pageTitle(name?.trim() || null),
+  review: (name?: string | null) => pageTitle("Review", name?.trim() || null)
 } as const;
 
 export function notificationsNavLabel(count: number): string {
@@ -122,6 +142,51 @@ export const EMPTY_COPY = {
     linkAction: "Link Sheet",
     createAction: "Create Sheet",
     googleMissing: "Google Sheets credentials are not set, so this environment cannot create or link a live spreadsheet."
+  }
+} as const;
+
+export const SETTINGS_COPY = {
+  calendar: {
+    heading: "Calendar",
+    connected: "Google Calendar connected",
+    connectedHint: "Invite drafts on a call stay pending until you Approve.",
+    disconnectedTitle: "Calendar is not connected",
+    disconnectedHint: "Connect your Google Calendar so you can Approve invite drafts from a call.",
+    connect: "Connect Calendar",
+    disconnect: "Disconnect",
+    disconnectConfirm: "Disconnect Google Calendar?",
+    unconfiguredTitle: "Calendar is not set up",
+    unconfiguredHint: "Ask whoever runs this box to finish Google Calendar setup, then connect here.",
+    connectedFlash: "Google Calendar connected.",
+    deniedFlash: "Google Calendar connect was cancelled."
+  },
+  sheet: {
+    heading: "Sheet",
+    emptyTitle: "No leads Sheet",
+    emptyNoCampaign:
+      "Create a campaign to connect a Google Sheet. Each campaign owns its own spreadsheet — there is no second CRM.",
+    emptyWithCampaign:
+      "This campaign needs its own leads Sheet. Link one you already use, or create a new one when you start or edit the campaign.",
+    createCampaign: "New campaign",
+    editOffering: "Edit offering",
+    sample: "Sample leads for this campaign only.",
+    openSheet: "Open Sheet",
+    queueIssues: "Queue issues"
+  },
+  twilio: {
+    heading: "Twilio",
+    emptyTitle: "Twilio is not connected",
+    emptyHint: "Voice calling stays off until this box has Twilio Voice set up. There is no keypad here.",
+    registered: "Browser device registered",
+    registering: "Registering this browser…",
+    offline: "Twilio is set up, but this browser is not registered yet. Keep the app open on Ready so the device can come online.",
+    error: "This browser could not register with Twilio."
+  },
+  providers: {
+    heading: "Providers",
+    ai: "AI coaching",
+    deepgram: "Transcription",
+    research: "Prospect research"
   }
 } as const;
 

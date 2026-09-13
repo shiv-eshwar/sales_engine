@@ -1,5 +1,6 @@
-import type { BootstrapResponse, DailySummary, PublicCampaign, PublicLead, PublicProposal, PublicWriteFields, SheetInfo } from "../../shared/contracts";
+import type { BootstrapResponse, DailySummary, HealthReadyResponse, PublicCalendarProposal, PublicCampaign, PublicLead, PublicProposal, PublicWriteFields, SheetInfo } from "../../shared/contracts";
 import type { CampaignBrief, ProspectPreparation } from "../../shared/campaigns";
+import { LEADS_PAGE_SIZE, type LeadSortKey } from "../../shared/leadsQueue";
 
 async function parseError(response: Response): Promise<string> {
   try {
@@ -39,15 +40,53 @@ export async function fetchBootstrap(): Promise<BootstrapResponse> {
   return (await response.json()) as BootstrapResponse;
 }
 
+export async function fetchHealthReady(): Promise<HealthReadyResponse> {
+  const response = await fetch("/health/ready", { credentials: "include" });
+  try {
+    return (await response.json()) as HealthReadyResponse;
+  } catch {
+    throw new Error(await parseError(response));
+  }
+}
+
 export type LeadQueueResponse = { lead: PublicLead | null; leads: PublicLead[]; sheet: BootstrapResponse["sheet"] };
 
-export async function fetchLeads(campaignId?: string | null, signal?: AbortSignal): Promise<LeadQueueResponse> {
-  const query = campaignId ? `?campaignId=${encodeURIComponent(campaignId)}` : "";
-  const response = await fetch(`/api/leads${query}`, { credentials: "include", signal });
+export type LeadsPageResponse = LeadQueueResponse & {
+  nextCursor: string | null;
+  total: number;
+  queueSize: number;
+  undialableCount: number;
+};
+
+export type FetchLeadsInput = {
+  campaignId?: string | null;
+  q?: string;
+  dialableOnly?: boolean;
+  sort?: LeadSortKey;
+  dir?: 1 | -1;
+  cursor?: string | null;
+  limit?: number;
+  signal?: AbortSignal;
+};
+
+export async function fetchLeads(input: FetchLeadsInput = {}): Promise<LeadsPageResponse> {
+  const params = new URLSearchParams();
+  if (input.campaignId) params.set("campaignId", input.campaignId);
+  if (input.q) params.set("q", input.q);
+  if (input.dialableOnly !== undefined) params.set("dialable", input.dialableOnly ? "1" : "0");
+  if (input.sort) params.set("sort", input.sort);
+  if (input.dir !== undefined) params.set("dir", input.dir === -1 ? "desc" : "asc");
+  if (input.cursor) params.set("cursor", input.cursor);
+  params.set("limit", String(input.limit ?? LEADS_PAGE_SIZE));
+  const query = params.toString();
+  const response = await fetch(`/api/leads${query ? `?${query}` : ""}`, {
+    credentials: "include",
+    signal: input.signal
+  });
   if (!response.ok) {
     throw new Error(await parseError(response));
   }
-  return (await response.json()) as LeadQueueResponse;
+  return (await response.json()) as LeadsPageResponse;
 }
 
 export async function selectLead(leadId: string, campaignId: string | null): Promise<LeadQueueResponse> {
@@ -252,7 +291,44 @@ export type ReviewInterviewResponse = {
   lead: PublicLead | null;
   leads: PublicLead[];
   sheet: BootstrapResponse["sheet"] | null;
+  calendarProposal?: PublicCalendarProposal | null;
 };
+
+export type CalendarProposalPatch = {
+  title?: string;
+  start?: string;
+  end?: string;
+  timezone?: string;
+  attendees?: string[];
+  meet?: boolean;
+  notes?: string | null;
+};
+
+export async function approveCalendarProposal(id: string, patch: CalendarProposalPatch = {}): Promise<PublicCalendarProposal> {
+  const body = await campaignRequest<{ proposal: PublicCalendarProposal }>(`/api/calendar/proposals/${encodeURIComponent(id)}/approve`, {
+    method: "POST",
+    body: JSON.stringify(patch)
+  });
+  return body.proposal;
+}
+
+export async function dismissCalendarProposal(id: string): Promise<PublicCalendarProposal> {
+  const body = await campaignRequest<{ proposal: PublicCalendarProposal }>(`/api/calendar/proposals/${encodeURIComponent(id)}/dismiss`, {
+    method: "POST"
+  });
+  return body.proposal;
+}
+
+export async function disconnectCalendar(): Promise<BootstrapResponse["calendar"]> {
+  return campaignRequest("/api/google/calendar/disconnect", { method: "POST" });
+}
+
+export async function fetchCalendarProposals(sessionId: string): Promise<PublicCalendarProposal[]> {
+  const body = await campaignRequest<{ proposals: PublicCalendarProposal[] }>(
+    `/api/calls/${encodeURIComponent(sessionId)}/calendar/proposals`
+  );
+  return body.proposals;
+}
 
 export function interviewReview(input: {
   sessionId: string;

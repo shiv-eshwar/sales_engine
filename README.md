@@ -1,6 +1,6 @@
 # AI Call Operator
 
-Single-user internal browser tool for outbound calling across multiple offerings. Create a campaign from an offering brief; AI generates its strategy and researches each prospect to prepare the call. Google Sheets is the CRM. The operator clicks Call; Twilio Voice SDK places the PSTN call; Deepgram transcribes both sides; one live coaching cue is shown at a time; after hang-up the operator reviews a proposed Sheet update and clicks Approve & next.
+Single-user internal browser tool for outbound calling across multiple offerings. Create a campaign from an offering brief; AI generates its strategy and researches each prospect to prepare the call. Google Sheets is the CRM. The operator clicks Call; Twilio Voice SDK places the PSTN call; Deepgram transcribes both sides; live coaching is an append-only thread with a composer; after hang-up the operator reviews a proposed Sheet update. Calendar invites are drafted in-thread and sent only after Approve.
 
 This is not a CRM, not a multi-agent dialer, not an auto-dialer, and not a compliance product. See **Non-goals** below.
 
@@ -9,7 +9,7 @@ This is not a CRM, not a multi-agent dialer, not an auto-dialer, and not a compl
 The application does **not**:
 
 - Auto-dial, power-dial, or parallel-dial
-- Send email, SMS, LinkedIn, or calendar invites
+- Send email, SMS, LinkedIn, or **unattended** calendar invites (the model cannot auto-send)
 - Train or fine-tune models
 - Replace Google Sheets or Gumloop
 - Provide a multi-user dashboard, analytics suite, or public SaaS UI
@@ -94,6 +94,18 @@ Without a Deepgram key, the call continues and the UI shows transcription interr
 
 `SHEETS_BACKEND=memory` uses an in-process fixture for local UI and tests. `none` leaves Sheets unconfigured (Call disabled).
 
+## Google Calendar (operator OAuth)
+
+Invites must come from **your** calendar, not the Sheet service account.
+
+1. In Google Cloud, create an OAuth client (Web application).
+2. Add authorized redirect URI `{APP_BASE_URL}/api/google/calendar/callback` (for local Vite: `http://127.0.0.1:5173/api/google/calendar/callback`).
+3. Set `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`. Keep `SESSION_SECRET` set — refresh tokens are encrypted with it at rest.
+4. Open **Settings** (gear in the navbar) and connect Google Calendar. Consent is `calendar.events` only.
+5. On a live call or in review, Approve a drafted event card. The app calls `events.insert` with `sendUpdates: all`. Dismiss drops the draft. Nothing is sent until Approve.
+
+Playwright and unit tests use a fake Calendar client. Do not rely on live Google for CI.
+
 ## Sheet config mapping
 
 `config/sheets.yaml` (or the path in `SHEETS_CONFIG_PATH`) maps **header names**, never column letters:
@@ -139,7 +151,7 @@ The AI capabilities are eve-framework agents under `agents/` — one directory p
 - `prospect-research` — Farrokh + Sobczak
 - `call-review` — instructions only
 
-Do not paste book chapters into prompts. The loader advertises each pack’s description and preloads `cheatsheet.md` only. Cues stay ≤160 characters. `src/server/agents/loader.ts` renders the system prompt; the existing OpenAI-compatible transport executes single structured turns. The full eve runtime (durable sessions, AI Gateway) is intentionally not used. Edit `instructions.md` for identity; edit a cheatsheet for procedure. Contracts live in the zod schemas referenced by `agent.ts`. `tests/unit/agents.test.ts` guards both.
+Do not paste book chapters into prompts. The loader advertises each pack’s description and preloads `cheatsheet.md` only. Live coach turns stay scannable (prefer one sentence, cap 400 characters). `src/server/agents/loader.ts` renders the system prompt; the existing OpenAI-compatible transport executes single structured turns. The full eve runtime (durable sessions, AI Gateway) is intentionally not used. Edit `instructions.md` for identity; edit a cheatsheet for procedure. Contracts live in the zod schemas referenced by `agent.ts`. `tests/unit/agents.test.ts` guards both.
 
 ## Tunnel / `APP_BASE_URL`
 

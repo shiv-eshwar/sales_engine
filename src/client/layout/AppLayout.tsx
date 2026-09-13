@@ -33,6 +33,7 @@ export function AppLayout() {
   const notificationsLabel = notificationsNavLabel(alertCount);
   const onNotifications = location.pathname.startsWith("/notifications");
   const onAnalytics = location.pathname.startsWith("/analytics");
+  const onSettings = location.pathname.startsWith("/settings");
   const selectedCampaign = data.campaigns.find((item) => item.id === data.selectedCampaignId);
   const lockWorkspace = isWorkspacePath(location.pathname) && !liveCall && !inboundCall;
 
@@ -161,6 +162,14 @@ export function AppLayout() {
             >
               <Icon name="chart" className="text-current" size={20} />
             </Link>
+            <Link
+              to="/settings"
+              aria-label={NAV_COPY.settings}
+              title={NAV_COPY.settings}
+              className={`header-icon-link ${onSettings ? "is-active" : ""}`}
+            >
+              <Icon name="settings" className="text-current" size={20} />
+            </Link>
             {hideCampaignChrome ? null : (
               <Button
                 size="sm"
@@ -213,6 +222,7 @@ export function AppLayout() {
           recordingNotice={data.recordingNotice}
           onSession={setInboundCall}
           onTerminal={() => void closeInboundCall()}
+          reviewOnHangUp={false}
         />
       ) : null}
 

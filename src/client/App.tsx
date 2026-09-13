@@ -8,11 +8,12 @@ import { LeadsPage } from "./pages/LeadsPage";
 import { LeadDetailPage } from "./pages/LeadDetailPage";
 import { ReviewPage } from "./pages/ReviewPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
-import { NotificationsPage } from "./pages/NotificationsPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { EmptyState } from "./components/EmptyState";
 import { bootSkeleton, LoginSkeleton } from "./components/LoadingSkeleton";
-import { EMPTY_COPY, PRODUCT_NAME } from "./copy";
+import { EMPTY_COPY, PAGE_TITLES, PRODUCT_NAME } from "./copy";
 import { SHELL } from "./layout/shell";
+import { usePageTitle } from "./usePageTitle";
 
 export function App() {
   const [bootstrap, setBootstrap] = useState<BootstrapResponse | null>(null);
@@ -63,6 +64,7 @@ export function App() {
     if (path.startsWith("/login")) {
       return (
         <div className="flex min-h-dvh flex-col">
+          <BootTitle title={PAGE_TITLES.login} />
           <LoginSkeleton />
         </div>
       );
@@ -108,6 +110,7 @@ export function App() {
             <Route path="/diagnostics" element={<Navigate to="/notifications#queue" replace />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/review" element={<Navigate to="/leads" replace />} />
             <Route path="*" element={<Navigate to="/leads" replace />} />
           </Route>
@@ -115,5 +118,10 @@ export function App() {
       </SessionProvider>
     </BrowserRouter>
   );
+}
+
+function BootTitle({ title }: { title: string }) {
+  usePageTitle(title);
+  return null;
 }
 

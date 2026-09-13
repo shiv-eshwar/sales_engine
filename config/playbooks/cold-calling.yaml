@@ -53,7 +53,7 @@ objections:
   - do_not_contact
   - other
 
-cue_max_characters: 160
+cue_max_characters: 400
 cue_min_confidence: 0.5
 
 objection_guides:

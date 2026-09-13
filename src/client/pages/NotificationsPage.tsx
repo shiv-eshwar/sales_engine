@@ -1,11 +1,13 @@
 import { useLayoutEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
-import { diagnosticDetail, diagnosticHeading, diagnosticMeta, EMPTY_COPY } from "../copy";
+import { diagnosticDetail, diagnosticHeading, diagnosticMeta, EMPTY_COPY, PAGE_TITLES } from "../copy";
 import { notificationCount, reviewAlertTitle, reviewHref, waitingReviews } from "../notifications";
+import { usePageTitle } from "../usePageTitle";
 import { useSession } from "../state/session";
 
 export function NotificationsPage() {
+  usePageTitle(PAGE_TITLES.notifications);
   const { data } = useSession();
   const location = useLocation();
   const reviews = waitingReviews(data.pendingProposal);

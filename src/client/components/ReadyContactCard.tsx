@@ -78,7 +78,6 @@ export function ReadyContactCard({
             role={briefLocked ? "status" : undefined}
             aria-label={briefLocked ? "Preparing opening" : undefined}
             data-brief-state={briefLocked ? "loading" : "ready"}
-            style={briefLocked ? { opacity: 0.72 } : undefined}
           >
             <QuoteMark />
             {opening ? (

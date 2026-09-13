@@ -103,7 +103,7 @@ export async function registerReviewApi(app: FastifyInstance, ctx: AppContext): 
         ctx.env.AI_GENERATION_TIMEOUT_MS
       );
       const latest = ctx.finalizer.present(getProposalBySession(ctx.db, id) ?? row);
-      return await applyReviewInterviewAction(ctx, latest, turn.action, turn.fields, turn.message);
+      return await applyReviewInterviewAction(ctx, latest, turn.action, turn.fields, turn.message, turn.calendarProposal);
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("AI generation failed")) {
         return reply.code(502).send({ error: error.message });

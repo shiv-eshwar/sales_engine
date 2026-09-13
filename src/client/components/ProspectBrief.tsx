@@ -3,6 +3,49 @@ import type { ProspectPreparation } from "../../shared/campaigns";
 import { SCROLL } from "../layout/shell";
 import { Icon, QuoteMark } from "./Icon";
 
+type SourcedFact = ProspectPreparation["brief"]["company"][number];
+
+function FactColumn({
+  title,
+  facts,
+  research
+}: {
+  title: string;
+  facts: SourcedFact[];
+  research: ProspectPreparation["research"];
+}) {
+  if (!facts.length) return null;
+  return (
+    <div>
+      <h3 className="text-sm font-semibold">{title}</h3>
+      <ul className="mt-3 space-y-2 text-sm">
+        {facts.map((fact, index) => (
+          <li key={index} className="flex gap-2">
+            <Icon name="check" className="mt-0.5 shrink-0 text-muted" />
+            <span className="min-w-0 break-words">
+              {fact.text}
+              {fact.sourceIds.map((id) => {
+                const source = research.sources.find((item) => item.id === id);
+                return source ? (
+                  <a
+                    key={id}
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-1 font-semibold text-link hover:underline"
+                  >
+                    [{research.sources.indexOf(source) + 1}]
+                  </a>
+                ) : null;
+              })}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function ProspectBrief({
   preparation,
   action,
@@ -39,70 +82,15 @@ export function ProspectBrief({
       <p className="text-xs font-semibold tracking-wide text-accent-soft-foreground/80">Say this</p>
       <QuoteMark />
       <p className="mt-3 text-sm leading-relaxed break-words text-accent-soft-foreground">{brief.opening}</p>
-      {brief.company.length || brief.prospect.length ? (
-        <div className="mt-4 grid gap-3 text-sm text-accent-soft-foreground sm:grid-cols-2">
-          {brief.company.length ? (
-            <div>
-              <p className="text-xs font-semibold tracking-wide text-accent-soft-foreground/80">Company</p>
-              <ul className="mt-2 space-y-2">
-                {brief.company.map((fact, index) => (
-                  <li key={index} className="flex gap-2">
-                    <Icon name="check" className="mt-0.5 shrink-0 text-accent-soft-foreground/70" />
-                    <span className="min-w-0 break-words">
-                      {fact.text}
-                      {fact.sourceIds.map((id) => {
-                        const source = research.sources.find((item) => item.id === id);
-                        return source ? (
-                          <a
-                            key={id}
-                            href={source.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="ml-1 font-semibold text-link hover:underline"
-                          >
-                            [{research.sources.indexOf(source) + 1}]
-                          </a>
-                        ) : null;
-                      })}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {brief.prospect.length ? (
-            <div>
-              <p className="text-xs font-semibold tracking-wide text-accent-soft-foreground/80">Prospect</p>
-              <ul className="mt-2 space-y-2">
-                {brief.prospect.map((fact, index) => (
-                  <li key={index} className="flex gap-2">
-                    <Icon name="check" className="mt-0.5 shrink-0 text-accent-soft-foreground/70" />
-                    <span className="min-w-0 break-words">
-                      {fact.text}
-                      {fact.sourceIds.map((id) => {
-                        const source = research.sources.find((item) => item.id === id);
-                        return source ? (
-                          <a
-                            key={id}
-                            href={source.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="ml-1 font-semibold text-link hover:underline"
-                          >
-                            [{research.sources.indexOf(source) + 1}]
-                          </a>
-                        ) : null;
-                      })}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
+
+  const facts = brief.company.length || brief.prospect.length ? (
+    <div key="facts" className="grid gap-6 sm:grid-cols-2">
+      <FactColumn title="Company" facts={brief.company} research={research} />
+      <FactColumn title="Prospect" facts={brief.prospect} research={research} />
+    </div>
+  ) : null;
 
   const questions = (
     <div key="questions">
@@ -188,7 +176,7 @@ export function ProspectBrief({
   );
 
   const hasExtra = Boolean(brief.relevance || brief.hypotheses.length || brief.unknowns.length || research.sources.length);
-  const body = [opening, questions, objections, nextStep, hasExtra ? extra : null];
+  const body = [opening, facts, questions, objections, nextStep, hasExtra ? extra : null];
 
   if (compact) {
     return (

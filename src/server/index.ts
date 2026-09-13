@@ -11,6 +11,9 @@ import { createOperatorState, type AppContext } from "./context.js";
 import type { DeepgramLiveFactory } from "./deepgram/types.js";
 import { createDeepgramFactory } from "./deepgram/live.js";
 import { CoachEngine } from "./coach/engine.js";
+import { createCalendarClient } from "./calendar/google.js";
+import type { CalendarClient } from "./calendar/types.js";
+import { registerCalendarApi } from "./api/calendar.js";
 import { createLlmClient } from "./llm/client.js";
 import type { LlmClient } from "./llm/types.js";
 import { isProduction, loadEnv, type Env } from "./env.js";
@@ -45,6 +48,7 @@ export type BuildAppOptions = {
   researchClient?: ResearchClient | null;
   clientDir?: string;
   dtmfSender?: import("./twilio/dtmf.js").DtmfSender | null;
+  calendarClient?: CalendarClient;
 };
 
 export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = {}) {
@@ -63,6 +67,7 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
                 "*.apiKey",
                 "*.api_key",
                 "GOOGLE_SERVICE_ACCOUNT_JSON_BASE64",
+                "GOOGLE_OAUTH_CLIENT_SECRET",
                 "*.phone"
               ],
               censor: "[redacted]"
@@ -110,13 +115,15 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
   const llmClient = options.llmClient === undefined ? createLlmClient(env) : options.llmClient;
   const researchClient = options.researchClient === undefined ? createResearchClient(env) : options.researchClient;
   const preparation = new PreparationService({ db, llm: llmClient, research: researchClient, timeoutMs: env.AI_GENERATION_TIMEOUT_MS, researchCacheTtlMs: env.RESEARCH_CACHE_TTL_MS });
+  const calendar = options.calendarClient ?? createCalendarClient(env, db);
   const coachEngine = new CoachEngine({
     env,
     db,
     campaigns,
     playbook,
     llm: llmClient,
-    liveEvents
+    liveEvents,
+    calendar
   });
   const mediaHub = new MediaHub({
     env,
@@ -156,6 +163,7 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
     mediaHub,
     llmClient,
     coachEngine,
+    calendar,
     finalizer: null,
     dtmfSender,
     shuttingDown: false
@@ -180,6 +188,7 @@ export async function buildApp(env: Env = loadEnv(), options: BuildAppOptions = 
   await registerCampaigns(app, ctx);
   await registerSheets(app, ctx);
   await registerCallApi(app, ctx);
+  await registerCalendarApi(app, ctx);
   await registerReviewApi(app, ctx);
   await registerTwilioWebhooks(app, ctx);
   await registerTwilioMedia(app, ctx);

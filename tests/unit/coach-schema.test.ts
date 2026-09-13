@@ -49,7 +49,7 @@ describe("Live-coach schema and validators", () => {
   const playbook = loadPlaybook("./config/playbooks/cold-calling.yaml");
 
   it("rejects oversized cues and unknown criteria", () => {
-    expect(liveCoachOutputSchema.safeParse(baseOutput({ cue: "x".repeat(161) })).success).toBe(false);
+    expect(liveCoachOutputSchema.safeParse(baseOutput({ cue: "x".repeat(401) })).success).toBe(false);
     const parsed = liveCoachOutputSchema.parse(
       baseOutput({
         qualificationUpdates: [{ criterion: "made_up", state: "yes", evidence: "we already use an in-house checker", confidence: 0.9 }]

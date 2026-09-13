@@ -281,10 +281,31 @@ export const reviewInterviewActionSchema = z.enum([
   "discard"
 ]);
 
+export const calendarProposalDraftSchema = z.object({
+  title: z.string().trim().max(200).optional(),
+  start: z.string().min(1),
+  end: z.string().min(1),
+  timezone: z.string().trim().min(1).default("UTC"),
+  attendees: z.array(z.string().trim()).max(12).optional(),
+  meet: z.boolean().optional(),
+  notes: z.string().max(2000).nullable().optional()
+});
+
+export const calendarProposalPatchSchema = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  start: z.string().min(1).optional(),
+  end: z.string().min(1).optional(),
+  timezone: z.string().trim().min(1).optional(),
+  attendees: z.array(z.string().trim()).max(12).optional(),
+  meet: z.boolean().optional(),
+  notes: z.string().max(2000).nullable().optional()
+});
+
 export const reviewInterviewTurnSchema = z.object({
   message: z.string().trim().min(1).max(4000),
   action: reviewInterviewActionSchema.default("none"),
-  fields: writeFieldsSchema.optional()
+  fields: writeFieldsSchema.optional(),
+  calendarProposal: calendarProposalDraftSchema.optional().nullable()
 }).superRefine((value, ctx) => {
   if (value.action === "propose_fields") {
     const keys = Object.values(value.fields ?? {}).filter((item) => item !== undefined);
@@ -312,6 +333,16 @@ export const discardProposalRequestSchema = z.object({
 export const summaryQuerySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   campaignId: z.string().min(1).optional()
+});
+
+export const leadsListQuerySchema = z.object({
+  campaignId: z.string().min(1).optional(),
+  q: z.string().optional().default(""),
+  dialable: z.enum(["0", "1", "true", "false"]).optional(),
+  sort: z.enum(["name", "company", "status"]).optional().default("name"),
+  dir: z.enum(["asc", "desc"]).optional().default("asc"),
+  cursor: z.string().optional(),
+  limit: z.string().regex(/^\d+$/).optional()
 });
 
 export type PostCallOutcome = z.infer<typeof postCallOutcomeSchema>;

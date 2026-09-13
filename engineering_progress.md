@@ -27,11 +27,11 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 
 | Field | Value |
 |---|---|
-| Phase | Slice 6 — Verification and hardening |
-| Slice | 6 (code complete; live PSTN smoke gated) |
-| Status | `blocked` |
+| Phase | Slice 7 — Live coach feed + operator-approved Calendar |
+| Slice | 7 (code complete; Slice 6 live PSTN smoke still gated) |
+| Status | `completed` |
 | Next action | Confirm public `APP_BASE_URL` (ngrok) matches TwiML App, then run §19 live PSTN smoke and fill speaker mapping in `VERIFICATION.md`. |
-| Blocked on | Live controlled PSTN smoke / speaker mapping. Google Sheet is connected; Twilio Voice credentials present in local `.env`. |
+| Blocked on | Slice 6 live controlled PSTN smoke / speaker mapping. Calendar OAuth is optional until the operator connects Google. |
 
 ---
 
@@ -46,8 +46,9 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 | 4 | Live coach | `completed` | One cue card, talk ratio, qualification indicators, stale-response handling (live model not required) |
 | 5 | Post-call CRM update | `completed` | Review diff, approve & next, verified batch write, retry ledger (live Sheet smoke still required) |
 | 6 | Verification and hardening | `blocked` | Holdouts H1–H14, Playwright (fakes), Docker recipe, README + VERIFICATION.md; live smoke still required |
+| 7 | Live coach feed + approved Calendar | `completed` | Append-only coach messages, two-way thread, operator OAuth Calendar, Approve-only send; typecheck + 162 Vitest + 7 Playwright (Calendar fakes) |
 
-Do not begin slice N+1 while slice N core acceptance tests are failing.
+Slice 6 live PSTN smoke is a holdout. Slice 7 does not wait on it. Do not begin later slices while the current slice’s core automated checks are failing.
 
 ---
 
@@ -245,6 +246,31 @@ Source: `whatthis.md` §18–22, §20 Slice 6.
 - [x] Operator runbook section
 - [ ] Controlled live smoke test on a user-owned number (`whatthis.md` §19)
 
+---
+
+## Slice 7 — Live coach feed + operator-approved Calendar
+
+Source: `whatthis.md` §4, §13, §15B, §20 Slice 7.
+
+**Gate:** live Google Calendar and live PSTN are not required to merge Slice 7 code. Prove with injectable fake LLM + fake Calendar. Slice 6 live smoke stays blocked.
+
+- [x] Append-only `coach_messages` persisted and replayed on WebSocket connect
+- [x] WS `{ type: "coach_message" }` plus compact snapshot (stage, talk ratio); latest cue still available on GET for existing tests
+- [x] Live-coach schema allows ~400 character `say`/`cue` and optional `calendarProposal` (draft only)
+- [x] Transcript trigger rules unchanged; operator composer `POST /api/calls/:id/coach/chat` is not rate-limited the same way
+- [x] Two-way CoachThread in CallingPanel; drop live qualification chips; DNC stays pinned; talk-ratio warn is a coach line
+- [x] Operator Google OAuth (`calendar.events`), encrypted token store (`SESSION_SECRET`), connect/status/disconnect routes
+- [x] `get_calendar_availability` is read-only; `propose_calendar_event` never inserts; Approve inserts once; Dismiss; failed retry
+- [x] Shared CalendarEventCard on live coach and call-review; post-call extraction has no Calendar tools
+- [x] Fake Calendar client for unit/integration/Playwright; README OAuth setup; still no auto-send
+
+### Slice 7 tests
+
+- [x] Feed append + stale discard
+- [x] Composer turn
+- [x] Propose does not insert; approve inserts once; dismiss; review can propose
+- [x] Playwright uses Calendar fakes (no live Google)
+
 ### Eve skills + pre-call scan
 
 Proof: Vitest including `tests/unit/agents.test.ts`, `tests/unit/prospect-brief.test.ts`, and stored-vs-generated schema tests. No §4 non-goals. No shared `agents/skills/` library.
@@ -420,3 +446,11 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-13 | Operator navbar: Notifications and Analytics are icon-only (bell / chart) with aria-label + title; New campaign is the solid primary with a plus. Badge and Campaign / Edit offering names unchanged. Live PSTN still gated. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Campaign list tick no longer collides with long names: option label ellipsizes; HeroUI absolute indicator forced into a shrink-0 in-flow slot. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Book skills moved under each eve agent (`skills/`); loader preloads cheatsheets only. System prompts rewritten. Pre-call brief is a short scan card. Typecheck + Vitest. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | After Hang Up, review opens with `window.open(..., "_blank", "noopener,noreferrer")` from the click (not after finalize). Operator stays on Home/lead detail. Review page polls until the proposal exists. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Per-route `document.title` via `usePageTitle` (`Ready · Mantis`, `{name} · Mantis`, `Review · {name} · Mantis`, Analytics/Notifications/Sign in). Campaign drawer is not a route. Slice 6 still blocked on live smoke. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Lead-detail AI prospect brief uses a Cursor-like working state (writing lines, caret, staged Say/Ask/push-back/Leave sections) for first generate and regenerate. Card stays `h-full`/`overflow-hidden`; 320ms crossfade; reduced-motion falls back to a calm pulse. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Home leads table infinite-scrolls via GET `/api/leads` (`limit` default 40, `cursor` offset, `q` / `dialable` / `sort` / `dir`). Search, Ready filter, and sort reset to page 1. Next-up card is not paginated. Typecheck + 157 Vitest + table e2e. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Reverted the flashy brief working state. Lead-detail generate/regenerate is a quiet full-height pulse skeleton (instant swap, no caret/sweep/staged sections). Card still locks `h-full`/`overflow-hidden`. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Brief loading is only the white card chrome pulsing (`brief-card-pulse`). No mint bars, researching copy, or staged sections. Same surface for generate and regenerate. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Mint quote is opener-only: Company/Prospect sit-up facts moved out of `ProspectBrief` accent-soft block into the 2-col brief body. Home next-up quote was already opener-only. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Slice 7: append-only coach feed + composer, operator Google Calendar OAuth with Approve-only send, shared CalendarEventCard on live coach and call-review. Typecheck + 162 Vitest + 7 Playwright (Calendar fakes). Unattended auto-send still forbidden. Slice 6 live PSTN smoke remains a holdout. | Slice 7 code complete; Slice 6 live smoke still blocked |

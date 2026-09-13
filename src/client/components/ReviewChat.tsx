@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AssistantRuntimeProvider,
   useLocalRuntime,
@@ -6,12 +6,13 @@ import {
   type ThreadMessage
 } from "@assistant-ui/react";
 import { Alert } from "@heroui/react";
-import type { PublicProposal } from "../../shared/contracts";
+import type { PublicCalendarProposal, PublicProposal } from "../../shared/contracts";
 import { openingReviewMessage } from "../../shared/reviewOpening";
-import { interviewReview, type ReviewInterviewResponse } from "../state/api";
+import { fetchCalendarProposals, interviewReview, type ReviewInterviewResponse } from "../state/api";
 import { nextLeadPath } from "../copy";
 import { ReviewThread } from "./ReviewThread";
 import { REVIEW_COLUMN } from "./reviewChatLayout";
+import { useSession } from "../state/session";
 import "./ReviewChat.css";
 
 function textFromMessage(message: ThreadMessage): string {
@@ -45,6 +46,19 @@ export function ReviewChat({
   const dnc = proposal.semanticOutcome === "do_not_contact" || proposal.proposedFields.call_status === "Do Not Contact";
   const failedWrite = proposal.status === "pending_retry";
   const who = proposal.contactName.trim() || proposal.leadId;
+  const { data } = useSession();
+  const calendar = data.calendar ?? { configured: false, connected: false, email: null };
+  const [calendarProposals, setCalendarProposals] = useState<PublicCalendarProposal[]>([]);
+  const setCalendarProposalsRef = useRef(setCalendarProposals);
+  setCalendarProposalsRef.current = setCalendarProposals;
+
+  useEffect(() => {
+    void fetchCalendarProposals(proposal.sessionId).then((items) => {
+      setCalendarProposals(items);
+    }).catch(() => {
+      // Review still works without Calendar history.
+    });
+  }, [proposal.sessionId]);
 
   const adapter = useMemo<ChatModelAdapter>(() => ({
     async run({ messages, abortSignal }) {
@@ -60,6 +74,12 @@ export function ReviewChat({
           signal: abortSignal
         });
         onProposalRef.current(result.proposal);
+        if (result.calendarProposal) {
+          setCalendarProposalsRef.current((current) => {
+            if (current.some((item) => item.id === result.calendarProposal!.id)) return current;
+            return [...current, result.calendarProposal!];
+          });
+        }
         if (result.leftReview) {
           const next = result.leads.find((item) => item.dialable) ?? result.lead ?? null;
           await onFinishedRef.current(
@@ -132,7 +152,16 @@ export function ReviewChat({
           </div>
         ) : null}
 
-        <ReviewThread proposal={proposal} who={who} disabled={pending} />
+        <ReviewThread
+          proposal={proposal}
+          who={who}
+          disabled={pending}
+          calendar={calendar}
+          calendarProposals={calendarProposals}
+          onCalendarProposal={(next) => {
+            setCalendarProposals((current) => current.map((item) => (item.id === next.id ? next : item)));
+          }}
+        />
       </section>
     </AssistantRuntimeProvider>
   );

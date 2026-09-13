@@ -7,7 +7,7 @@ import { liveCoachOutputSchema } from "../../src/server/coach/schema.js";
 // equivalent used when this agent runs under `eve dev`, while production
 // resolves the concrete model from LLM_MODEL.
 export default defineAgent({
-  description: "Emits one short live coaching cue for an active sales call as structured JSON.",
+  description: "Emits a live coaching turn for an active sales call as structured JSON, optionally drafting a calendar event that the operator must Approve.",
   model: "openai/gpt-5.6-luna",
   outputSchema: liveCoachOutputSchema,
 });

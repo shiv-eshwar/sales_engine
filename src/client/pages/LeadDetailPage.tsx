@@ -9,7 +9,8 @@ import { EmptyState } from "../components/EmptyState";
 import { BriefLoading } from "../components/LoadingSkeleton";
 import { ReadyContactCard } from "../components/ReadyContactCard";
 import { useLeadCall } from "../state/useLeadCall";
-import { EMPTY_COPY } from "../copy";
+import { EMPTY_COPY, PAGE_TITLES } from "../copy";
+import { usePageTitle } from "../usePageTitle";
 import { SPLIT, SPLIT_RAIL } from "../layout/shell";
 
 export function LeadDetailPage() {
@@ -21,6 +22,7 @@ export function LeadDetailPage() {
   const lead = decodedId
     ? (data.leads.find((item) => item.leadId === decodedId) ?? (data.lead?.leadId === decodedId ? data.lead : null))
     : data.lead;
+  usePageTitle(PAGE_TITLES.lead(lead?.fullName));
 
   const {
     campaign, call, setCall, callError, starting, pending, disabledReason, sheetBlocking,
@@ -138,20 +140,13 @@ export function LeadDetailPage() {
         {hasBriefPane ? (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:h-full lg:overflow-hidden">
             {campaign?.brief ? (
-              preparation ? (
-                <div className={`flex h-full min-h-0 flex-col ${preparing ? "opacity-60" : "opacity-100"}`}>
-                  <ProspectBrief
-                    preparation={preparation}
-                    error={prepError}
-                    action={regenerateAction}
-                  />
-                </div>
+              preparing || !preparation ? (
+                <BriefLoading error={prepError} />
               ) : (
-                <BriefLoading
-                  title={`Researching ${lead.company || "the company"}…`}
-                  detail={`Preparing questions for ${lead.fullName || "this prospect"}. This can take a minute or two.`}
-                  action={regenerateAction}
+                <ProspectBrief
+                  preparation={preparation}
                   error={prepError}
+                  action={regenerateAction}
                 />
               )
             ) : null}

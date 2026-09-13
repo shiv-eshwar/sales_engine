@@ -27,7 +27,7 @@ Definition of done: all automated checks pass, a production build succeeds, the 
 
 ## 2. Product Summary
 
-Build a browser-based AI call operator for one internal user. Google Sheets is the CRM. Gumloop continuously sources and enriches leads into a Sheet with a fixed header structure. The application reads eligible contacts from that Sheet, places human-operated outbound calls through the Twilio Voice JavaScript SDK, receives real-time call audio through Twilio Media Streams, transcribes both sides with Deepgram, and shows one concise next-best-action cue at a time.
+Build a browser-based AI call operator for one internal user. Google Sheets is the CRM. Gumloop continuously sources and enriches leads into a Sheet with a fixed header structure. The application reads eligible contacts from that Sheet, places human-operated outbound calls through the Twilio Voice JavaScript SDK, receives real-time call audio through Twilio Media Streams, transcribes both sides with Deepgram, and shows an append-only live coach thread (plus operator composer) during the call.
 
 At the end of each call, the application creates a structured proposed CRM update. The user reviews it and presses **Approve & next**. The application updates only its allowlisted columns in the correct lead row and loads the next eligible contact.
 
@@ -50,8 +50,8 @@ The MVP succeeds when the user can:
 3. See the lead's CRM context and the campaign objective.
 4. Click **Call** and speak to the prospect directly in the browser through Twilio.
 5. See a real-time transcript with caller and prospect correctly separated.
-6. Receive at most one useful, short, campaign-appropriate cue at a time.
-7. See deterministic talk-time ratio and qualification progress during sales calls.
+6. Receive campaign-appropriate coaching as an append-only thread (latest suggestion emphasized) with an operator composer.
+7. See deterministic talk-time ratio during sales calls (qualification stays server-side for post-call CRM).
 8. End the call and receive a structured, evidence-backed proposed outcome.
 9. Review the exact Google Sheet fields that will change.
 10. Approve the update and load the next eligible lead.
@@ -79,7 +79,8 @@ Do not implement any of the following in the MVP:
 - Automatic dialing without a user click.
 - Power dialer, parallel dialer, predictive dialer, queues for multiple callers, or teams.
 - Inbound calling, transfers, conference calling, or call barging.
-- Email, WhatsApp, SMS, calendar, or automated follow-up sending.
+- Email, WhatsApp, SMS, or automated follow-up sending.
+- Unattended Calendar auto-send (no model or background job may insert or email an invite). **Operator-approved Google Calendar invites are in scope:** the model may only draft a pending event; send happens only after the operator presses Approve.
 - Web research or browser automation.
 - Lead sourcing or enrichment; Gumloop owns it.
 - A second CRM or editable pipeline database.
@@ -102,7 +103,7 @@ Vapi credits may be used later for roleplay practice. They must not be required 
 | Web application | User workflow, live UI, review, and configuration display | Provider secrets or direct arbitrary Sheet access |
 | Twilio | PSTN connectivity, Twilio call state, media stream, recording | Transcription, qualification, or CRM decisions |
 | Deepgram | Streaming speech recognition and utterance boundaries | Sales advice or CRM mutations |
-| Coaching engine | Advisory call-stage inference and one next-best-action cue | Speaking on the call or writing to the CRM |
+| Coaching engine | Advisory call-stage inference and an append-only coach thread | Speaking on the call, writing to the CRM, or sending Calendar invites |
 | Post-call processor | Proposed structured outcome with evidence | Unreviewed semantic CRM mutation |
 | SQLite call ledger | Idempotency, call/session linkage, transcript events, pending updates | Acting as the CRM or replacing Sheets |
 | User | Initiating calls and approving semantic CRM updates | Manual transcription or routine note entry |
@@ -611,7 +612,17 @@ const LiveCoachOutput = z.object({
     "question", "objection", "listen", "clarify", "qualify",
     "disqualify", "cta", "warning", "none"
   ]),
-  cue: z.string().max(160),
+  cue: z.string().max(400),
+  say: z.string().max(400).optional(),
+  calendarProposal: z.object({
+    title: z.string().max(200).optional(),
+    start: z.string(),
+    end: z.string(),
+    timezone: z.string(),
+    attendees: z.array(z.string()).optional(),
+    meet: z.boolean().optional(),
+    notes: z.string().max(2000).nullable().optional()
+  }).nullable().optional(),
   reason: z.string().max(240),
   detectedObjection: z.string().nullable(),
   qualificationUpdates: z.array(z.object({
@@ -632,7 +643,11 @@ Server validation rules:
 3. Reject factual cue claims that cannot be matched to approved campaign claims.
 4. Replace invalid output with no cue; never pass raw model text to the live UI.
 5. Do not show low-confidence cues below the configured threshold.
-6. A new cue replaces the prior cue. Never create a scrolling chat feed.
+6. Persist an append-only coach feed (`coach_messages`). Each new shown turn appends; the latest suggestion is visually larger and older turns are quieter. Idle connected state is the thread waiting — not a “No cue right now” empty card.
+7. The operator may send a composer turn (`POST /api/calls/:id/coach/chat`) that is not rate-limited the same way as transcript-triggered coaching.
+8. Optional `calendarProposal` is a draft only. Never execute Calendar insert from the model. Send only after `POST /api/calendar/proposals/:id/approve`.
+9. Do-not-contact remains a pinned danger alert above the thread. Talk-ratio warn is a short coach line. Qualification chips are not shown live (the reducer still runs server-side for post-call CRM).
+10. Calendar tools are attached to live-coach and call-review only — not post-call extraction. `get_calendar_availability` may run read-only. `propose_calendar_event` never sends. There is no `send_invite` tool.
 
 ### Deterministic metrics
 
@@ -726,9 +741,8 @@ Display:
 
 - contact identity and connected duration;
 - transport state: connecting, ringing, connected, ending;
-- one large AI cue card;
-- current stage;
-- compact qualification criteria indicators;
+- two-way coach thread (append-only assistant turns, quiet operator bubbles, docked composer) with optional Calendar event cards that require Approve;
+- current stage (in snapshot / footer);
 - caller/contact talk ratio;
 - transcription health;
 - collapsible live transcript;
@@ -1067,6 +1081,16 @@ Implement in these vertical slices:
 - All holdouts, Playwright flows, health endpoints, Docker build.
 - Controlled live smoke test.
 - Complete `README.md` and `VERIFICATION.md`.
+
+### Slice 7 — Live coach feed + operator-approved Calendar
+
+- Append-only `coach_messages`, WebSocket `coach_message` events, relaxed live-coach cue cap (~400 chars).
+- Two-way CoachThread on the live call (drop live qualification chips). Composer path is not rate-limited like transcript turns.
+- Operator Google OAuth (`calendar.events`), encrypted refresh-token store, fake Calendar client for tests.
+- `propose_calendar_event` drafts only; Approve inserts once (`sendUpdates: all`); Dismiss; failed is retryable. No auto-send. No Calendar on post-call extraction.
+- Shared `CalendarEventCard` on live coach and call-review. Sheet CRM write remains a separate confirm.
+
+Slice 6 live PSTN smoke remains a holdout and does not block this slice.
 
 Do not begin later slices while core acceptance tests for the current slice are failing.
 

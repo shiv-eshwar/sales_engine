@@ -14,6 +14,7 @@ import type { PreparationService } from "./research/preparation.js";
 import type { ResearchClient } from "./research/client.js";
 import type { DtmfSender } from "./twilio/dtmf.js";
 import type { MemorySheetStore } from "./sheets/memory.js";
+import type { CalendarClient } from "./calendar/types.js";
 
 export type OperatorState = {
   skippedLeadIds: Set<string>;
@@ -44,6 +45,7 @@ export type AppContext = {
   mediaHub: MediaHub;
   llmClient: LlmClient | null;
   coachEngine: CoachEngine;
+  calendar: CalendarClient;
   finalizer: ReviewFinalizer | null;
   dtmfSender: DtmfSender | null;
   shuttingDown: boolean;
