@@ -6,6 +6,7 @@ import { loadCampaigns } from "../../src/server/config/campaigns.js";
 import { loadPlaybook } from "../../src/server/config/playbook.js";
 import { campaignCoachingRules } from "../../src/server/coach/campaignRules.js";
 import { campaignConfigSchema } from "../../src/shared/schemas.js";
+import { campaignStrategyRecordSchema, prospectBriefRecordSchema, prospectBriefSchema } from "../../src/shared/campaigns.js";
 import { readFileSync } from "node:fs";
 import { parse } from "yaml";
 
@@ -80,5 +81,43 @@ qualification:
     );
     expect(() => loadCampaigns(dir)).toThrow(/sales-close outcome/);
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe("stored vs generated campaign JSON", () => {
+  it("keeps older longer strategies and briefs readable while new LLM output stays short", () => {
+    const longOpening = "A".repeat(400);
+    expect(() => prospectBriefSchema.parse({
+      company: [], prospect: [], hypotheses: [], unknowns: [],
+      relevance: "r", opening: longOpening,
+      questions: [
+        { id: "a", prompt: "Q1?", purpose: "p", required: true },
+        { id: "b", prompt: "Q2?", purpose: "p", required: true }
+      ],
+      objections: [], nextStep: "n"
+    })).toThrow();
+    expect(prospectBriefRecordSchema.parse({
+      company: [{ text: "T".repeat(200), sourceIds: ["source_1"] }],
+      prospect: [], hypotheses: [], unknowns: [],
+      relevance: "r", opening: longOpening,
+      questions: [
+        { id: "a", prompt: "Q1?", purpose: "p", required: true },
+        { id: "b", prompt: "Q2?", purpose: "p", required: true }
+      ],
+      objections: [], nextStep: "n"
+    }).opening).toHaveLength(400);
+    expect(campaignStrategyRecordSchema.parse({
+      name: "Old", positioning: "p", opening: longOpening,
+      questions: [
+        { id: "a", prompt: "Q1?", purpose: "p", required: true },
+        { id: "b", prompt: "Q2?", purpose: "p", required: true },
+        { id: "c", prompt: "Q3?", purpose: "p", required: true },
+        { id: "d", prompt: "Q4?", purpose: "p", required: false },
+        { id: "e", prompt: "Q5?", purpose: "p", required: false }
+      ],
+      criteria: [{ id: "fit", prompt: "Fit?", required: true, onNo: "unknown" }],
+      disqualifiers: ["none"], objections: [], nextStep: "n",
+      successOutcomes: ["permission_to_follow_up"]
+    }).questions).toHaveLength(5);
   });
 });

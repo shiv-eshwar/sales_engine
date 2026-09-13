@@ -245,6 +245,15 @@ Source: `whatthis.md` §18–22, §20 Slice 6.
 - [x] Operator runbook section
 - [ ] Controlled live smoke test on a user-owned number (`whatthis.md` §19)
 
+### Eve skills + pre-call scan
+
+Proof: Vitest including `tests/unit/agents.test.ts`, `tests/unit/prospect-brief.test.ts`, and stored-vs-generated schema tests. No §4 non-goals. No shared `agents/skills/` library.
+
+- [x] Relevant book packs live under each agent `skills/` (live-coach Farrokh+Blount, prospect-research Farrokh+Sobczak, campaign-generation Weinberg+Sobczak, campaign-interview Weinberg, post-call Sobczak+Blount, call-review none)
+- [x] Loader advertises skill descriptions and preloads `cheatsheet.md` only (never chapters / SKILL.md dumps)
+- [x] Agent `instructions.md` rewritten for role, stakes, standing rules, and output contract
+- [x] Prospect brief schema caps tightened for new LLM output; lead brief UI is Say this / Ask this / If they push back / Leave with
+
 ### Caller UX pass (audit P0 / scoped P1)
 
 Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` (6/6) and Vitest including `tests/unit/ui-copy.test.ts`. No power dialer, auto-dial, or extra dashboards.
@@ -410,3 +419,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-13 | Next-up mint + lead-detail AI prospect brief lock to pane height while loading (`overflow-hidden`, skeleton fills). Loaded quote still grows without an inner scrollbar; long briefs scroll the card body so Call/Skip/Refresh stay pinned. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Operator navbar: Notifications and Analytics are icon-only (bell / chart) with aria-label + title; New campaign is the solid primary with a plus. Badge and Campaign / Edit offering names unchanged. Live PSTN still gated. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Campaign list tick no longer collides with long names: option label ellipsizes; HeroUI absolute indicator forced into a shrink-0 in-flow slot. | Slice 6 code complete; live smoke still blocked |
+| 2026-09-13 | Book skills moved under each eve agent (`skills/`); loader preloads cheatsheets only. System prompts rewritten. Pre-call brief is a short scan card. Typecheck + Vitest. | Slice 6 code complete; live smoke still blocked |

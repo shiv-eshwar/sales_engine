@@ -130,13 +130,16 @@ When `LLM_BASE_URL` points to `api.openai.com`, web research reuses that key and
 
 ## AI agents (eve)
 
-The four AI capabilities are eve-framework agents under `agents/` — one directory per agent with `agent.ts` (`defineAgent`: description, model, `outputSchema`) and `instructions.md` (static system prompt with a `{{SCHEMA}}` slot):
+The AI capabilities are eve-framework agents under `agents/` — one directory per agent with `agent.ts`, `instructions.md`, and optional `skills/` packs (eve: skills are scoped to the agent that declares them):
 
-- `live-coach`, `post-call`, `campaign-generation`, `prospect-research`
+- `live-coach` — Farrokh + Blount (`skills/`); live cues also load `config/playbooks/cold-calling.yaml`
+- `post-call` — Sobczak + Blount cheatsheets
+- `campaign-generation` — Weinberg + Sobczak
+- `campaign-interview` — Weinberg
+- `prospect-research` — Farrokh + Sobczak
+- `call-review` — instructions only
 
-Book-derived knowledge packs live in `agents/skills/` (Farrokh, Blount, Weinberg, Sobczak). They are not Eve agents. Live cues auto-load distilled rules from `config/playbooks/cold-calling.yaml` (context-first opener, Problem Proposition, Miyagi/RBO, two-brush-off NEXT). Edit that YAML to change coaching; read a skill chapter when rewriting an objection guide. Do not paste book files into the live prompt — cues stay ≤160 characters.
-
-`src/server/agents/loader.ts` renders instructions and the existing OpenAI-compatible transport (`src/server/llm/`) executes single structured turns, so timeouts, validators, and holdout behavior are unchanged. The full eve runtime (durable sessions, AI Gateway) is intentionally not used: this app is one process with sub-3s coaching budgets and fake-injected tests. To edit an agent's behavior, edit its `instructions.md`; contracts live in the zod schemas referenced by `agent.ts`. `tests/unit/agents.test.ts` guards both.
+Do not paste book chapters into prompts. The loader advertises each pack’s description and preloads `cheatsheet.md` only. Cues stay ≤160 characters. `src/server/agents/loader.ts` renders the system prompt; the existing OpenAI-compatible transport executes single structured turns. The full eve runtime (durable sessions, AI Gateway) is intentionally not used. Edit `instructions.md` for identity; edit a cheatsheet for procedure. Contracts live in the zod schemas referenced by `agent.ts`. `tests/unit/agents.test.ts` guards both.
 
 ## Tunnel / `APP_BASE_URL`
 

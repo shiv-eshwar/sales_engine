@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 import { campaignConfigSchema, type CampaignConfig } from "../../shared/schemas.js";
-import { campaignBriefSchema, campaignStrategySchema, type CampaignBrief, type CampaignStrategy } from "../../shared/campaigns.js";
+import { campaignBriefSchema, campaignStrategyRecordSchema, type CampaignBrief, type CampaignStrategy } from "../../shared/campaigns.js";
 import type { PublicLead } from "../../shared/contracts.js";
 
 export type ManagedCampaign = {
@@ -35,7 +35,7 @@ export class CampaignStore {
     return rows.map(row => ({
       config: campaignConfigSchema.parse(JSON.parse(row.config_json)),
       brief: campaignBriefSchema.parse(JSON.parse(row.brief_json)),
-      strategy: campaignStrategySchema.parse(JSON.parse(row.strategy_json)),
+      strategy: campaignStrategyRecordSchema.parse(JSON.parse(row.strategy_json)),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       spreadsheetId: row.spreadsheet_id,

@@ -40,47 +40,82 @@ export const campaignInterviewTurnSchema = z.object({
 });
 
 
-export const discoveryQuestionSchema = z.object({
+function discoveryQuestionSchema(promptMax: number, purposeMax: number) {
+  return z.object({
+    id: identifier,
+    prompt: text.max(promptMax),
+    purpose: text.max(purposeMax),
+    required: z.boolean()
+  });
+}
+
+function objectionList(count: number, objectionMax: number, responseMax: number) {
+  return z.array(z.object({
+    objection: text.max(objectionMax),
+    response: text.max(responseMax)
+  })).max(count);
+}
+
+const strategyCriteria = z.array(z.object({
   id: identifier,
   prompt: text.max(350),
-  purpose: text.max(400),
-  required: z.boolean()
+  required: z.boolean(),
+  onNo: z.enum(["disqualified", "defer", "unknown"])
+})).min(1).max(8);
+
+function campaignStrategyShape(options: {
+  openingMax: number;
+  questionPromptMax: number;
+  questionPurposeMax: number;
+  questionMax: number;
+  objections: ReturnType<typeof objectionList>;
+  nextStepMax: number;
+}) {
+  return z.object({
+    name: text.max(160),
+    positioning: text.max(1500),
+    opening: text.max(options.openingMax),
+    questions: z.array(discoveryQuestionSchema(options.questionPromptMax, options.questionPurposeMax)).min(3).max(options.questionMax),
+    criteria: strategyCriteria,
+    disqualifiers: z.array(text.max(250)).min(1).max(8),
+    objections: options.objections,
+    nextStep: text.max(options.nextStepMax),
+    successOutcomes: z.array(z.enum(["meeting_booked", "permission_to_follow_up", "reference_received", "callback_later"])).min(1).max(4)
+  }).superRefine((value, ctx) => {
+    for (const key of ["questions", "criteria"] as const) {
+      if (new Set(value[key].map(item => item.id)).size !== value[key].length) {
+        ctx.addIssue({ code: "custom", path: [key], message: "IDs must be unique" });
+      }
+    }
+    if (!value.criteria.some(item => item.required)) {
+      ctx.addIssue({ code: "custom", path: ["criteria"], message: "At least one qualification criterion must be required" });
+    }
+  });
+}
+
+// Tight contract for newly generated LLM output. Stored rows use the record schema
+// so older longer openings/question lists still load.
+export const campaignStrategySchema = campaignStrategyShape({
+  openingMax: 280,
+  questionPromptMax: 140,
+  questionPurposeMax: 80,
+  questionMax: 4,
+  objections: objectionList(3, 80, 140),
+  nextStepMax: 140
 });
 
-const objections = z.array(z.object({
-  objection: text.max(250),
-  response: text.max(600)
-})).max(8);
-
-export const campaignStrategySchema = z.object({
-  name: text.max(160),
-  positioning: text.max(1500),
-  opening: text.max(800),
-  questions: z.array(discoveryQuestionSchema).min(3).max(10),
-  criteria: z.array(z.object({
-    id: identifier,
-    prompt: text.max(350),
-    required: z.boolean(),
-    onNo: z.enum(["disqualified", "defer", "unknown"])
-  })).min(1).max(8),
-  disqualifiers: z.array(text.max(250)).min(1).max(8),
-  objections,
-  nextStep: text.max(600),
-  successOutcomes: z.array(z.enum(["meeting_booked", "permission_to_follow_up", "reference_received", "callback_later"])).min(1).max(4)
-}).superRefine((value, ctx) => {
-  for (const key of ["questions", "criteria"] as const) {
-    if (new Set(value[key].map(item => item.id)).size !== value[key].length) {
-      ctx.addIssue({ code: "custom", path: [key], message: "IDs must be unique" });
-    }
-  }
-  if (!value.criteria.some(item => item.required)) {
-    ctx.addIssue({ code: "custom", path: ["criteria"], message: "At least one qualification criterion must be required" });
-  }
+export const campaignStrategyRecordSchema = campaignStrategyShape({
+  openingMax: 800,
+  questionPromptMax: 350,
+  questionPurposeMax: 400,
+  questionMax: 10,
+  objections: objectionList(8, 250, 600),
+  nextStepMax: 600
 });
 
 export type CampaignBrief = z.infer<typeof campaignBriefSchema>;
 export type CampaignInterviewTurn = z.infer<typeof campaignInterviewTurnSchema>;
-export type CampaignStrategy = z.infer<typeof campaignStrategySchema>;
+export type CampaignStrategy = z.infer<typeof campaignStrategyRecordSchema>;
 
 export const researchSourceSchema = z.object({
   id: text.max(80),
@@ -89,25 +124,78 @@ export const researchSourceSchema = z.object({
 });
 export type ResearchSource = z.infer<typeof researchSourceSchema>;
 
-const sourcedFact = z.object({
-  text: text.max(700),
-  sourceIds: z.array(text.max(80)).min(1).max(5)
+function sourcedFact(textMax: number) {
+  return z.object({
+    text: text.max(textMax),
+    sourceIds: z.array(text.max(80)).min(1).max(5)
+  });
+}
+
+function prospectBriefShape(options: {
+  factMax: number;
+  factTextMax: number;
+  hypothesisMax: number;
+  hypothesisCount: number;
+  unknownMax: number;
+  unknownCount: number;
+  relevanceMax: number;
+  openingMax: number;
+  questionMin: number;
+  questionMax: number;
+  questionPromptMax: number;
+  questionPurposeMax: number;
+  objections: ReturnType<typeof objectionList>;
+  nextStepMax: number;
+}) {
+  return z.object({
+    company: z.array(sourcedFact(options.factTextMax)).max(options.factMax),
+    prospect: z.array(sourcedFact(options.factTextMax)).max(options.factMax),
+    hypotheses: z.array(text.max(options.hypothesisMax)).max(options.hypothesisCount),
+    unknowns: z.array(text.max(options.unknownMax)).max(options.unknownCount),
+    relevance: text.max(options.relevanceMax),
+    opening: text.max(options.openingMax),
+    questions: z.array(discoveryQuestionSchema(options.questionPromptMax, options.questionPurposeMax)).min(options.questionMin).max(options.questionMax),
+    objections: options.objections,
+    nextStep: text.max(options.nextStepMax)
+  }).superRefine((value, ctx) => {
+    if (new Set(value.questions.map(item => item.id)).size !== value.questions.length) {
+      ctx.addIssue({ code: "custom", path: ["questions"], message: "Question IDs must be unique" });
+    }
+  });
+}
+
+export const prospectBriefSchema = prospectBriefShape({
+  factMax: 3,
+  factTextMax: 180,
+  hypothesisMax: 140,
+  hypothesisCount: 3,
+  unknownMax: 100,
+  unknownCount: 4,
+  relevanceMax: 220,
+  openingMax: 280,
+  questionMin: 2,
+  questionMax: 4,
+  questionPromptMax: 140,
+  questionPurposeMax: 80,
+  objections: objectionList(3, 80, 140),
+  nextStepMax: 140
 });
 
-export const prospectBriefSchema = z.object({
-  company: z.array(sourcedFact).max(6),
-  prospect: z.array(sourcedFact).max(6),
-  hypotheses: z.array(text.max(500)).max(6),
-  unknowns: z.array(text.max(400)).max(8),
-  relevance: text.max(1000),
-  opening: text.max(800),
-  questions: z.array(discoveryQuestionSchema).min(3).max(10),
-  objections,
-  nextStep: text.max(600)
-}).superRefine((value, ctx) => {
-  if (new Set(value.questions.map(item => item.id)).size !== value.questions.length) {
-    ctx.addIssue({ code: "custom", path: ["questions"], message: "Question IDs must be unique" });
-  }
+export const prospectBriefRecordSchema = prospectBriefShape({
+  factMax: 6,
+  factTextMax: 700,
+  hypothesisMax: 500,
+  hypothesisCount: 6,
+  unknownMax: 400,
+  unknownCount: 8,
+  relevanceMax: 1000,
+  openingMax: 800,
+  questionMin: 2,
+  questionMax: 10,
+  questionPromptMax: 350,
+  questionPurposeMax: 400,
+  objections: objectionList(8, 250, 600),
+  nextStepMax: 600
 });
 
 export const preparationSchema = z.object({
@@ -123,6 +211,6 @@ export const preparationSchema = z.object({
     sources: z.array(researchSourceSchema).max(30),
     warnings: z.array(z.string())
   }),
-  brief: prospectBriefSchema
+  brief: prospectBriefRecordSchema
 });
 export type ProspectPreparation = z.infer<typeof preparationSchema>;

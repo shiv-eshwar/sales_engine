@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { renderAgentSystem, type AgentName } from "../../src/server/agents/loader.js";
+import { listAgentSkills, renderAgentSystem, type AgentName } from "../../src/server/agents/loader.js";
 import liveCoachAgent from "../../agents/live-coach/agent.js";
 import postCallAgent from "../../agents/post-call/agent.js";
 import campaignAgent from "../../agents/campaign-generation/agent.js";
@@ -13,6 +13,15 @@ import { campaignInterviewTurnSchema, campaignStrategySchema, prospectBriefSchem
 
 const agents: AgentName[] = ["live-coach", "post-call", "campaign-generation", "campaign-interview", "prospect-research", "call-review"];
 
+const skillMap: Record<AgentName, string[]> = {
+  "live-coach": ["blount-fanatical-prospecting", "farrokh-cold-calling-sucks"],
+  "post-call": ["blount-fanatical-prospecting", "sobczak-smart-calling"],
+  "campaign-generation": ["sobczak-smart-calling", "weinberg-new-sales-simplified"],
+  "campaign-interview": ["weinberg-new-sales-simplified"],
+  "prospect-research": ["farrokh-cold-calling-sucks", "sobczak-smart-calling"],
+  "call-review": []
+};
+
 describe("eve agent instructions", () => {
   it("renders every agent with its schema slotted in and no placeholder left", () => {
     for (const name of agents) {
@@ -23,46 +32,42 @@ describe("eve agent instructions", () => {
     }
   });
 
-  it("keeps the live-coach and post-call systems on one line", () => {
-    expect(renderAgentSystem("live-coach", "S")).not.toContain("\n");
-    expect(renderAgentSystem("post-call", "S")).not.toContain("\n");
-  });
-
-  it("keeps multi-line systems for generation agents", () => {
-    expect(renderAgentSystem("campaign-generation", "S")).toContain("\n");
-    expect(renderAgentSystem("campaign-interview", "S")).toContain("\n");
-    expect(renderAgentSystem("prospect-research", "S")).toContain("\n");
-    expect(renderAgentSystem("call-review", "S")).toContain("\n");
-  });
-
-  it("preserves the exact legacy instruction text", () => {
-    expect(renderAgentSystem("live-coach", "S")).toContain(
-      "You are a live call coach for one human operator. Return JSON only matching LiveCoachOutput."
-    );
-    expect(renderAgentSystem("live-coach", "S")).toContain("Problem Proposition");
-    expect(renderAgentSystem("live-coach", "S")).toContain("never rebut or pitch");
-    expect(renderAgentSystem("post-call", "S")).toContain(
-      "You extract one structured post-call CRM proposal. Return JSON only matching PostCallOutcome."
-    );
-    expect(renderAgentSystem("post-call", "S")).toContain("send_information");
-    expect(renderAgentSystem("campaign-generation", "S")).toContain(
-      "Create a campaign strategy for exactly the offering supplied. Return JSON matching this schema:"
-    );
-    expect(renderAgentSystem("campaign-interview", "S")).toContain(
-      "You interview one human operator to collect a campaign offering brief. Return JSON matching this schema:"
-    );
-    expect(renderAgentSystem("prospect-research", "S")).toContain(
-      "Prepare one human-led call for this campaign and prospect. Return JSON matching this schema:"
-    );
-    expect(renderAgentSystem("call-review", "S")).toContain(
-      "You are the post-call review agent for one human operator. Return JSON matching this schema:"
-    );
+  it("keeps identity, stakes, and the output contract", () => {
+    expect(renderAgentSystem("live-coach", "S")).toContain("in-ear coach");
+    expect(renderAgentSystem("live-coach", "S")).toContain("160-character");
+    expect(renderAgentSystem("post-call", "S")).toContain("forensic CRM extractor");
+    expect(renderAgentSystem("campaign-generation", "S")).toContain("campaign architect");
+    expect(renderAgentSystem("campaign-interview", "S")).toContain("You do not generate strategy");
+    expect(renderAgentSystem("prospect-research", "S")).toContain("pre-call strategist");
+    expect(renderAgentSystem("prospect-research", "S")).toContain("one breath");
+    expect(renderAgentSystem("call-review", "S")).toContain("post-call review partner");
     for (const name of ["live-coach", "post-call"] as const) {
       expect(renderAgentSystem(name, "S")).toContain("Never invent customer names, results, prices, integrations, guarantees, or unapproved claims.");
     }
-    for (const name of ["campaign-generation", "prospect-research"] as const) {
-      expect(renderAgentSystem(name, "S")).toContain("Use SPIN as a flexible discovery framework");
+  });
+
+  it("scopes skills to each agent and preloads cheatsheets without chapters or SKILL.md dumps", () => {
+    for (const name of agents) {
+      const packs = listAgentSkills(name).map((pack) => pack.name).sort();
+      expect(packs).toEqual(skillMap[name]);
+      const system = renderAgentSystem(name, "S");
+      expect(system).not.toContain("chapters/");
+      expect(system).not.toContain("This skill covers the book content only");
+      expect(system).not.toContain("Covers Sobczak’s Smart Calling process only");
+      if (packs.length) {
+        expect(system).toContain("Available skills");
+        expect(system).toContain("Loaded procedures");
+        for (const pack of packs) expect(system).toContain(pack);
+      } else {
+        expect(system).not.toContain("Available skills");
+      }
     }
+    expect(renderAgentSystem("live-coach", "S")).not.toContain("weinberg-new-sales-simplified");
+    expect(renderAgentSystem("live-coach", "S")).not.toContain("sobczak-smart-calling");
+    expect(renderAgentSystem("prospect-research", "S")).not.toContain("blount-fanatical-prospecting");
+    expect(renderAgentSystem("campaign-generation", "S")).not.toContain("farrokh-cold-calling-sucks");
+    expect(renderAgentSystem("post-call", "S")).not.toContain("farrokh-cold-calling-sucks");
+    expect(renderAgentSystem("campaign-interview", "S")).not.toContain("farrokh-cold-calling-sucks");
   });
 });
 
