@@ -182,6 +182,13 @@ test("notifications lists queue issues and replaces diagnostics nav", async ({ p
   await page.goto(`${server.baseURL}/analytics`);
   await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
   await expect(page).toHaveTitle("Analytics · Mantis");
+  await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
+  await page.getByRole("link", { name: "Settings" }).click();
+  await expect(page).toHaveURL(/\/settings/);
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await expect(page).toHaveTitle("Settings · Mantis");
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Disconnect" })).toBeVisible();
 });
 
 invalidSheet("invalid Sheet headers block Call", async ({ page, server }) => {
