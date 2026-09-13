@@ -279,6 +279,26 @@ export function NotificationsSkeleton() {
   );
 }
 
+export function SettingsSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-xl" role="status" aria-label="Loading settings…">
+      <Pulse ground className="h-6 w-24" />
+      <div className="mt-10 flex flex-col gap-12" aria-hidden="true">
+        {[1, 2, 3].map((section) => (
+          <div key={section}>
+            <Pulse ground className="h-4 w-20" />
+            <div className="mt-3 rounded-lg border-t-[3px] border-t-accent bg-surface p-5 shadow-sm">
+              <Pulse className="h-5 w-48" />
+              <Pulse className="mt-1 h-3.5 w-64 max-w-full" />
+              <Pulse className="mt-4 h-11 w-36 rounded-lg" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ReviewSkeleton() {
   return (
     <section className="review-chat flex min-h-0 flex-1 flex-col" role="status" aria-label="Loading review…">
@@ -330,6 +350,7 @@ export function LoginSkeleton() {
 export function bootSkeleton(pathname: string) {
   if (pathname.startsWith("/login")) return <LoginSkeleton />;
   if (pathname.startsWith("/analytics")) return <AnalyticsSkeleton />;
+  if (pathname.startsWith("/settings")) return <SettingsSkeleton />;
   if (pathname.startsWith("/notifications") || pathname.startsWith("/diagnostics")) {
     return <NotificationsSkeleton />;
   }

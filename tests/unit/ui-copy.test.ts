@@ -45,6 +45,7 @@ describe("caller-facing copy", () => {
     expect(NAV_COPY.home).toBe("Mantis");
     expect(NAV_COPY.notifications).toBe("Notifications");
     expect(NAV_COPY.analytics).toBe("Analytics");
+    expect(NAV_COPY.settings).toBe("Settings");
     expect(NAV_COPY.newCampaign).toBe("New campaign");
     expect(NAV_COPY.calendar).toBe("Calendar");
     expect(NAV_COPY.campaign).toBe("Campaign");
@@ -59,6 +60,7 @@ describe("caller-facing copy", () => {
     expect(PAGE_TITLES.login).toBe("Sign in · Mantis");
     expect(PAGE_TITLES.analytics).toBe("Analytics · Mantis");
     expect(PAGE_TITLES.notifications).toBe("Notifications · Mantis");
+    expect(PAGE_TITLES.settings).toBe("Settings · Mantis");
     expect(PAGE_TITLES.campaignNew).toBe("New campaign · Mantis");
     expect(PAGE_TITLES.lead("Alex Rivera")).toBe("Alex Rivera · Mantis");
     expect(PAGE_TITLES.lead("  ")).toBe("Mantis");
