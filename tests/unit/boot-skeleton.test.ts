@@ -27,6 +27,7 @@ describe("route boot skeletons", () => {
     expect(html("/leads/L-100")).toContain("brief-card-pulse");
     expect(html("/leads/L-100")).not.toContain("brief-working");
     expect(html("/analytics")).toContain("Loading analytics…");
+    expect(html("/settings")).toContain("Loading settings…");
     expect(html("/notifications")).toContain("Loading notifications…");
     expect(html("/diagnostics")).toContain("Loading notifications…");
     expect(html("/calls/s1/review")).toContain("Loading review…");
