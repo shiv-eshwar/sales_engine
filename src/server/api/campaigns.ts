@@ -2,11 +2,11 @@ import { LlmError } from "../llm/errors.js";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { campaignBriefSchema } from "../../shared/campaigns.js";
-import { requireSession } from "../auth/routes.js";
+import { requireSession, getSessionUser } from "../auth/routes.js";
 import { generateCampaign } from "../campaigns/generate.js";
 import { interviewCampaignTurn } from "../campaigns/interview.js";
 import type { AppContext } from "../context.js";
-import { toPublicLead } from "../leads/nextLead.js";
+import { publicLeadsWithHistory } from "../leads/nextLead.js";
 import { toPublicCampaign } from "./leads.js";
 import { activateCampaignSheet, peekPendingSheet, SheetBindingError, takePendingSheet } from "../sheets/bind.js";
 
@@ -186,8 +186,14 @@ export async function registerCampaigns(app: FastifyInstance, ctx: AppContext): 
     await activateCampaignSheet(ctx, id);
     const lead = await ctx.adapter?.findLeadById(leadId);
     if (!lead) return reply.code(404).send({ error: "Lead is not eligible" });
+    const publicLead = publicLeadsWithHistory(ctx, [lead])[0]!;
     try {
-      const preparation = await ctx.preparation.prepare(campaign, toPublicLead(lead), parsed.data.force);
+      const preparation = await ctx.preparation.prepare(
+        campaign,
+        publicLead,
+        parsed.data.force,
+        { operatorEmail: getSessionUser(ctx, request)?.email ?? null }
+      );
       if (ctx.campaignStore.get(id)?.config.version !== campaign.config.version) {
         return reply.code(409).send({ error: "Campaign changed while preparing. Refresh and try again." });
       }

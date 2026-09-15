@@ -1,4 +1,7 @@
 import type { CampaignBrief, CampaignStrategy } from "./campaigns.js";
+import type { PublicLastTouch } from "./lastTouch.js";
+
+export type { PublicLastTouch } from "./lastTouch.js";
 
 export type SheetStatus = "ok" | "unconfigured" | "error";
 export type SheetsBackend = "google" | "memory" | "none";
@@ -35,6 +38,7 @@ export type PublicLead = {
   crmStatus: string;
   callStatus: string;
   issues: string[];
+  lastTouch?: PublicLastTouch | null;
 };
 
 export type PublicCampaign = {

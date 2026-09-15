@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import { z } from "zod";
 import { preparationSchema, prospectBriefSchema, type ProspectPreparation } from "../../shared/campaigns.js";
+import { lastTouchFingerprint } from "../../shared/lastTouch.js";
 import type { PublicLead } from "../../shared/contracts.js";
 import type { ManagedCampaign } from "../campaigns/store.js";
 import { renderAgentSystem } from "../agents/loader.js";
@@ -11,10 +12,16 @@ import { getCachedResearch, pruneStaleResearchCache, putCachedResearch } from ".
 
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-export function preparationInputHash(campaign: ManagedCampaign, lead: PublicLead): string {
+export function preparationInputHash(
+  campaign: ManagedCampaign,
+  lead: PublicLead,
+  operatorEmail: string | null = null
+): string {
   return createHash("sha256").update(JSON.stringify({
     campaign: campaign.config.id, version: campaign.config.version,
-    lead: lead.leadId, company: lead.company, name: lead.fullName, role: lead.role, enrichment: lead.enrichment
+    lead: lead.leadId, company: lead.company, name: lead.fullName, role: lead.role, enrichment: lead.enrichment,
+    lastTouch: lastTouchFingerprint(lead.lastTouch),
+    operatorEmail: operatorEmail?.trim().toLowerCase() || ""
   })).digest("hex");
 }
 
@@ -52,32 +59,48 @@ export class PreparationService {
     return row ? preparationSchema.parse(JSON.parse(row.body_json)) : null;
   }
 
-  cached(campaign: ManagedCampaign, lead: PublicLead): ProspectPreparation | null {
+  cached(campaign: ManagedCampaign, lead: PublicLead, operatorEmail: string | null = null): ProspectPreparation | null {
     const row = this.deps.db.prepare(`SELECT body_json FROM prospect_preparations
       WHERE campaign_id = ? AND campaign_version = ? AND lead_id = ? AND input_hash = ? AND generated_at > ?
       ORDER BY generated_at DESC LIMIT 1`).get(campaign.config.id, campaign.config.version, lead.leadId,
-      preparationInputHash(campaign, lead), new Date(Date.now() - MAX_AGE_MS).toISOString()) as { body_json: string } | undefined;
+      preparationInputHash(campaign, lead, operatorEmail), new Date(Date.now() - MAX_AGE_MS).toISOString()) as { body_json: string } | undefined;
     return row ? preparationSchema.parse(JSON.parse(row.body_json)) : null;
   }
 
-  matches(preparation: ProspectPreparation, campaign: ManagedCampaign, lead: PublicLead): boolean {
+  matches(
+    preparation: ProspectPreparation,
+    campaign: ManagedCampaign,
+    lead: PublicLead,
+    operatorEmail: string | null = null
+  ): boolean {
     return preparation.campaignId === campaign.config.id && preparation.campaignVersion === campaign.config.version &&
-      preparation.leadId === lead.leadId && preparation.inputHash === preparationInputHash(campaign, lead) &&
+      preparation.leadId === lead.leadId && preparation.inputHash === preparationInputHash(campaign, lead, operatorEmail) &&
       Date.now() - Date.parse(preparation.generatedAt) < MAX_AGE_MS;
   }
 
-  prepare(campaign: ManagedCampaign, lead: PublicLead, force = false): Promise<ProspectPreparation> {
-    const key = preparationInputHash(campaign, lead);
+  prepare(
+    campaign: ManagedCampaign,
+    lead: PublicLead,
+    force = false,
+    options: { operatorEmail?: string | null } = {}
+  ): Promise<ProspectPreparation> {
+    const operatorEmail = options.operatorEmail ?? null;
+    const key = preparationInputHash(campaign, lead, operatorEmail);
     const inFlight = this.pending.get(key);
     if (inFlight) return inFlight;
-    const cached = !force ? this.cached(campaign, lead) : null;
+    const cached = !force ? this.cached(campaign, lead, operatorEmail) : null;
     if (cached) return Promise.resolve(cached);
-    const promise = this.generate(campaign, lead, force).finally(() => this.pending.delete(key));
+    const promise = this.generate(campaign, lead, force, operatorEmail).finally(() => this.pending.delete(key));
     this.pending.set(key, promise);
     return promise;
   }
 
-  private async generate(campaign: ManagedCampaign, lead: PublicLead, force = false): Promise<ProspectPreparation> {
+  private async generate(
+    campaign: ManagedCampaign,
+    lead: PublicLead,
+    force = false,
+    operatorEmail: string | null = null
+  ): Promise<ProspectPreparation> {
     if (!this.deps.llm) throw new Error("Configure the LLM connection to generate a prospect brief.");
     let research: ResearchResult = { report: "", sources: [], searchedAt: new Date().toISOString() };
     let status: ProspectPreparation["research"]["status"] = "unavailable";
@@ -101,7 +124,14 @@ export class PreparationService {
       user: JSON.stringify({
         offering: campaign.brief,
         strategy: campaign.strategy,
-        lead: { fullName: lead.fullName, company: lead.company, role: lead.role, enrichment: lead.enrichment.slice(0, 6000) },
+        lead: {
+          fullName: lead.fullName,
+          company: lead.company,
+          role: lead.role,
+          enrichment: lead.enrichment.slice(0, 6000)
+        },
+        lastTouch: lead.lastTouch,
+        operatorEmail,
         research: status === "complete" ? research : { report: "No cited web evidence available.", sources: [] }
       }),
       timeoutMs: this.deps.timeoutMs
@@ -113,7 +143,7 @@ export class PreparationService {
     }
     const result = preparationSchema.parse({
       id: randomUUID(), campaignId: campaign.config.id, campaignVersion: campaign.config.version,
-      leadId: lead.leadId, inputHash: preparationInputHash(campaign, lead), generatedAt: new Date().toISOString(),
+      leadId: lead.leadId, inputHash: preparationInputHash(campaign, lead, operatorEmail), generatedAt: new Date().toISOString(),
       research: { status, searchedAt: research.searchedAt, sources: research.sources, warnings }, brief
     });
     this.deps.db.prepare(`INSERT INTO prospect_preparations

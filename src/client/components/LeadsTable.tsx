@@ -5,6 +5,7 @@ import type { PublicLead } from "../../shared/contracts";
 import { filterLeads, sortLeads, type LeadSortKey } from "../../shared/leadsQueue";
 import { QUEUE_COPY } from "../copy";
 import { Icon } from "./Icon";
+import { LastTouchLine } from "./LastTouchLine";
 import { SCROLL, SCROLL_X } from "../layout/shell";
 
 export type { LeadSortKey };
@@ -152,6 +153,7 @@ export function LeadsTable({
                     />
                     {lead.phoneE164 ?? lead.phone}
                   </p>
+                  {lead.lastTouch ? <div className="mt-2"><LastTouchLine touch={lead.lastTouch} /></div> : null}
                   <div className="mt-4">
                     <UpNextActions
                       onCall={onCall}
@@ -232,6 +234,7 @@ export function LeadsTable({
                       {lead.fullName || "Unnamed contact"}
                     </Link>
                     {lead.role ? <p className="mt-0.5 text-sm text-muted">{lead.role}</p> : null}
+                    {next && lead.lastTouch ? <div className="mt-1.5"><LastTouchLine touch={lead.lastTouch} /></div> : null}
                   </td>
                   <td className="px-4 py-2.5 text-muted">{lead.company || "—"}</td>
                   <td className="px-4 py-2.5">

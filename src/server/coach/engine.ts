@@ -291,7 +291,8 @@ export class CoachEngine {
       sequence: utterance.sequence || state.latestContactSequence,
       connectedSeconds: talk.connectedSeconds,
       calendarAvailability,
-      operatorNote: options.operatorNote
+      operatorNote: options.operatorNote,
+      operatorEmail: row.operator_email
     });
 
     if (options.rateLimit) {

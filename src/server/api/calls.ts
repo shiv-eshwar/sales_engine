@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../context.js";
-import { isAuthenticated, requireSession } from "../auth/routes.js";
+import { isAuthenticated, requireSession, getSessionUser } from "../auth/routes.js";
 import {
   ActiveCallExistsError,
   applyTransportStatus,
@@ -16,7 +16,7 @@ import { listUtterances } from "../transcript/utterances.js";
 import { twilioVoiceConfigured } from "../twilio/config.js";
 import { validateDtmfDigits } from "../twilio/dtmf.js";
 import { createVoiceAccessToken } from "../twilio/token.js";
-import { toPublicLead } from "../leads/nextLead.js";
+import { publicLeadsWithHistory } from "../leads/nextLead.js";
 import { activateCampaignSheet } from "../sheets/bind.js";
 
 const createSessionSchema = z.object({
@@ -89,10 +89,11 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
     if (!lead.dialable || !lead.phoneE164) {
       return reply.code(400).send({ error: "Lead phone is not dialable" });
     }
+    const publicLead = publicLeadsWithHistory(ctx, [lead])[0]!;
     const managed = ctx.campaignStore.get(campaign.id);
     const preparation = parsed.data.preparationId ? ctx.preparation.get(parsed.data.preparationId) : null;
     if (managed) {
-      if (!preparation || !ctx.preparation.matches(preparation, managed, toPublicLead(lead))) {
+      if (!preparation || !ctx.preparation.matches(preparation, managed, publicLead, getSessionUser(ctx, request)?.email ?? null)) {
         return reply.code(409).send({ error: "Prepare this lead for the current campaign before calling. Refresh the brief if the campaign or lead changed." });
       }
       campaign = {
@@ -106,6 +107,7 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
         leadId: lead.leadId,
         campaignId: campaign.id,
         campaignVersion: campaign.version,
+        operator: getSessionUser(ctx, request),
         snapshot: {
           leadId: lead.leadId,
           fullName: lead.fullName,
@@ -114,6 +116,7 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
           company: lead.company,
           role: lead.role,
           enrichment: lead.enrichment,
+          lastTouch: publicLead.lastTouch,
           campaign,
           ...(managed ? { offering: managed.brief, preparation: preparation! } : {})
         }

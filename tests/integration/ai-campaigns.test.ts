@@ -185,8 +185,10 @@ describe("AI campaigns and prospect preparation", () => {
     expect(update.json().version).toBe(2);
     expect(ctx.coachEngine.getSnapshot(session.id)!.qualification[0]!.id).toBe("invoice_pain");
     const prompt = buildCoachPrompt({ campaign: snapshot.campaign!, snapshot, utterances: [], criteria: emptyCriteria(snapshot.campaign!),
-      talk: computeTalkRatio([], null, null), stage: "opener", priorObjections: [], sequence: 1, connectedSeconds: 0, playbook: null });
+      talk: computeTalkRatio([], null, null), stage: "opener", priorObjections: [], sequence: 1, connectedSeconds: 0, playbook: null, operatorEmail: "operator@test.local" });
     expect(JSON.parse(prompt.user).preparation.id).toBe(preparation.id);
+    expect(JSON.parse(prompt.user).operatorEmail).toBe("operator@test.local");
+    expect(JSON.parse(prompt.user)).toHaveProperty("lastTouch");
     expect(prompt.user).not.toContain("Updated invoices");
     applyTransportStatus(ctx.db, session.id, "canceled");
     const proposal = await ctx.finalizer!.finalize(session.id);

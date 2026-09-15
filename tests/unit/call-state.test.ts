@@ -39,8 +39,15 @@ describe("call status machine", () => {
       company: "Co",
       role: "Eng"
     };
-    createCallSession(db, { leadId: "L-100", campaignId: "sales", campaignVersion: 1, snapshot });
+    createCallSession(db, {
+      leadId: "L-100",
+      campaignId: "sales",
+      campaignVersion: 1,
+      snapshot,
+      operator: { id: "user-1", email: "shiv@example.com" }
+    });
     expect(findActiveSession(db)?.lead_id).toBe("L-100");
+    expect(findActiveSession(db)?.operator_email).toBe("shiv@example.com");
     expect(() =>
       createCallSession(db, { leadId: "L-101", campaignId: "sales", campaignVersion: 1, snapshot })
     ).toThrow(ActiveCallExistsError);

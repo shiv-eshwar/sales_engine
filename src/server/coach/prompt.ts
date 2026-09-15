@@ -38,6 +38,7 @@ export function buildCoachPrompt(input: {
   connectedSeconds: number;
   calendarAvailability?: string;
   operatorNote?: string;
+  operatorEmail?: string | null;
 }): { system: string; user: string } {
   const { summary, recent } = rollingTranscript(input.utterances);
   // Static instructions come from agents/live-coach/instructions.md; the
@@ -64,6 +65,8 @@ export function buildCoachPrompt(input: {
       fullName: input.snapshot.fullName, company: input.snapshot.company, role: input.snapshot.role,
       enrichment: input.snapshot.enrichment
     },
+    lastTouch: input.snapshot.lastTouch ?? null,
+    operatorEmail: input.operatorEmail ?? null,
     offering: input.snapshot.offering,
     preparation: input.snapshot.preparation,
     state: {

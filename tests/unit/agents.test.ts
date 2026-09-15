@@ -40,6 +40,8 @@ describe("eve agent instructions", () => {
     expect(renderAgentSystem("campaign-interview", "S")).toContain("You do not generate strategy");
     expect(renderAgentSystem("prospect-research", "S")).toContain("pre-call strategist");
     expect(renderAgentSystem("prospect-research", "S")).toContain("one breath");
+    expect(renderAgentSystem("prospect-research", "S")).toContain("lastTouch");
+    expect(renderAgentSystem("live-coach", "S")).toContain("lastTouch");
     expect(renderAgentSystem("call-review", "S")).toContain("post-call review partner");
     for (const name of ["live-coach", "post-call"] as const) {
       expect(renderAgentSystem(name, "S")).toContain("Never invent customer names, results, prices, integrations, guarantees, or unapproved claims.");

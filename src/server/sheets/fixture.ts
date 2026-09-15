@@ -53,7 +53,10 @@ export function exampleFixtureRows(): string[][] {
       "Recently hired first PM.",
       "lamina-sales",
       "Retry",
-      "Retry"
+      "Retry",
+      "2",
+      "2026-09-10T15:00:00.000Z",
+      "no-answer"
     ]),
     pad([
       "L-102",

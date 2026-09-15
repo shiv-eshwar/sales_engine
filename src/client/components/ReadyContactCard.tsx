@@ -2,6 +2,7 @@ import { useEffect, type RefObject } from "react";
 import { Alert, Button, Card } from "@heroui/react";
 import type { PublicCampaign, PublicLead } from "../../shared/contracts";
 import { Icon, QuoteMark } from "./Icon";
+import { LastTouchLine } from "./LastTouchLine";
 import { SCROLL } from "../layout/shell";
 
 export function ReadyContactCard({
@@ -62,6 +63,7 @@ export function ReadyContactCard({
           />
           <span className="min-w-0 font-mono tabular-nums break-all">{lead.phoneE164 ?? lead.phone}</span>
         </p>
+        {lead.lastTouch ? <div className="mt-2 w-full"><LastTouchLine touch={lead.lastTouch} summary /></div> : null}
       </Card.Header>
       <div className="relative z-0 min-h-0 min-w-0 flex-1 overflow-hidden">
         <div

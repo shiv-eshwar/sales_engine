@@ -3,8 +3,9 @@ import type { AppContext } from "../context.js";
 import type { LeadRecord } from "../../shared/types.js";
 import { skippedLeadKey } from "../campaigns/store.js";
 import { activateCampaignSheet, withSheetBinding } from "../sheets/bind.js";
+import { lastTouchForLeads } from "./lastTouch.js";
 
-export function toPublicLead(lead: LeadRecord): PublicLead {
+export function toPublicLead(lead: LeadRecord, lastTouch: PublicLead["lastTouch"] = null): PublicLead {
   return {
     leadId: lead.leadId,
     fullName: lead.fullName,
@@ -17,8 +18,14 @@ export function toPublicLead(lead: LeadRecord): PublicLead {
     campaignId: lead.campaignId,
     crmStatus: lead.crmStatus,
     callStatus: lead.callStatus,
-    issues: lead.issues
+    issues: lead.issues,
+    lastTouch
   };
+}
+
+export function publicLeadsWithHistory(ctx: AppContext, records: LeadRecord[]): PublicLead[] {
+  const touches = lastTouchForLeads(ctx.db, ctx.sheetsConfig, records);
+  return records.map((lead) => toPublicLead(lead, touches.get(lead.leadId) ?? null));
 }
 
 export async function loadNextLead(ctx: AppContext): Promise<{
@@ -64,7 +71,7 @@ export async function loadNextLead(ctx: AppContext): Promise<{
   const campaignId = ctx.operator.selectedCampaignId;
   const belongs = campaignId ? ctx.campaignStore.membership(campaignId) : () => false;
   const available = queue.leads.filter((lead) => belongs(lead) && !ctx.operator.skippedLeadIds.has(skippedLeadKey(campaignId, lead.leadId)));
-  const leads = available.map(toPublicLead);
+  const leads = publicLeadsWithHistory(ctx, available);
 
   // Keep an explicitly selected lead active as long as it is still eligible.
   // Otherwise fall back to the head of the queue so Skip/Reload keep working.
@@ -83,7 +90,7 @@ export async function loadNextLead(ctx: AppContext): Promise<{
   }
 
   return {
-    lead: lead ? toPublicLead(lead) : null,
+    lead: lead ? leads.find((item) => item.leadId === lead.leadId) ?? toPublicLead(lead) : null,
     leads,
     diagnostics: queue.diagnostics,
     sheetStatus: withSheetBinding(ctx, {

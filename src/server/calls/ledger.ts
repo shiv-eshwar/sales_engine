@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { CampaignConfig } from "../../shared/schemas.js";
 import type { CampaignBrief, ProspectPreparation } from "../../shared/campaigns.js";
+import type { PublicLastTouch } from "../../shared/contracts.js";
 import {
   ACTIVE_CALL_STATUSES,
   applyStatusTransition,
@@ -25,6 +26,8 @@ export type CallSessionRow = {
   ended_at: string | null;
   transport_outcome: string | null;
   transcript_complete: number | null;
+  operator_user_id: string | null;
+  operator_email: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -40,6 +43,7 @@ export type LeadSnapshot = {
   campaign?: CampaignConfig;
   offering?: CampaignBrief;
   preparation?: ProspectPreparation;
+  lastTouch?: PublicLastTouch | null;
 };
 
 export function sessionCampaign(row: CallSessionRow, campaigns: CampaignConfig[]): CampaignConfig | undefined {
@@ -95,6 +99,7 @@ export function createCallSession(
     campaignId: string;
     campaignVersion: number;
     snapshot: LeadSnapshot;
+    operator?: { id: string; email: string } | null;
   }
 ): CallSessionRow {
   const existing = findActiveSession(db);
@@ -106,9 +111,20 @@ export function createCallSession(
   db.prepare(
     `INSERT INTO call_sessions (
       id, lead_id, campaign_id, campaign_version, lead_snapshot_json, status, direction,
-      started_at, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, 'created', 'outbound', ?, ?, ?)`
-  ).run(id, input.leadId, input.campaignId, input.campaignVersion, JSON.stringify(input.snapshot), created, created, created);
+      operator_user_id, operator_email, started_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, 'created', 'outbound', ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    input.leadId,
+    input.campaignId,
+    input.campaignVersion,
+    JSON.stringify(input.snapshot),
+    input.operator?.id ?? null,
+    input.operator?.email ?? null,
+    created,
+    created,
+    created
+  );
   const row = getSession(db, id);
   if (!row) {
     throw new Error("Failed to load created call session");

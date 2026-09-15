@@ -61,7 +61,7 @@ Does not replace Slice 6 live smoke. Proof of done: a `main` push shows a green 
 | 4 | Live coach | `completed` | One cue card, talk ratio, qualification indicators, stale-response handling (live model not required) |
 | 5 | Post-call CRM update | `completed` | Review diff, approve & next, verified batch write, retry ledger (live Sheet smoke still required) |
 | 6 | Verification and hardening | `blocked` | Holdouts H1–H14, Playwright (fakes), Docker recipe, README + VERIFICATION.md; live smoke still required |
-| 7 | Live coach feed + approved Calendar | `completed` | Append-only coach messages, two-way thread, operator OAuth Calendar, Approve-only send; typecheck + 195 Vitest + 8 Playwright (Calendar fakes, email/password auth) |
+| 7 | Live coach feed + approved Calendar | `completed` | Append-only coach messages, two-way thread, operator OAuth Calendar, Approve-only send; typecheck + 202 Vitest + 9 Playwright (Calendar fakes, email/password auth, last-call context) |
 
 Slice 6 live PSTN smoke is a holdout. Slice 7 does not wait on it. Do not begin later slices while the current slice’s core automated checks are failing.
 
@@ -312,6 +312,7 @@ Proof: Vitest including `tests/unit/agents.test.ts`, `tests/unit/prospect-brief.
 Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` (6/6) and Vitest including `tests/unit/ui-copy.test.ts`. No power dialer, auto-dial, or extra dashboards.
 
 - [x] Home is one call queue in Sheet order; the next dialable row is Up next with Call as the primary action and Skip as outline; lead detail still uses the contact card
+- [x] Last-call context on Up next / lead detail: last dial vs last conversation, attempt count, who called (session user), and `follow_up_at` as a wait line. Fed into prospect brief + live coach. No team queues.
 - [x] First-run is an empty-state card, not an auto-opened campaign drawer
 - [x] Every eligible Sheet row is in the selected campaign queue (no assign-leads UI)
 - [x] Disabled Generate looks disabled; AI copy does not name env vars
@@ -492,3 +493,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-15 | Light/dark theme: evergreen dark (not navy invert), mint accent kept, header/auth/Settings/live-call toggle, preference persisted. | Slice 7 complete; operator theme; Slice 6 live smoke still blocked |
 | 2026-09-15 | Verified auth + theme: logout Set-Cookie now matches Secure/SameSite so HTTPS sign-out clears the session; unknown-email login still runs scrypt; 390px header stays in-viewport (logo + New campaign icon-only). Typecheck + 195 Vitest + 8 Playwright. | Slice 7 complete; operator auth + theme; Slice 6 live smoke still blocked |
 | 2026-09-15 | Home is one call queue (Sheet order, Up next Call/Skip, no left card). Every hang-up — Hang Up or remote completed — navigates to `/calls/:id/review` in this tab; write/discard returns to `/leads`. Typecheck + 196 Vitest + 9 Playwright. | Slice 7 complete; Home queue + same-tab review; Slice 6 live smoke still blocked |
+| 2026-09-15 | Last-call context: stamp `call_sessions` with the logged-in operator; show last dial vs last conversation on Up next and lead detail; feed lastTouch into prospect-research and live coach. No Last Caller Sheet column, no team queues. Typecheck + 202 Vitest + 9 Playwright. | Slice 7 complete; last-call context; Slice 6 live smoke still blocked |

@@ -68,6 +68,7 @@ test("login through approve loads the next lead", async ({ page, server }) => {
   await expect(next).toBeVisible();
   await expect(next.getByRole("button", { name: "Call" })).toBeVisible();
   await expect(next.getByRole("button", { name: "Skip" })).toBeVisible();
+  await expect(next.getByLabel("Last call")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Alex Rivera" })).toHaveCount(0);
 
   await openLead(page, "Alex Rivera");
@@ -116,6 +117,8 @@ test("login through approve loads the next lead", async ({ page, server }) => {
   await expect(page.getByRole("table", { name: "Leads" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Jordan Chen" })).toHaveCount(0);
   await expect(upNext(page).getByRole("button", { name: "Call" })).toBeVisible();
+  await expect(upNext(page).getByLabel("Last call")).toContainText("2nd dial");
+  await expect(upNext(page).getByLabel("Last call")).toContainText("no-answer");
 });
 
 test("contact hangup opens review in this tab", async ({ page, server }) => {
@@ -141,6 +144,7 @@ test("open a specific lead from the table, search and navigate", async ({ page, 
   await expect(page.getByRole("link", { name: /Open Alex Rivera/ }).first()).toBeVisible();
   await expect(page.getByRole("table", { name: "Leads" })).toContainText("Alex Rivera");
   await expect(upNext(page).getByRole("button", { name: "Call" })).toBeVisible();
+  await expect(upNext(page).getByLabel("Last call")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Alex Rivera" })).toHaveCount(0);
 
   // Search filters the table.
@@ -154,12 +158,14 @@ test("open a specific lead from the table, search and navigate", async ({ page, 
   await expect(page).toHaveURL(/\/leads\/L-101/);
   await expect(page).toHaveTitle("Jordan Chen · Mantis");
   await expect(page.getByRole("heading", { name: "Jordan Chen" })).toBeVisible();
+  await expect(page.getByLabel("Last call")).toContainText("2nd dial");
   await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
   await page.getByRole("link", { name: "Mantis" }).click();
   await expect(page.getByRole("table", { name: "Leads" })).toBeVisible();
 
   await openLead(page, "Alex Rivera");
   await expect(page).toHaveURL(/\/leads\/L-100/);
+  await expect(page.getByLabel("Last call")).toHaveCount(0);
 });
 
 test("Deepgram drop shows interruption while Mute and Hang Up stay enabled", async ({ page, server }) => {
