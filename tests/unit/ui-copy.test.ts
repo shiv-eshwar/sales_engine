@@ -48,6 +48,7 @@ describe("caller-facing copy", () => {
     expect(NAV_COPY.analytics).toBe("Analytics");
     expect(NAV_COPY.settings).toBe("Settings");
     expect(NAV_COPY.newCampaign).toBe("New campaign");
+    expect(NAV_COPY.dial).toBe("Dial a number");
     expect(NAV_COPY.signOut).toBe("Sign out");
     expect(QUEUE_COPY.upNext).toBe("Up next");
     expect(QUEUE_COPY.section).toBe("Call queue");

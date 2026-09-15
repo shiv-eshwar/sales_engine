@@ -2,12 +2,13 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Alert, Button } from "@heroui/react";
 import { useSession } from "../state/session";
 import { finalizeCall } from "../state/api";
-import { fetchCallSession } from "../state/calls";
-import { hangUpTwilioCall } from "../twilio/device";
+import { cancelCallSession, createCustomDialSession, fetchCallSession } from "../state/calls";
+import { connectTwilioCall, hangUpTwilioCall } from "../twilio/device";
 import { callReviewPath } from "../state/openCallReview";
 import { CampaignDrawer } from "../components/CampaignDrawer";
 import { CampaignSelect } from "../components/CampaignSelect";
 import { CallingPanel } from "../components/CallingPanel";
+import { CustomDialer } from "../components/CustomDialer";
 import { ReadinessChip } from "../components/ReadinessChip";
 import { NAV_COPY, PRODUCT_NAME, notificationsNavLabel } from "../copy";
 import { Icon } from "../components/Icon";
@@ -22,9 +23,13 @@ export function AppLayout() {
   const {
     data, pending, error, handleSelectCampaign, refresh,
     deviceStatus, deviceDetail, incoming, answerIncoming, declineIncoming,
-    campaignBusy, setCampaignBusy, editor, setEditor, liveCall
+    campaignBusy, setCampaignBusy, editor, setEditor, liveCall, setLiveCall
   } = useSession();
   const [inboundCall, setInboundCall] = useState<CallSessionView | null>(null);
+  const [customCall, setCustomCall] = useState<CallSessionView | null>(null);
+  const [dialOpen, setDialOpen] = useState(false);
+  const [dialStarting, setDialStarting] = useState(false);
+  const [dialError, setDialError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const twilioConfigured = data.twilio.status === "ok";
@@ -37,7 +42,14 @@ export function AppLayout() {
   const onAnalytics = location.pathname.startsWith("/analytics");
   const onSettings = location.pathname.startsWith("/settings");
   const selectedCampaign = data.campaigns.find((item) => item.id === data.selectedCampaignId);
-  const lockWorkspace = isWorkspacePath(location.pathname) && !liveCall && !inboundCall;
+  const lockWorkspace = isWorkspacePath(location.pathname) && !liveCall && !inboundCall && !customCall;
+  const customDialDisabled = !twilioConfigured
+    ? "Twilio Voice is not configured"
+    : deviceStatus !== "registered"
+      ? `Twilio device is ${deviceStatus}`
+      : liveCall && !customCall
+        ? "A call is already in progress"
+        : null;
 
   useLayoutEffect(() => {
     if ("scrollRestoration" in history) {
@@ -86,6 +98,37 @@ export function AppLayout() {
     navigate(callReviewPath(sessionId));
     setInboundCall(null);
     void finalizeCall(sessionId).catch(() => undefined);
+  }
+
+  async function startCustomDial(phone: string) {
+    setDialStarting(true);
+    setDialError(null);
+    try {
+      const session = await createCustomDialSession(phone);
+      setDialOpen(false);
+      setCustomCall(session);
+      setLiveCall(session);
+      try {
+        await connectTwilioCall(session.id);
+      } catch (connectError) {
+        await cancelCallSession(session.id).catch(() => undefined);
+        setCustomCall(null);
+        setLiveCall(null);
+        setDialOpen(true);
+        throw connectError;
+      }
+    } catch (err) {
+      setDialError(err instanceof Error ? err.message : "Could not start call");
+    } finally {
+      setDialStarting(false);
+    }
+  }
+
+  function finishCustomCall() {
+    hangUpTwilioCall();
+    setCustomCall(null);
+    setLiveCall(null);
+    navigate("/leads");
   }
 
   return (
@@ -147,6 +190,21 @@ export function AppLayout() {
                 {data.twilio.callerId}
               </p>
             ) : null}
+            {hideCampaignChrome ? null : (
+              <button
+                type="button"
+                aria-label={NAV_COPY.dial}
+                title={NAV_COPY.dial}
+                className="header-icon-link"
+                disabled={pending || campaignBusy || Boolean(editor) || Boolean(liveCall)}
+                onClick={() => {
+                  setDialError(null);
+                  setDialOpen(true);
+                }}
+              >
+                <Icon name="phone" className="text-current" size={20} />
+              </button>
+            )}
             <Link
               to="/notifications"
               aria-label={notificationsLabel}
@@ -228,6 +286,27 @@ export function AppLayout() {
           onTerminal={finishInboundCall}
         />
       ) : null}
+
+      {customCall ? (
+        <CallingPanel
+          session={customCall}
+          recordingNotice={data.recordingNotice}
+          onSession={setCustomCall}
+          onTerminal={finishCustomCall}
+        />
+      ) : null}
+
+      <CustomDialer
+        open={dialOpen && !customCall}
+        calling={dialStarting}
+        error={dialError}
+        disabledReason={customDialDisabled}
+        onClose={() => {
+          if (dialStarting) return;
+          setDialOpen(false);
+        }}
+        onCall={(phone) => void startCustomDial(phone)}
+      />
 
       <main
         className={`${SHELL} flex min-h-0 flex-1 flex-col ${

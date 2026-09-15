@@ -12,6 +12,7 @@ export const NAV_COPY = {
   settings: "Settings",
   calendar: "Calendar",
   newCampaign: "New campaign",
+  dial: "Dial a number",
   signOut: "Sign out",
   themeToDark: "Switch to dark theme",
   themeToLight: "Switch to light theme"

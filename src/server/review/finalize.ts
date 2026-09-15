@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import type { CampaignConfig, PlaybookConfig, SheetsConfig } from "../../shared/schemas.js";
 import type { PublicProposal } from "../../shared/contracts.js";
+import { isCustomDialCampaign } from "../../shared/customDial.js";
 import { isTerminalStatus } from "../calls/state.js";
 import { getSession, sessionCampaign, type LeadSnapshot } from "../calls/ledger.js";
 import type { CoachEngine } from "../coach/engine.js";
@@ -54,6 +55,9 @@ export class ReviewFinalizer {
     }
     if (!isTerminalStatus(session.status)) {
       throw new Error("Call is still active");
+    }
+    if (isCustomDialCampaign(session.campaign_id)) {
+      throw new Error("Custom dials are not written to the Sheet");
     }
 
     const campaign = sessionCampaign(session, this.deps.campaigns);

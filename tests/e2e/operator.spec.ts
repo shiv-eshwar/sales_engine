@@ -137,6 +137,30 @@ test("contact hangup opens review in this tab", async ({ page, server }) => {
   await expect(page.getByRole("button", { name: "Hang Up" })).toHaveCount(0);
 });
 
+test("optional dial pad calls a custom number without review", async ({ page, server }) => {
+  await login(page, server.baseURL);
+  await expect(page.getByLabel("Twilio device registered")).toBeVisible();
+  await page.getByRole("button", { name: "Dial a number" }).click();
+  await expect(page.getByRole("dialog", { name: "Dial a number" })).toBeVisible();
+  for (const digit of "4155550199") {
+    await page.getByRole("button", { name: `Dial ${digit}` }).click();
+  }
+  await page.getByRole("dialog", { name: "Dial a number" }).getByRole("button", { name: "Call" }).click();
+  await expect(page.getByLabel("Call state connecting")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "+14155550199" })).toBeVisible();
+
+  const live = await server.startMedia(page);
+  const completed = await server.signedPost("/twilio/voice/status", {
+    sessionId: live.sessionId,
+    CallSid: live.parentSid,
+    CallStatus: "completed"
+  });
+  expect(completed.status).toBe(204);
+  await expect(page).toHaveURL(/\/leads$/);
+  await expect(page.getByLabel("Review chat")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Hang Up" })).toHaveCount(0);
+});
+
 test("open a specific lead from the table, search and navigate", async ({ page, server }) => {
   await login(page, server.baseURL);
   await chooseCampaign(page, "Lamina founder sales");

@@ -8,6 +8,7 @@ export type CallSessionView = {
   leadId: string;
   campaignId: string;
   campaignName?: string;
+  customDial?: boolean;
   preparation?: ProspectPreparation | null;
   status: string;
   transportOutcome: string | null;
@@ -57,6 +58,19 @@ export async function createCallSession(leadId: string, campaignId: string, prep
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify({ leadId, campaignId, preparationId })
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return (await response.json()) as CallSessionView;
+}
+
+export async function createCustomDialSession(phone: string): Promise<CallSessionView> {
+  const response = await fetch("/api/calls/sessions/custom", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ phone })
   });
   if (!response.ok) {
     throw new Error(await parseError(response));

@@ -6,11 +6,15 @@ import {
   ActiveCallExistsError,
   applyTransportStatus,
   createCallSession,
+  createCustomDialSession,
   findActiveSession,
   getSession,
   publicCallSession,
   type CallSessionRow
 } from "../calls/ledger.js";
+import { isCustomDialCampaign } from "../../shared/customDial.js";
+import { normalizePhone } from "../../shared/phone.js";
+import { allowedCountriesFromEnv } from "../sheets/createStore.js";
 import { isTerminalStatus } from "../calls/state.js";
 import { listUtterances } from "../transcript/utterances.js";
 import { twilioVoiceConfigured } from "../twilio/config.js";
@@ -23,6 +27,10 @@ const createSessionSchema = z.object({
   leadId: z.string().min(1),
   campaignId: z.string().min(1),
   preparationId: z.string().min(1).optional()
+});
+
+const customDialSchema = z.object({
+  phone: z.string().trim().min(3).max(32)
 });
 
 const dtmfSchema = z.object({
@@ -130,6 +138,35 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
     }
   });
 
+  app.post("/api/calls/sessions/custom", { preHandler: auth }, async (request, reply) => {
+    const parsed = customDialSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Enter a phone number" });
+    }
+    if (ctx.shuttingDown) {
+      return reply.code(503).send({ error: "Server is shutting down", code: "draining" });
+    }
+    if (!twilioVoiceConfigured(ctx.env)) {
+      return reply.code(503).send({ error: "Twilio Voice is not configured" });
+    }
+    const normalized = normalizePhone(parsed.data.phone, allowedCountriesFromEnv(ctx.env));
+    if (!normalized.ok) {
+      return reply.code(400).send({ error: normalized.error });
+    }
+    try {
+      const session = createCustomDialSession(ctx.db, {
+        e164: normalized.e164,
+        operator: getSessionUser(ctx, request)
+      });
+      return reply.code(201).send(serializeCall(ctx, session));
+    } catch (error) {
+      if (error instanceof ActiveCallExistsError) {
+        return reply.code(409).send({ error: error.message, code: "active_call", sessionId: error.sessionId });
+      }
+      throw error;
+    }
+  });
+
   app.get("/api/calls/active", { preHandler: auth }, async () => {
     const row = findActiveSession(ctx.db);
     return { call: row ? serializeCall(ctx, row) : null };
@@ -186,7 +223,7 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
       applyTransportStatus(ctx.db, id, "canceled");
     }
     const updated = getSession(ctx.db, id);
-    if (updated && isTerminalStatus(updated.status) && ctx.finalizer) {
+    if (updated && isTerminalStatus(updated.status) && ctx.finalizer && !isCustomDialCampaign(updated.campaign_id)) {
       try {
         await ctx.finalizer.finalize(id);
       } catch {

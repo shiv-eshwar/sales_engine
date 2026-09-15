@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { CampaignConfig } from "../../shared/schemas.js";
 import type { CampaignBrief, ProspectPreparation } from "../../shared/campaigns.js";
+import { CUSTOM_DIAL_CAMPAIGN_ID, customDialLeadId, isCustomDialCampaign } from "../../shared/customDial.js";
 import type { PublicLastTouch } from "../../shared/contracts.js";
 import {
   ACTIVE_CALL_STATUSES,
@@ -44,6 +45,7 @@ export type LeadSnapshot = {
   offering?: CampaignBrief;
   preparation?: ProspectPreparation;
   lastTouch?: PublicLastTouch | null;
+  customDial?: boolean;
 };
 
 export function sessionCampaign(row: CallSessionRow, campaigns: CampaignConfig[]): CampaignConfig | undefined {
@@ -130,6 +132,32 @@ export function createCallSession(
     throw new Error("Failed to load created call session");
   }
   return row;
+}
+
+export function createCustomDialSession(
+  db: Database.Database,
+  input: {
+    e164: string;
+    operator?: { id: string; email: string } | null;
+  }
+): CallSessionRow {
+  const leadId = customDialLeadId(input.e164);
+  return createCallSession(db, {
+    leadId,
+    campaignId: CUSTOM_DIAL_CAMPAIGN_ID,
+    campaignVersion: 0,
+    operator: input.operator,
+    snapshot: {
+      leadId,
+      fullName: input.e164,
+      phone: input.e164,
+      phoneE164: input.e164,
+      company: "",
+      role: "",
+      enrichment: "Custom dial. Not a Sheet lead.",
+      customDial: true
+    }
+  });
 }
 
 export function createInboundSession(
@@ -301,6 +329,7 @@ export function publicCallSession(row: CallSessionRow) {
     leadId: row.lead_id,
     campaignId: row.campaign_id,
     campaignName: snapshot.campaign?.name,
+    customDial: Boolean(snapshot.customDial) || isCustomDialCampaign(row.campaign_id),
     preparation: snapshot.preparation ?? null,
     status: row.status,
     transportOutcome: row.transport_outcome,

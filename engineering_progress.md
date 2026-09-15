@@ -313,6 +313,7 @@ Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` (6/6) and V
 
 - [x] Home is one call queue in Sheet order; the next dialable row is Up next with Call as the primary action and Skip as outline; lead detail still uses the contact card
 - [x] Last-call context on Up next / lead detail: last dial vs last conversation, attempt count, who called (session user), and `follow_up_at` as a wait line. Fed into prospect brief + live coach. No team queues.
+- [x] Optional header Dial pad: custom E.164 in allowed countries, no Sheet write, hang-up returns Home
 - [x] First-run is an empty-state card, not an auto-opened campaign drawer
 - [x] Every eligible Sheet row is in the selected campaign queue (no assign-leads UI)
 - [x] Disabled Generate looks disabled; AI copy does not name env vars
@@ -494,3 +495,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-15 | Verified auth + theme: logout Set-Cookie now matches Secure/SameSite so HTTPS sign-out clears the session; unknown-email login still runs scrypt; 390px header stays in-viewport (logo + New campaign icon-only). Typecheck + 195 Vitest + 8 Playwright. | Slice 7 complete; operator auth + theme; Slice 6 live smoke still blocked |
 | 2026-09-15 | Home is one call queue (Sheet order, Up next Call/Skip, no left card). Every hang-up — Hang Up or remote completed — navigates to `/calls/:id/review` in this tab; write/discard returns to `/leads`. Typecheck + 196 Vitest + 9 Playwright. | Slice 7 complete; Home queue + same-tab review; Slice 6 live smoke still blocked |
 | 2026-09-15 | Last-call context: stamp `call_sessions` with the logged-in operator; show last dial vs last conversation on Up next and lead detail; feed lastTouch into prospect-research and live coach. No Last Caller Sheet column, no team queues. Typecheck + 202 Vitest + 9 Playwright. | Slice 7 complete; last-call context; Slice 6 live smoke still blocked |
+| 2026-09-16 | Optional Dial pad in the header: server-validated custom E.164, same live HUD, no Sheet write, hang-up returns Home. Queue Call path unchanged. Typecheck + 203 Vitest + 10 Playwright. | Slice 7 complete; optional custom dial; Slice 6 live smoke still blocked |
