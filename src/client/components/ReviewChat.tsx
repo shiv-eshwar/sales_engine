@@ -9,7 +9,6 @@ import { Alert } from "@heroui/react";
 import type { PublicCalendarProposal, PublicProposal } from "../../shared/contracts";
 import { openingReviewMessage } from "../../shared/reviewOpening";
 import { fetchCalendarProposals, interviewReview, type ReviewInterviewResponse } from "../state/api";
-import { nextLeadPath } from "../copy";
 import { ReviewThread } from "./ReviewThread";
 import { REVIEW_COLUMN } from "./reviewChatLayout";
 import { useSession } from "../state/session";
@@ -81,11 +80,7 @@ export function ReviewChat({
           });
         }
         if (result.leftReview) {
-          const next = result.leads.find((item) => item.dialable) ?? result.lead ?? null;
-          await onFinishedRef.current(
-            result.proposal.status === "discarded" ? "/leads" : nextLeadPath(next),
-            result
-          );
+          await onFinishedRef.current("/leads", result);
         }
         return { content: [{ type: "text", text: result.text }] };
       } catch (caught) {

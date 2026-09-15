@@ -105,6 +105,12 @@ export const DATETIME_FIELD_KEYS = new Set<WriteFieldKey>(["last_called_at", "fo
 export const AI_DISCONNECTED_COPY =
   "AI is not connected — ask whoever runs this box to finish setup.";
 
+export const QUEUE_COPY = {
+  upNext: "Up next",
+  section: "Call queue",
+  preparing: "Preparing…"
+};
+
 export const EMPTY_COPY = {
   campaign: {
     title: "Create a campaign",
@@ -303,10 +309,6 @@ export function diagnosticCopy(item: SheetDiagnostic): string {
     return `${who} has a phone that cannot be dialed.`;
   }
   return item.message;
-}
-
-export function nextLeadPath(lead: { leadId: string } | null | undefined): string {
-  return lead ? `/leads/${encodeURIComponent(lead.leadId)}` : "/leads";
 }
 
 export function isWarningCue(cueType: string | undefined, text?: string, reason?: string): boolean {

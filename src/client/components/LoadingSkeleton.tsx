@@ -120,6 +120,7 @@ export function QueueTableSkeleton() {
         <Pulse className="h-9 min-w-52 flex-1 rounded-lg bg-surface shadow-sm" />
         <Pulse ground className="h-3.5 w-12" />
         <div className="flex items-center gap-3">
+          <Pulse ground className="h-3.5 w-12" />
           <Pulse ground className="h-3.5 w-10" />
           <Pulse ground className="h-3.5 w-16" />
           <Pulse ground className="h-3.5 w-12" />
@@ -160,14 +161,7 @@ export function QueueTableSkeleton() {
 export function HomeBootSkeleton() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5 lg:overflow-hidden" role="status" aria-label="Loading leads…">
-      <div className={SPLIT}>
-        <div className={SPLIT_RAIL}>
-          <ContactCardSkeleton skip />
-        </div>
-        <div className={SPLIT_PANE}>
-          <QueueTableSkeleton />
-        </div>
-      </div>
+      <QueueTableSkeleton />
     </div>
   );
 }

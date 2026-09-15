@@ -7,11 +7,11 @@ function html(pathname: string): string {
 }
 
 describe("route boot skeletons", () => {
-  it("keeps Home copy and the next-up + queue split", () => {
+  it("keeps Home copy as a queue list without the next-up card split", () => {
     const markup = html("/leads");
     expect(markup).toContain("Loading leads…");
-    expect(markup).toContain("lg:grid-cols-[minmax(20rem,28rem)_minmax(0,1fr)]");
-    expect(markup).toContain("flex-1 flex-col overflow-hidden");
+    expect(markup).not.toContain("lg:grid-cols-[minmax(20rem,28rem)_minmax(0,1fr)]");
+    expect(markup).not.toContain("border-t-[3px] border-t-accent bg-surface shadow-sm max-lg:pb-[5.5rem]");
     expect(markup).not.toContain("Breadcrumb");
   });
 

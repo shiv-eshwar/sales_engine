@@ -1,9 +1,10 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Alert, Button } from "@heroui/react";
 import { useSession } from "../state/session";
-import { fetchBootstrap } from "../state/api";
+import { finalizeCall } from "../state/api";
 import { fetchCallSession } from "../state/calls";
 import { hangUpTwilioCall } from "../twilio/device";
+import { callReviewPath } from "../state/openCallReview";
 import { CampaignDrawer } from "../components/CampaignDrawer";
 import { CampaignSelect } from "../components/CampaignSelect";
 import { CallingPanel } from "../components/CallingPanel";
@@ -76,16 +77,15 @@ export function AppLayout() {
     navigate(`/leads/${session.leadId}`);
   }
 
-  async function closeInboundCall() {
-    hangUpTwilioCall();
-    setInboundCall(null);
-    try {
-      const bootstrap = await fetchBootstrap();
-      void bootstrap;
-      await refresh();
-    } catch {
-      // refresh() already surfaces errors
+  function finishInboundCall() {
+    const sessionId = inboundCall?.id;
+    if (!sessionId) {
+      setInboundCall(null);
+      return;
     }
+    navigate(callReviewPath(sessionId));
+    setInboundCall(null);
+    void finalizeCall(sessionId).catch(() => undefined);
   }
 
   return (
@@ -225,8 +225,7 @@ export function AppLayout() {
           session={inboundCall}
           recordingNotice={data.recordingNotice}
           onSession={setInboundCall}
-          onTerminal={() => void closeInboundCall()}
-          reviewOnHangUp={false}
+          onTerminal={finishInboundCall}
         />
       ) : null}
 

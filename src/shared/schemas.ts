@@ -345,7 +345,7 @@ export const leadsListQuerySchema = z.object({
   campaignId: z.string().min(1).optional(),
   q: z.string().optional().default(""),
   dialable: z.enum(["0", "1", "true", "false"]).optional(),
-  sort: z.enum(["name", "company", "status"]).optional().default("name"),
+  sort: z.enum(["queue", "name", "company", "status"]).optional().default("queue"),
   dir: z.enum(["asc", "desc"]).optional().default("asc"),
   cursor: z.string().optional(),
   limit: z.string().regex(/^\d+$/).optional()

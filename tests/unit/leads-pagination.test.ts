@@ -118,4 +118,40 @@ describe("leads pagination", () => {
     expect(page.undialableCount).toBe(leads.filter((item) => !item.dialable).length);
     expect(page.queueSize).toBe(95);
   });
+
+  it("preserves Sheet order when sort is queue", () => {
+    const mixed = [
+      lead(2, { fullName: "Zed Last" }),
+      lead(1, { fullName: "Amy First" })
+    ];
+    const queued = paginateLeads(mixed, {
+      q: "",
+      dialableOnly: false,
+      sort: "queue",
+      dir: 1,
+      cursor: null,
+      limit: 10
+    });
+    expect(queued.items.map((item) => item.leadId)).toEqual(["L-2", "L-1"]);
+
+    const reversed = paginateLeads(mixed, {
+      q: "",
+      dialableOnly: false,
+      sort: "queue",
+      dir: -1,
+      cursor: null,
+      limit: 10
+    });
+    expect(reversed.items.map((item) => item.leadId)).toEqual(["L-1", "L-2"]);
+
+    const named = paginateLeads(mixed, {
+      q: "",
+      dialableOnly: false,
+      sort: "name",
+      dir: 1,
+      cursor: null,
+      limit: 10
+    });
+    expect(named.items.map((item) => item.leadId)).toEqual(["L-1", "L-2"]);
+  });
 });

@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
+import { Button } from "@heroui/react";
 import type { PublicLead } from "../../shared/contracts";
 import { filterLeads, sortLeads, type LeadSortKey } from "../../shared/leadsQueue";
+import { QUEUE_COPY } from "../copy";
 import { Icon } from "./Icon";
 import { SCROLL, SCROLL_X } from "../layout/shell";
 
@@ -38,18 +40,71 @@ function LoadSentinel({
   return <div ref={nodeRef} aria-hidden className="h-px w-full" />;
 }
 
+function UpNextActions({
+  onCall,
+  onSkip,
+  callDisabled,
+  callPending,
+  preparing,
+  disabledReason,
+  callButtonRef
+}: {
+  onCall: () => void;
+  onSkip: () => void;
+  callDisabled: boolean;
+  callPending: boolean;
+  preparing: boolean;
+  disabledReason: string | null;
+  callButtonRef?: RefObject<HTMLButtonElement | null>;
+}) {
+  const hint = disabledReason ?? (preparing ? QUEUE_COPY.preparing : null);
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Button
+        ref={callButtonRef}
+        className="min-h-11 min-w-24 rounded-lg!"
+        isDisabled={callDisabled}
+        isPending={callPending}
+        onPress={onCall}
+      >
+        {callPending ? "Calling…" : "Call"}
+      </Button>
+      <Button variant="outline" className="min-h-11 rounded-lg!" isDisabled={callPending} onPress={onSkip}>
+        Skip
+      </Button>
+      {hint ? <p className="basis-full text-sm text-muted">{hint}</p> : null}
+    </div>
+  );
+}
+
 export function LeadsTable({
   leads,
   empty,
   hasMore = false,
   loadingMore = false,
-  onLoadMore
+  onLoadMore,
+  nextLeadId = null,
+  onCall,
+  onSkip,
+  callDisabled = false,
+  callPending = false,
+  preparing = false,
+  disabledReason = null,
+  callButtonRef
 }: {
   leads: PublicLead[];
   empty?: ReactNode;
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
+  nextLeadId?: string | null;
+  onCall?: () => void;
+  onSkip?: () => void;
+  callDisabled?: boolean;
+  callPending?: boolean;
+  preparing?: boolean;
+  disabledReason?: string | null;
+  callButtonRef?: RefObject<HTMLButtonElement | null>;
 }) {
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
@@ -61,32 +116,80 @@ export function LeadsTable({
     <LoadSentinel disabled={!hasMore || loadingMore} onVisible={onLoadMore} rootRef={tableScrollRef} />
   ) : null;
 
+  function isNext(lead: PublicLead): boolean {
+    return Boolean(nextLeadId && lead.leadId === nextLeadId && onCall && onSkip);
+  }
+
   return (
     <>
       <ul className="space-y-3 lg:hidden" aria-label="Leads">
-        {leads.map((lead) => (
-          <li key={lead.leadId}>
-            <Link
-              to={`/leads/${encodeURIComponent(lead.leadId)}`}
-              className="block min-h-11 rounded-lg bg-surface px-4 py-3 shadow-sm"
-              aria-label={`Open ${lead.fullName || lead.leadId}`}
-            >
-              <p className="font-semibold">{lead.fullName || "Unnamed contact"}</p>
-              <p className="mt-0.5 text-sm text-muted">
-                {[lead.role, lead.company].filter(Boolean).join(" · ") || "—"}
-              </p>
-              <p className="mt-1 flex items-center gap-2 font-mono text-xs tabular-nums">
-                <Icon
-                  name={lead.dialable ? "phone" : "phoneOff"}
-                  size={14}
-                  className={lead.dialable ? "text-muted" : "text-danger"}
-                  title={lead.dialable ? undefined : "Not dialable"}
-                />
-                {lead.phoneE164 ?? lead.phone}
-              </p>
-            </Link>
-          </li>
-        ))}
+        {leads.map((lead) => {
+          const next = isNext(lead);
+          if (next && onCall && onSkip) {
+            return (
+              <li key={lead.leadId}>
+                <article
+                  aria-label={QUEUE_COPY.upNext}
+                  className="rounded-lg border-t-[3px] border-t-accent bg-surface px-4 py-3 shadow-sm"
+                >
+                  <p className="text-xs font-semibold text-accent">{QUEUE_COPY.upNext}</p>
+                  <Link
+                    to={`/leads/${encodeURIComponent(lead.leadId)}`}
+                    className="mt-1 block font-semibold text-foreground hover:underline hover:underline-offset-2"
+                    aria-label={`Open ${lead.fullName || lead.leadId}`}
+                  >
+                    {lead.fullName || "Unnamed contact"}
+                  </Link>
+                  <p className="mt-0.5 text-sm text-muted">
+                    {[lead.role, lead.company].filter(Boolean).join(" · ") || "—"}
+                  </p>
+                  <p className="mt-1 flex items-center gap-2 font-mono text-xs tabular-nums">
+                    <Icon
+                      name={lead.dialable ? "phone" : "phoneOff"}
+                      size={14}
+                      className={lead.dialable ? "text-muted" : "text-danger"}
+                      title={lead.dialable ? undefined : "Not dialable"}
+                    />
+                    {lead.phoneE164 ?? lead.phone}
+                  </p>
+                  <div className="mt-4">
+                    <UpNextActions
+                      onCall={onCall}
+                      onSkip={onSkip}
+                      callDisabled={callDisabled}
+                      callPending={callPending}
+                      preparing={preparing}
+                      disabledReason={disabledReason}
+                    />
+                  </div>
+                </article>
+              </li>
+            );
+          }
+          return (
+            <li key={lead.leadId}>
+              <Link
+                to={`/leads/${encodeURIComponent(lead.leadId)}`}
+                className="block min-h-11 rounded-lg bg-surface px-4 py-3 shadow-sm"
+                aria-label={`Open ${lead.fullName || lead.leadId}`}
+              >
+                <p className="font-semibold">{lead.fullName || "Unnamed contact"}</p>
+                <p className="mt-0.5 text-sm text-muted">
+                  {[lead.role, lead.company].filter(Boolean).join(" · ") || "—"}
+                </p>
+                <p className="mt-1 flex items-center gap-2 font-mono text-xs tabular-nums">
+                  <Icon
+                    name={lead.dialable ? "phone" : "phoneOff"}
+                    size={14}
+                    className={lead.dialable ? "text-muted" : "text-danger"}
+                    title={lead.dialable ? undefined : "Not dialable"}
+                  />
+                  {lead.phoneE164 ?? lead.phone}
+                </p>
+              </Link>
+            </li>
+          );
+        })}
         {onLoadMore ? (
           <li>
             <LoadSentinel disabled={!hasMore || loadingMore} onVisible={onLoadMore} />
@@ -105,13 +208,22 @@ export function LeadsTable({
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Company</th>
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Phone</th>
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">Status</th>
+              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+                <span className="sr-only">Call</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {leads.map((lead) => {
+              const next = isNext(lead);
               return (
-                <tr key={lead.leadId} className="hover:bg-surface-secondary">
+                <tr
+                  key={lead.leadId}
+                  aria-label={next ? QUEUE_COPY.upNext : undefined}
+                  className={next ? "border-t-[3px] border-t-accent" : "hover:bg-surface-secondary"}
+                >
                   <td className="px-4 py-2.5">
+                    {next ? <p className="text-xs font-semibold text-accent">{QUEUE_COPY.upNext}</p> : null}
                     <Link
                       to={`/leads/${encodeURIComponent(lead.leadId)}`}
                       className="font-semibold text-foreground hover:underline hover:underline-offset-2"
@@ -135,6 +247,19 @@ export function LeadsTable({
                   </td>
                   <td className="px-4 py-2.5 text-sm text-muted">
                     {[lead.callStatus, lead.crmStatus].filter(Boolean).join(" · ") || "—"}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {next && onCall && onSkip ? (
+                      <UpNextActions
+                        onCall={onCall}
+                        onSkip={onSkip}
+                        callDisabled={callDisabled}
+                        callPending={callPending}
+                        preparing={preparing}
+                        disabledReason={disabledReason}
+                        callButtonRef={callButtonRef}
+                      />
+                    ) : null}
                   </td>
                 </tr>
               );

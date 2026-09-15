@@ -311,13 +311,13 @@ Proof: Vitest including `tests/unit/agents.test.ts`, `tests/unit/prospect-brief.
 
 Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` (6/6) and Vitest including `tests/unit/ui-copy.test.ts`. No power dialer, auto-dial, or extra dashboards.
 
-- [x] Ready shows a next-up contact card with Call as the primary action; table is secondary (`All leads`)
+- [x] Home is one call queue in Sheet order; the next dialable row is Up next with Call as the primary action and Skip as outline; lead detail still uses the contact card
 - [x] First-run is an empty-state card, not an auto-opened campaign drawer
 - [x] Every eligible Sheet row is in the selected campaign queue (no assign-leads UI)
 - [x] Disabled Generate looks disabled; AI copy does not name env vars
 - [x] Live HUD: sticky Mute/Hang Up, large cue, keypad collapsed behind “Need to press a key?”
 - [x] Live call hides New campaign, disables campaign switching, intercepts Ready navigation
-- [x] Approve & next opens the next dialable lead’s Ready panel with Call
+- [x] After review write or discard, operator returns to Home `/leads`
 - [x] Queue defaults to dialable (`Ready to call`); undialable split via “need a phone fix”
 - [x] One product name (Mantis); one readiness chip
 - [x] Call is large; opening + first question on Ready; long brief behind Prep
@@ -333,14 +333,14 @@ Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` and Vitest 
 - [x] Caller-facing Ready / live HUD / review chrome uses HeroUI (Button, Card, Alert, Chip, Modal)
 - [x] Campaign creation is an in-app interview chat (assistant-ui + `campaign-interview` agent), not a form
 - [x] Campaign form/drawer fields removed; POST `/api/campaigns` remains for tests and internal use
-- [x] Merged P0/P1 caller workflow kept: next-up Ready, pinned live HUD, Approve → next contact
+- [x] Merged P0/P1 caller workflow kept: Home queue Up next, pinned live HUD, review → Home
 
 ### Operator UI rebuild (Refactoring UI)
 
 Proof: Playwright `tests/e2e/operator.spec.ts` + `campaigns.spec.ts` (6/6) and Vitest 137. Visual pass against screenshots of empty, Ready, lead detail, sheet connect, diagnostics.
 
 - [x] HSL grey/primary/accent scales, hand-crafted type and spacing tokens, ~5 elevations, one 8px radius (no pill mix)
-- [x] Feature-first Ready: next contact + Call as the only solid primary; Skip outline; Refresh tertiary
+- [x] Feature-first Home queue: Up next row is the only solid Call; Skip outline; Refresh tertiary
 - [x] Empty campaign is a first-class screen with accent bar and one CTA; header chrome de-emphasized
 - [x] Live HUD keeps same-hue secondaries on the dark ground (no grey-on-navy)
 - [x] Review ranks semantic outcome over label:value dumps; Approve stays the pinned primary
@@ -491,3 +491,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-15 | Auth pages: quiet same-hue mint wash behind Sign in / Create account (AuthShell + boot skeleton). Reduced-motion freezes the blobs. | Slice 7 complete; operator auth polish; Slice 6 live smoke still blocked |
 | 2026-09-15 | Light/dark theme: evergreen dark (not navy invert), mint accent kept, header/auth/Settings/live-call toggle, preference persisted. | Slice 7 complete; operator theme; Slice 6 live smoke still blocked |
 | 2026-09-15 | Verified auth + theme: logout Set-Cookie now matches Secure/SameSite so HTTPS sign-out clears the session; unknown-email login still runs scrypt; 390px header stays in-viewport (logo + New campaign icon-only). Typecheck + 195 Vitest + 8 Playwright. | Slice 7 complete; operator auth + theme; Slice 6 live smoke still blocked |
+| 2026-09-15 | Home is one call queue (Sheet order, Up next Call/Skip, no left card). Every hang-up — Hang Up or remote completed — navigates to `/calls/:id/review` in this tab; write/discard returns to `/leads`. Typecheck + 196 Vitest + 9 Playwright. | Slice 7 complete; Home queue + same-tab review; Slice 6 live smoke still blocked |

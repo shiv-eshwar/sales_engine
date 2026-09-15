@@ -1,18 +1,16 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Alert, Button } from "@heroui/react";
 import { useSession } from "../state/session";
 import { EmptyState } from "../components/EmptyState";
 import { LeadsTable, type LeadSortKey } from "../components/LeadsTable";
 import type { PublicLead } from "../../shared/contracts";
-import { ReadyContactCard } from "../components/ReadyContactCard";
 import { CallingPanel } from "../components/CallingPanel";
-import { AI_DISCONNECTED_COPY, EMPTY_COPY, PAGE_TITLES } from "../copy";
+import { AI_DISCONNECTED_COPY, EMPTY_COPY, PAGE_TITLES, QUEUE_COPY } from "../copy";
 import { useLeadCall } from "../state/useLeadCall";
 import { usePaginatedLeads } from "../state/usePaginatedLeads";
 import { usePageTitle } from "../usePageTitle";
 import { clampLeadsLimit } from "../../shared/leadsQueue";
-import { SPLIT, SPLIT_PANE, SPLIT_RAIL } from "../layout/shell";
 
 export function LeadsPage() {
   const { data, pending, campaignBusy, setEditor } = useSession();
@@ -20,7 +18,7 @@ export function LeadsPage() {
   const [searchParams] = useSearchParams();
   const [query, setQuery] = useState("");
   const [dialableOnly, setDialableOnly] = useState(true);
-  const [sortKey, setSortKey] = useState<LeadSortKey>("name");
+  const [sortKey, setSortKey] = useState<LeadSortKey>("queue");
   const [sortDir, setSortDir] = useState<1 | -1>(1);
   const callButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -99,54 +97,7 @@ export function LeadsPage() {
             }
           />
         </div>
-      ) : nextLead ? (
-        <div className={SPLIT}>
-          <div className={SPLIT_RAIL}>
-            <ReadyContactCard
-              lead={nextLead}
-              campaign={campaign}
-              opening={opening}
-              firstQuestion={firstQuestion}
-              preparing={preparing}
-              disabledReason={disabledReason}
-              starting={starting}
-              pending={pending}
-              callError={callError}
-              sheetBlocking={sheetBlocking}
-              onCall={() => void onCall()}
-              onSkip={() => void onSkip()}
-              onRefresh={onRefresh}
-              callButtonRef={callButtonRef}
-            />
-          </div>
-          <div className={SPLIT_PANE}>
-            <QueueAlerts
-              aiStatus={data.ai.status}
-              aiMessage={data.ai.message}
-              researchStatus={data.research.status}
-              researchMessage={data.research.message}
-            />
-            {data.leads.length > 0 || page.queueSize > 0 || visible.length > 0 ? (
-              <LeadsQueue
-                query={query}
-                setQuery={setQuery}
-                dialableOnly={dialableOnly}
-                setDialableOnly={setDialableOnly}
-                sortKey={sortKey}
-                sortDir={sortDir}
-                toggleSort={toggleSort}
-                visible={visible}
-                leadsCount={page.total}
-                undialableCount={undialableCount}
-                tableEmpty={tableEmpty}
-                hasMore={page.hasMore}
-                loadingMore={page.loadingMore}
-                onLoadMore={page.loadMore}
-              />
-            ) : null}
-          </div>
-        </div>
-      ) : data.leads.length === 0 ? (
+      ) : data.leads.length === 0 && page.queueSize === 0 ? (
         <div className="pt-6">
           <EmptyState
             icon="leads"
@@ -160,12 +111,13 @@ export function LeadsPage() {
           />
         </div>
       ) : (
-        <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-6">
           <QueueAlerts
             aiStatus={data.ai.status}
             aiMessage={data.ai.message}
             researchStatus={data.research.status}
             researchMessage={data.research.message}
+            callError={callError}
           />
           <LeadsQueue
             query={query}
@@ -184,6 +136,14 @@ export function LeadsPage() {
             onLoadMore={page.loadMore}
             onRefresh={onRefresh}
             refreshDisabled={pending || campaignBusy}
+            nextLeadId={nextLead?.leadId ?? null}
+            onCall={() => void onCall()}
+            onSkip={() => void onSkip()}
+            callDisabled={Boolean(disabledReason) || pending || starting || preparing || sheetBlocking}
+            callPending={starting}
+            preparing={preparing}
+            disabledReason={disabledReason}
+            callButtonRef={callButtonRef}
           />
         </div>
       )}
@@ -195,12 +155,14 @@ function QueueAlerts({
   aiStatus,
   aiMessage,
   researchStatus,
-  researchMessage
+  researchMessage,
+  callError
 }: {
   aiStatus: string;
   aiMessage: string;
   researchStatus: string;
   researchMessage: string;
+  callError: string | null;
 }) {
   return (
     <>
@@ -217,6 +179,14 @@ function QueueAlerts({
           <Alert.Indicator />
           <Alert.Content>
             <Alert.Title>{researchMessage}</Alert.Title>
+          </Alert.Content>
+        </Alert>
+      ) : null}
+      {callError ? (
+        <Alert status="danger" role="alert">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>{callError}</Alert.Title>
           </Alert.Content>
         </Alert>
       ) : null}
@@ -240,7 +210,15 @@ function LeadsQueue({
   loadingMore,
   onLoadMore,
   onRefresh,
-  refreshDisabled
+  refreshDisabled,
+  nextLeadId,
+  onCall,
+  onSkip,
+  callDisabled,
+  callPending,
+  preparing,
+  disabledReason,
+  callButtonRef
 }: {
   query: string;
   setQuery: (value: string) => void;
@@ -258,9 +236,17 @@ function LeadsQueue({
   onLoadMore: () => void;
   onRefresh?: () => void;
   refreshDisabled?: boolean;
+  nextLeadId: string | null;
+  onCall: () => void;
+  onSkip: () => void;
+  callDisabled: boolean;
+  callPending: boolean;
+  preparing: boolean;
+  disabledReason: string | null;
+  callButtonRef: RefObject<HTMLButtonElement | null>;
 }) {
   return (
-    <section aria-label="All leads" className="flex min-h-0 min-w-0 flex-1 flex-col gap-5">
+    <section aria-label={QUEUE_COPY.section} className="flex min-h-0 min-w-0 flex-1 flex-col gap-5">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-1">
         <label className="min-w-0 flex-1 basis-48 text-sm">
           <span className="sr-only">Search leads</span>
@@ -293,7 +279,7 @@ function LeadsQueue({
             </Link>
           ) : null}
           <div className="flex items-center gap-0.5" role="group" aria-label="Sort leads">
-            {([["name", "Name"], ["company", "Company"], ["status", "Status"]] as Array<[LeadSortKey, string]>).map(([key, label]) => (
+            {([["queue", "Queue"], ["name", "Name"], ["company", "Company"], ["status", "Status"]] as Array<[LeadSortKey, string]>).map(([key, label]) => (
               <button
                 key={key}
                 type="button"
@@ -322,6 +308,14 @@ function LeadsQueue({
       </p>
       <LeadsTable
         leads={visible}
+        nextLeadId={nextLeadId}
+        onCall={onCall}
+        onSkip={onSkip}
+        callDisabled={callDisabled}
+        callPending={callPending}
+        preparing={preparing}
+        disabledReason={disabledReason}
+        callButtonRef={callButtonRef}
         hasMore={hasMore}
         loadingMore={loadingMore}
         onLoadMore={onLoadMore}

@@ -8,7 +8,6 @@ import type { ProspectPreparation } from "../../shared/campaigns";
 import type { CallSessionView, CoachSnapshot } from "../state/calls";
 import { callEventsUrl, cancelCallSession, fetchCallSession, sendCallDigits, sendCoachChat } from "../state/calls";
 import { hangUpTwilioCall, sendTwilioDigits, setTwilioMuted } from "../twilio/device";
-import { openCallReviewTab } from "../state/openCallReview";
 import { formatUtteranceText, humanizeId, isWarningCue } from "../copy";
 import { SCROLL, SCROLLBAR, SHELL } from "../layout/shell";
 import { ThemeToggle } from "./ThemeToggle";
@@ -21,8 +20,6 @@ type CallingPanelProps = {
   firstQuestion?: string | null;
   onTerminal: () => void;
   onSession: (session: CallSessionView) => void;
-  /** Operator calls: open `/calls/:id/review` in a new tab on Hang Up (user gesture). */
-  reviewOnHangUp?: boolean;
 };
 
 const TERMINAL = new Set(["completed", "busy", "failed", "no-answer", "canceled"]);
@@ -107,8 +104,7 @@ export function CallingPanel({
   opening,
   firstQuestion,
   onTerminal,
-  onSession,
-  reviewOnHangUp = true
+  onSession
 }: CallingPanelProps) {
   const [muted, setMuted] = useState(false);
   const [, setTick] = useState(0);
@@ -283,9 +279,6 @@ export function CallingPanel({
               variant="danger"
               className={warningCue ? "min-h-11 rounded-lg! ring-2 ring-danger ring-offset-2 ring-offset-background" : "min-h-11 rounded-lg!"}
               onPress={() => {
-                if (reviewOnHangUp) {
-                  openCallReviewTab(session.id);
-                }
                 hangUpTwilioCall();
                 if (session.status !== "in_progress") {
                   void cancelCallSession(session.id);

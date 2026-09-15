@@ -10,6 +10,10 @@ const test = base.extend<{ server: E2eServer }>({
   }
 });
 
+function upNext(page: import("@playwright/test").Page) {
+  return page.getByLabel("Up next", { exact: true }).filter({ visible: true });
+}
+
 async function login(page: import("@playwright/test").Page, baseURL: string) {
   await signIn(page, baseURL);
 }
@@ -60,6 +64,11 @@ test("login through approve loads the next lead", async ({ page, server }) => {
   await chooseCampaign(page, "Lamina founder sales");
   await expect(page).toHaveTitle("Ready · Mantis");
   await expect(page.getByRole("table", { name: "Leads" })).toContainText("Alex Rivera");
+  const next = upNext(page);
+  await expect(next).toBeVisible();
+  await expect(next.getByRole("button", { name: "Call" })).toBeVisible();
+  await expect(next.getByRole("button", { name: "Skip" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Alex Rivera" })).toHaveCount(0);
 
   await openLead(page, "Alex Rivera");
   await expect(page).toHaveTitle("Alex Rivera · Mantis");
@@ -84,7 +93,6 @@ test("login through approve loads the next lead", async ({ page, server }) => {
   await page.getByRole("button", { name: "Unmute" }).click();
   await expect(page.getByRole("button", { name: "Mute" })).toBeVisible();
 
-  const reviewPagePromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Hang Up" }).click();
   const completed = await server.signedPost("/twilio/voice/status", {
     sessionId: live.sessionId,
@@ -93,24 +101,37 @@ test("login through approve loads the next lead", async ({ page, server }) => {
   });
   expect(completed.status).toBe(204);
 
-  const reviewPage = await reviewPagePromise;
-  await expect(page).toHaveURL(/\/leads\/L-100/);
+  await expect(page).toHaveURL(/\/calls\/.+\/review/);
   await expect(page.getByRole("button", { name: "Hang Up" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Alex Rivera" })).toBeVisible();
-  await expect(page.getByLabel("Review chat")).toHaveCount(0);
+  await expect(page.getByLabel("Review chat")).toBeVisible();
+  await expect(page).toHaveTitle("Review · Alex Rivera · Mantis");
+  await expect(page.getByLabel("Review chat")).toContainText("Proposed");
+  await expect(page.getByLabel("Review chat")).toContainText("Call Status");
+  await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
 
-  await expect(reviewPage).toHaveURL(/\/calls\/.+\/review/);
-  await expect(reviewPage.getByLabel("Review chat")).toBeVisible();
-  await expect(reviewPage).toHaveTitle("Review · Alex Rivera · Mantis");
-  await expect(reviewPage.getByLabel("Review chat")).toContainText("Proposed");
-  await expect(reviewPage.getByLabel("Review chat")).toContainText("Call Status");
-  await expect(reviewPage.getByRole("navigation", { name: "Breadcrumb" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Write to Sheet & next" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Approve & next" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Write this update" }).click();
+  await expect(page).toHaveURL(/\/leads$/);
+  await expect(page.getByRole("table", { name: "Leads" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Jordan Chen" })).toHaveCount(0);
+  await expect(upNext(page).getByRole("button", { name: "Call" })).toBeVisible();
+});
 
-  await expect(reviewPage.getByRole("button", { name: "Write to Sheet & next" })).toHaveCount(0);
-  await expect(reviewPage.getByRole("button", { name: "Approve & next" })).toHaveCount(0);
-  await reviewPage.getByRole("button", { name: "Write this update" }).click();
-  await expect(reviewPage.getByRole("heading", { name: "Jordan Chen" })).toBeVisible();
-  await expect(reviewPage.getByRole("button", { name: "Call" })).toBeVisible();
+test("contact hangup opens review in this tab", async ({ page, server }) => {
+  await login(page, server.baseURL);
+  await chooseCampaign(page, "Lamina founder sales");
+  await openLead(page, "Alex Rivera");
+  const live = await connectLiveCall(page, server);
+  const completed = await server.signedPost("/twilio/voice/status", {
+    sessionId: live.sessionId,
+    CallSid: live.parentSid,
+    CallStatus: "completed"
+  });
+  expect(completed.status).toBe(204);
+  await expect(page).toHaveURL(/\/calls\/.+\/review/);
+  await expect(page.getByLabel("Review chat")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Hang Up" })).toHaveCount(0);
 });
 
 test("open a specific lead from the table, search and navigate", async ({ page, server }) => {
@@ -119,6 +140,8 @@ test("open a specific lead from the table, search and navigate", async ({ page, 
   await expect(page.getByRole("table", { name: "Leads" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Open Alex Rivera/ }).first()).toBeVisible();
   await expect(page.getByRole("table", { name: "Leads" })).toContainText("Alex Rivera");
+  await expect(upNext(page).getByRole("button", { name: "Call" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Alex Rivera" })).toHaveCount(0);
 
   // Search filters the table.
   await page.getByLabel("Search leads").fill("Jordan");

@@ -1,6 +1,6 @@
 import type { PublicLead } from "./contracts.js";
 
-export type LeadSortKey = "name" | "company" | "status";
+export type LeadSortKey = "queue" | "name" | "company" | "status";
 
 export const LEADS_PAGE_SIZE = 40;
 export const LEADS_PAGE_SIZE_MAX = 100;
@@ -14,6 +14,10 @@ export type LeadsListQueryKey = {
 };
 
 export function sortLeads(leads: PublicLead[], key: LeadSortKey, dir: 1 | -1): PublicLead[] {
+  if (key === "queue") {
+    const items = [...leads];
+    return dir === -1 ? items.reverse() : items;
+  }
   const pick = (lead: PublicLead): string => {
     if (key === "company") return `${lead.company} ${lead.fullName}`.toLowerCase();
     if (key === "status") return `${lead.callStatus} ${lead.crmStatus} ${lead.fullName}`.toLowerCase();
