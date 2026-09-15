@@ -615,12 +615,20 @@ const LiveCoachOutput = z.object({
   cue: z.string().max(400),
   say: z.string().max(400).optional(),
   calendarProposal: z.object({
+    intent: z.enum(["meeting", "callback", "reminder"]).optional(),
     title: z.string().max(200).optional(),
     start: z.string(),
     end: z.string(),
     timezone: z.string(),
     attendees: z.array(z.string()).optional(),
     meet: z.boolean().optional(),
+    notes: z.string().max(2000).nullable().optional()
+  }).nullable().optional(),
+  calendarReminder: z.object({
+    title: z.string().max(200).optional(),
+    start: z.string(),
+    end: z.string(),
+    timezone: z.string(),
     notes: z.string().max(2000).nullable().optional()
   }).nullable().optional(),
   reason: z.string().max(240),
@@ -645,7 +653,7 @@ Server validation rules:
 5. Do not show low-confidence cues below the configured threshold.
 6. Persist an append-only coach feed (`coach_messages`). Each new shown turn appends; the latest suggestion is visually larger and older turns are quieter. Idle connected state is the thread waiting — not a “No cue right now” empty card.
 7. The operator may send a composer turn (`POST /api/calls/:id/coach/chat`) that is not rate-limited the same way as transcript-triggered coaching.
-8. Optional `calendarProposal` is a draft only. Never execute Calendar insert from the model. Send only after `POST /api/calendar/proposals/:id/approve`.
+8. Optional `calendarProposal` / `calendarReminder` are drafts only. Never execute Calendar insert from the model. Send only after `POST /api/calendar/proposals/:id/approve`. Intent `meeting` may invite attendees (`sendUpdates: all`). Intent `callback` and `reminder` are operator-only (`sendUpdates: none`, no attendees).
 9. Do-not-contact remains a pinned danger alert above the thread. Talk-ratio warn is a short coach line. Qualification chips are not shown live (the reducer still runs server-side for post-call CRM).
 10. Calendar tools are attached to live-coach and call-review only — not post-call extraction. `get_calendar_availability` may run read-only. `propose_calendar_event` never sends. There is no `send_invite` tool.
 

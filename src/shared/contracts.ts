@@ -63,12 +63,15 @@ export type CalendarConnectionStatus = {
 };
 
 export type CalendarProposalStatus = "pending" | "sent" | "dismissed" | "failed";
+export type CalendarEventIntent = "meeting" | "callback" | "reminder";
 
 export type PublicCalendarProposal = {
   id: string;
   sessionId: string | null;
   source: "live_coach" | "call_review";
   status: CalendarProposalStatus;
+  intent: CalendarEventIntent;
+  linkedProposalId: string | null;
   title: string;
   start: string;
   end: string;

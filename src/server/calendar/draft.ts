@@ -1,3 +1,5 @@
+import type { CalendarEventIntent } from "../../shared/contracts.js";
+import { parseCalendarIntent, sanitizeCalendarDraft } from "./insert.js";
 import type { CalendarProposalDraft } from "./proposals.js";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -29,8 +31,15 @@ export function defaultEventTitle(name: string, company: string): string {
   return org ? `${who} / ${org}` : who;
 }
 
+function defaultEndIso(start: string): string | null {
+  const startMs = Date.parse(start);
+  if (Number.isNaN(startMs)) return null;
+  return new Date(startMs + 15 * 60 * 1000).toISOString();
+}
+
 export function draftFromUnknown(
   raw: {
+    intent?: CalendarEventIntent | string | null;
     title?: string | null;
     start?: string;
     end?: string;
@@ -41,14 +50,18 @@ export function draftFromUnknown(
   },
   fallbackTitle: string
 ): CalendarProposalDraft | null {
-  if (!raw.start || !raw.end) return null;
-  return {
+  if (!raw.start) return null;
+  const intent = parseCalendarIntent(typeof raw.intent === "string" ? raw.intent : undefined);
+  const end = raw.end || (intent === "meeting" ? undefined : defaultEndIso(raw.start) ?? undefined);
+  if (!end) return null;
+  return sanitizeCalendarDraft({
+    intent,
     title: raw.title?.trim() || fallbackTitle,
     start: raw.start,
-    end: raw.end,
+    end,
     timezone: raw.timezone?.trim() || "UTC",
     attendees: normalizeAttendees(raw.attendees ?? []),
     meet: Boolean(raw.meet),
     notes: raw.notes?.trim() ?? ""
-  };
+  });
 }

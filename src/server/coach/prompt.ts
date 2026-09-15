@@ -95,7 +95,8 @@ export function buildCoachPrompt(input: {
     operatorNote: input.operatorNote ?? null,
     tools: {
       get_calendar_availability: "Already resolved into calendarAvailability (read-only).",
-      propose_calendar_event: "Set calendarProposal on the JSON output. Never sends. Operator must Approve."
+      propose_calendar_event:
+        "Set calendarProposal with intent meeting, callback, or reminder. Never sends. Operator must Approve. Callback and reminder are operator-only (no prospect email). Optional calendarReminder drafts a second you-only morning-of event linked to a meeting."
     }
   });
 

@@ -278,6 +278,7 @@ Source: `whatthis.md` §4, §13, §15B, §20 Slice 7.
 - [x] `get_calendar_availability` is read-only; `propose_calendar_event` never inserts; Approve inserts once; Dismiss; failed retry
 - [x] Shared CalendarEventCard on live coach and call-review; post-call extraction has no Calendar tools
 - [x] Fake Calendar client for unit/integration/Playwright; README OAuth setup; still no auto-send
+- [x] Event intents `meeting` | `callback` | `reminder`; operator-only events use `sendUpdates: none`; optional `calendarReminder` bundle
 
 ### Slice 7 tests
 
@@ -473,3 +474,4 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-13 | Mint quote is opener-only: Company/Prospect sit-up facts moved out of `ProspectBrief` accent-soft block into the 2-col brief body. Home next-up quote was already opener-only. | Slice 6 code complete; live smoke still blocked |
 | 2026-09-13 | Slice 7: append-only coach feed + composer, operator Google Calendar OAuth with Approve-only send, shared CalendarEventCard on live coach and call-review. Typecheck + 162 Vitest + 7 Playwright (Calendar fakes). Unattended auto-send still forbidden. Slice 6 live PSTN smoke remains a holdout. | Slice 7 code complete; Slice 6 live smoke still blocked |
 | 2026-09-13 | Operator Settings page at `/settings` (Calendar connect/disconnect, campaign Sheet status, Twilio device, AI/Deepgram/research). Navbar Calendar OAuth control replaced with a Settings icon. OAuth callback lands on Settings. Slice 6 live PSTN smoke unchanged. | Slice 7 code complete; Slice 6 live smoke still blocked |
+| 2026-09-15 | Calendar intents: meeting invites vs operator-only callback/reminder (`sendUpdates: none`). Optional morning-of `calendarReminder`. Local OAuth client in `.env` (not committed). Approve-only send unchanged. | Slice 7 calendar intents; Slice 6 live smoke still blocked |

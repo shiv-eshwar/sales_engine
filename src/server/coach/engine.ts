@@ -386,8 +386,13 @@ export class CoachEngine {
     });
 
     let calendarProposalId: string | null = null;
+    const fallbackMeeting = `${snapshot.fullName} / ${snapshot.company}`.replace(/ \/ $/, "") || "Meeting";
+    const fallbackCall = snapshot.fullName.trim()
+      ? `Call ${snapshot.fullName}`
+      : "Call back";
+
     if (output.calendarProposal) {
-      const draft = draftFromUnknown(output.calendarProposal, `${snapshot.fullName} / ${snapshot.company}`.replace(/ \/ $/, ""));
+      const draft = draftFromUnknown(output.calendarProposal, fallbackMeeting);
       if (draft) {
         const proposal = insertCalendarProposal(this.deps.db, {
           sessionId,
@@ -395,6 +400,23 @@ export class CoachEngine {
           draft
         });
         calendarProposalId = proposal.id;
+      }
+    }
+
+    let reminderProposalId: string | null = null;
+    if (output.calendarReminder) {
+      const reminderDraft = draftFromUnknown(
+        { ...output.calendarReminder, intent: "reminder" },
+        fallbackCall
+      );
+      if (reminderDraft) {
+        const reminder = insertCalendarProposal(this.deps.db, {
+          sessionId,
+          source: "live_coach",
+          draft: reminderDraft,
+          linkedProposalId: calendarProposalId
+        });
+        reminderProposalId = reminder.id;
       }
     }
 
@@ -407,6 +429,16 @@ export class CoachEngine {
         calendarProposalId
       });
       this.deps.liveEvents.publish(sessionId, { type: "coach_message", message });
+    }
+    if (reminderProposalId) {
+      const reminderMessage = insertCoachMessage(this.deps.db, {
+        sessionId,
+        role: "assistant",
+        text: "Morning-of reminder — Approve to add it to your calendar only. The prospect is not invited.",
+        basedOnSequence: output.basedOnSequence,
+        calendarProposalId: reminderProposalId
+      });
+      this.deps.liveEvents.publish(sessionId, { type: "coach_message", message: reminderMessage });
     }
     this.publishTalk(sessionId);
   }

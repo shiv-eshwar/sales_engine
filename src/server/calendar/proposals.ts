@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
-import type { PublicCalendarProposal } from "../../shared/contracts.js";
+import type { CalendarEventIntent, PublicCalendarProposal } from "../../shared/contracts.js";
+import { parseCalendarIntent, sanitizeCalendarDraft } from "./insert.js";
 import type { CalendarProposalSource, CalendarProposalStatus } from "./types.js";
 
 export type CalendarProposalDraft = {
+  intent: CalendarEventIntent;
   title: string;
   start: string;
   end: string;
@@ -18,6 +20,8 @@ export type CalendarProposalRow = {
   session_id: string | null;
   source: CalendarProposalSource;
   status: CalendarProposalStatus;
+  intent: string;
+  linked_proposal_id: string | null;
   title: string;
   start_iso: string;
   end_iso: string;
@@ -49,6 +53,8 @@ export function toPublicCalendarProposal(row: CalendarProposalRow): PublicCalend
     sessionId: row.session_id,
     source: row.source,
     status: row.status,
+    intent: parseCalendarIntent(row.intent),
+    linkedProposalId: row.linked_proposal_id,
     title: row.title,
     start: row.start_iso,
     end: row.end_iso,
@@ -67,28 +73,33 @@ export function insertCalendarProposal(
     sessionId: string | null;
     source: CalendarProposalSource;
     draft: CalendarProposalDraft;
+    linkedProposalId?: string | null;
   }
 ): PublicCalendarProposal {
   const now = new Date().toISOString();
   const id = randomUUID();
+  const draft = sanitizeCalendarDraft(input.draft);
   db.prepare(
     `INSERT INTO calendar_proposals (
       id, session_id, source, status, title, start_iso, end_iso, timezone, attendees_json,
-      meet, notes, google_event_id, html_link, last_error, created_at, updated_at, sent_at
-    ) VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, NULL)`
+      meet, notes, google_event_id, html_link, last_error, created_at, updated_at, sent_at,
+      intent, linked_proposal_id
+    ) VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, NULL, ?, ?)`
   ).run(
     id,
     input.sessionId,
     input.source,
-    input.draft.title,
-    input.draft.start,
-    input.draft.end,
-    input.draft.timezone,
-    JSON.stringify(input.draft.attendees),
-    input.draft.meet ? 1 : 0,
-    input.draft.notes || null,
+    draft.title,
+    draft.start,
+    draft.end,
+    draft.timezone,
+    JSON.stringify(draft.attendees),
+    draft.meet ? 1 : 0,
+    draft.notes || null,
     now,
-    now
+    now,
+    draft.intent,
+    input.linkedProposalId ?? null
   );
   return getCalendarProposal(db, id)!;
 }
@@ -112,7 +123,8 @@ export function updateCalendarProposalDraft(
 ): PublicCalendarProposal | null {
   const current = getCalendarProposal(db, id);
   if (!current) return null;
-  const next: CalendarProposalDraft = {
+  const next = sanitizeCalendarDraft({
+    intent: current.intent,
     title: draft.title ?? current.title,
     start: draft.start ?? current.start,
     end: draft.end ?? current.end,
@@ -120,7 +132,7 @@ export function updateCalendarProposalDraft(
     attendees: draft.attendees ?? current.attendees,
     meet: draft.meet ?? current.meet,
     notes: draft.notes ?? current.notes
-  };
+  });
   db.prepare(
     `UPDATE calendar_proposals SET
       title = ?, start_iso = ?, end_iso = ?, timezone = ?, attendees_json = ?, meet = ?, notes = ?, updated_at = ?

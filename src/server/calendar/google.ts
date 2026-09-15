@@ -139,13 +139,19 @@ export class GoogleCalendarClient implements CalendarClient {
     const response = await calendar.events.insert({
       calendarId: "primary",
       conferenceDataVersion: input.meet ? 1 : 0,
-      sendUpdates: "all",
+      sendUpdates: input.sendUpdates,
       requestBody: {
         summary: input.title,
         description: input.notes || undefined,
         start: { dateTime: input.start, timeZone: input.timezone },
         end: { dateTime: input.end, timeZone: input.timezone },
         attendees: input.attendees.map((email) => ({ email })),
+        reminders: input.popupMinutes
+          ? {
+              useDefault: false,
+              overrides: [{ method: "popup", minutes: input.popupMinutes }]
+            }
+          : undefined,
         conferenceData: input.meet
           ? {
               createRequest: {

@@ -10,6 +10,7 @@ import {
   GoogleCalendarClient
 } from "../calendar/google.js";
 import { normalizeAttendees, validateEventTimes } from "../calendar/draft.js";
+import { draftFromPublic, toCalendarInsertInput } from "../calendar/insert.js";
 import {
   getCalendarProposal,
   listCalendarProposals,
@@ -126,15 +127,7 @@ export async function registerCalendarApi(app: FastifyInstance, ctx: AppContext)
       return reply.code(400).send({ error: times });
     }
     try {
-      const inserted = await ctx.calendar.insertEvent({
-        title: updated.title,
-        start: updated.start,
-        end: updated.end,
-        timezone: updated.timezone,
-        attendees: updated.attendees,
-        meet: updated.meet,
-        notes: updated.notes
-      });
+      const inserted = await ctx.calendar.insertEvent(toCalendarInsertInput(draftFromPublic(updated)));
       return { proposal: markCalendarProposalSent(ctx.db, id, inserted) };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Calendar insert failed";

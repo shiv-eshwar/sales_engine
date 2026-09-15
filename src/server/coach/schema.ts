@@ -20,7 +20,8 @@ export const liveCoachOutputSchema = z.object({
   ),
   recommendedOutcome: z.string().nullable(),
   confidence: z.number().min(0).max(1),
-  calendarProposal: calendarProposalDraftSchema.optional().nullable()
+  calendarProposal: calendarProposalDraftSchema.optional().nullable(),
+  calendarReminder: calendarProposalDraftSchema.optional().nullable()
 });
 
 export type LiveCoachOutput = z.infer<typeof liveCoachOutputSchema>;

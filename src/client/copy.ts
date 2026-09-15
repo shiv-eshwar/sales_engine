@@ -149,7 +149,7 @@ export const SETTINGS_COPY = {
   calendar: {
     heading: "Calendar",
     connected: "Google Calendar connected",
-    connectedHint: "Invite drafts on a call stay pending until you Approve.",
+    connectedHint: "Invite, callback, and reminder drafts stay pending until you Approve. Callbacks and reminders stay on your calendar only.",
     disconnectedTitle: "Calendar is not connected",
     disconnectedHint: "Connect your Google Calendar so you can Approve invite drafts from a call.",
     connect: "Connect Calendar",

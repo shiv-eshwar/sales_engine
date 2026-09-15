@@ -8,6 +8,8 @@ export type CalendarInsertInput = {
   attendees: string[];
   meet: boolean;
   notes: string;
+  sendUpdates: "all" | "none";
+  popupMinutes: number | null;
 };
 
 export type CalendarInsertResult = {

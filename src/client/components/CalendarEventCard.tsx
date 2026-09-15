@@ -33,6 +33,13 @@ export function CalendarEventCard({
   onProposal: (next: PublicCalendarProposal) => void;
 }) {
   const pending = proposal.status === "pending" || proposal.status === "failed";
+  const operatorOnly = proposal.intent === "callback" || proposal.intent === "reminder";
+  const heading =
+    proposal.intent === "callback"
+      ? "Call-back (you only)"
+      : proposal.intent === "reminder"
+        ? "Reminder (you only)"
+        : "Calendar invite";
   const [title, setTitle] = useState(proposal.title);
   const [start, setStart] = useState(toLocalInput(proposal.start));
   const [end, setEnd] = useState(toLocalInput(proposal.end));
@@ -95,9 +102,13 @@ export function CalendarEventCard({
   }
 
   return (
-    <article className="rounded-lg border-t-[3px] border-t-accent bg-surface p-4 shadow-sm" aria-label="Calendar event">
-      <p className="text-sm font-semibold">Calendar invite</p>
-      <p className="mt-1 text-xs text-muted">Nothing is sent until you Approve.</p>
+    <article className="rounded-lg border-t-[3px] border-t-accent bg-surface p-4 shadow-sm" aria-label={heading}>
+      <p className="text-sm font-semibold">{heading}</p>
+      <p className="mt-1 text-xs text-muted">
+        {operatorOnly
+          ? "Stays on your calendar. The prospect is not emailed. Nothing is created until you Approve."
+          : "Nothing is sent until you Approve."}
+      </p>
 
       {proposal.status === "sent" ? (
         <p className="mt-3 text-sm">
@@ -133,6 +144,8 @@ export function CalendarEventCard({
             Timezone
             <input className={field} value={timezone} onChange={(event) => setTimezone(event.target.value)} disabled={!pending} />
           </label>
+          {operatorOnly ? null : (
+            <>
           <label className="text-xs font-medium text-muted">
             Attendees (emails)
             <input
@@ -147,6 +160,8 @@ export function CalendarEventCard({
             <input type="checkbox" checked={meet} onChange={(event) => setMeet(event.target.checked)} disabled={!pending} />
             Google Meet
           </label>
+            </>
+          )}
           <label className="text-xs font-medium text-muted">
             Notes
             <textarea className={`${field} min-h-16`} value={notes} onChange={(event) => setNotes(event.target.value)} disabled={!pending} />

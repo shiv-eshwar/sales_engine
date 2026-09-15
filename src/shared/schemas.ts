@@ -281,7 +281,10 @@ export const reviewInterviewActionSchema = z.enum([
   "discard"
 ]);
 
+export const calendarEventIntentSchema = z.enum(["meeting", "callback", "reminder"]);
+
 export const calendarProposalDraftSchema = z.object({
+  intent: calendarEventIntentSchema.optional().default("meeting"),
   title: z.string().trim().max(200).optional(),
   start: z.string().min(1),
   end: z.string().min(1),

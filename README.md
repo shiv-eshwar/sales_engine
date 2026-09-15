@@ -102,7 +102,9 @@ Invites must come from **your** calendar, not the Sheet service account.
 2. Add authorized redirect URI `{APP_BASE_URL}/api/google/calendar/callback` (for local Vite: `http://127.0.0.1:5173/api/google/calendar/callback`).
 3. Set `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`. Keep `SESSION_SECRET` set — refresh tokens are encrypted with it at rest.
 4. Open **Settings** (gear in the navbar) and connect Google Calendar. Consent is `calendar.events` only.
-5. On a live call or in review, Approve a drafted event card. The app calls `events.insert` with `sendUpdates: all`. Dismiss drops the draft. Nothing is sent until Approve.
+5. On a live call or in review, Approve a drafted event card. Meetings call `events.insert` with `sendUpdates: all` (optional Meet). Callbacks and reminders stay on **your** calendar only (`sendUpdates: none`, no prospect email). Dismiss drops the draft. Nothing is sent until Approve.
+
+Redirect URI the app uses: `{APP_BASE_URL}/api/google/calendar/callback`. For local `npm start` that is `http://127.0.0.1:3000/api/google/calendar/callback`. Add the production HTTPS callback too before connecting on Azure.
 
 Playwright and unit tests use a fake Calendar client. Do not rely on live Google for CI.
 
