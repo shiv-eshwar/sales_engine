@@ -120,17 +120,28 @@ export class GoogleCalendarClient implements CalendarClient {
   async getAvailability(timeMin: string, timeMax: string): Promise<CalendarBusySlot[]> {
     const auth = this.authedClient();
     const calendar = google.calendar({ version: "v3", auth });
-    const response = await calendar.freebusy.query({
-      requestBody: {
+    const busy: CalendarBusySlot[] = [];
+    let pageToken: string | undefined;
+    do {
+      const response = await calendar.events.list({
+        calendarId: "primary",
         timeMin,
         timeMax,
-        items: [{ id: "primary" }]
+        singleEvents: true,
+        orderBy: "startTime",
+        maxResults: 250,
+        pageToken
+      });
+      for (const event of response.data.items ?? []) {
+        if (event.status === "cancelled" || event.transparency === "transparent") continue;
+        if (event.attendees?.some((person) => person.self && person.responseStatus === "declined")) continue;
+        const start = event.start?.dateTime ?? event.start?.date;
+        const end = event.end?.dateTime ?? event.end?.date;
+        if (start && end) busy.push({ start, end });
       }
-    });
-    const busy = response.data.calendars?.primary?.busy ?? [];
-    return busy
-      .filter((slot): slot is { start: string; end: string } => Boolean(slot.start && slot.end))
-      .map((slot) => ({ start: slot.start, end: slot.end }));
+      pageToken = response.data.nextPageToken ?? undefined;
+    } while (pageToken);
+    return busy;
   }
 
   async insertEvent(input: CalendarInsertInput): Promise<CalendarInsertResult> {

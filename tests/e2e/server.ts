@@ -4,14 +4,14 @@ import { resolve } from "node:path";
 import type { Page } from "@playwright/test";
 import WebSocket from "ws";
 import { expectedTwilioSignature } from "../../src/server/twilio/signature.js";
-import { extractStreamToken, startTestApp, TEST_AUTH_TOKEN, TEST_PASSWORD } from "../helpers/app.js";
+import { extractStreamToken, startTestApp, TEST_AUTH_TOKEN, TEST_EMAIL, TEST_PASSWORD } from "../helpers/app.js";
 import { createFakeDeepgramFactory, type FakeDeepgramConnection } from "../helpers/deepgram.js";
 import { coachOutput, FakeLlmClient, postCallOutput } from "../helpers/llm.js";
 import { FakeCalendarClient } from "../../src/server/calendar/memory.js";
 import type { CampaignConfig } from "../../src/shared/schemas.js";
 import type { ResearchClient } from "../../src/server/research/client.js";
 
-export { TEST_PASSWORD };
+export { TEST_EMAIL, TEST_PASSWORD };
 
 export type E2eServer = {
   baseURL: string;

@@ -10,9 +10,13 @@ export async function registerHealth(app: FastifyInstance, ctx: AppContext): Pro
   app.get("/health/ready", async (_request, reply) => {
     const checks: HealthReadyResponse["checks"] = {};
 
+    const sessionSecret = ctx.env.SESSION_SECRET?.trim() ?? "";
     checks.auth = {
-      ok: true,
-      message: "Open access (no password gate)"
+      ok: sessionSecret.length >= 16,
+      message:
+        sessionSecret.length >= 16
+          ? "Email/password accounts; session cookie required"
+          : "Set SESSION_SECRET (at least 16 characters) to enable sign in"
     };
 
     checks.database = { ok: true, message: "Migrations applied" };

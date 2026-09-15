@@ -8,7 +8,7 @@
   width: 2.5rem;
   height: 2.5rem;
   flex-shrink: 0;
-  color: var(--gray-400);
+  color: var(--muted);
   border-radius: var(--radius);
 }
 

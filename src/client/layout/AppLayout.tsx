@@ -10,6 +10,7 @@ import { CallingPanel } from "../components/CallingPanel";
 import { ReadinessChip } from "../components/ReadinessChip";
 import { NAV_COPY, PRODUCT_NAME, notificationsNavLabel } from "../copy";
 import { Icon } from "../components/Icon";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { notificationCount } from "../notifications";
 import { SHELL, isWorkspacePath } from "./shell";
 import "./header.css";
@@ -89,18 +90,19 @@ export function AppLayout() {
 
   return (
     <div className={`flex min-h-dvh flex-col ${lockWorkspace ? "lg:h-dvh lg:overflow-hidden lg:overscroll-none" : ""}`}>
-      <header className={`sticky top-0 z-50 bg-background ${liveCall ? "hidden" : ""}`}>
+      <header className={`sticky top-0 z-50 overflow-x-clip bg-background ${liveCall ? "hidden" : ""}`}>
         <div className="h-[3px] bg-accent" />
-        <div className={`${SHELL} flex h-14 min-w-0 items-center gap-2 sm:gap-6`}>
+        <div className={`${SHELL} flex h-14 min-w-0 items-center gap-1.5 sm:gap-6`}>
           <Link
             to="/leads"
+            aria-label={PRODUCT_NAME}
             className="flex shrink-0 items-center gap-2 text-[15px] font-semibold tracking-tight text-foreground"
             onClick={guardLeadsNav}
           >
             <span className="flex size-6 items-center justify-center">
               <img src="/icon-192.png" alt="" width={20} height={20} className="size-5" />
             </span>
-            {PRODUCT_NAME}
+            <span className="hidden sm:inline">{PRODUCT_NAME}</span>
           </Link>
           {hasCampaigns ? (
             <div className="flex min-w-0 max-w-[36rem] flex-1 items-center gap-2.5 sm:gap-3">
@@ -162,6 +164,7 @@ export function AppLayout() {
             >
               <Icon name="chart" className="text-current" size={20} />
             </Link>
+            <ThemeToggle />
             <Link
               to="/settings"
               aria-label={NAV_COPY.settings}
@@ -173,12 +176,13 @@ export function AppLayout() {
             {hideCampaignChrome ? null : (
               <Button
                 size="sm"
-                className="header-primary rounded-lg!"
+                className="header-primary rounded-lg! max-sm:w-10 max-sm:min-w-10 max-sm:px-0"
+                aria-label={NAV_COPY.newCampaign}
                 isDisabled={pending || campaignBusy || Boolean(editor)}
                 onPress={() => setEditor("new")}
               >
                 <Icon name="plus" className="text-current" size={16} />
-                {NAV_COPY.newCampaign}
+                <span className="hidden sm:inline">{NAV_COPY.newCampaign}</span>
               </Button>
             )}
           </div>

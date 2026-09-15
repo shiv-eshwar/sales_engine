@@ -33,6 +33,10 @@ describe("route boot skeletons", () => {
     expect(html("/calls/s1/review")).toContain("Loading review…");
     expect(html("/calls/s1/review")).toContain("max-w-5xl");
     expect(html("/login")).toContain("Loading sign in…");
+    expect(html("/login")).toContain("auth-wash");
+    expect(html("/login")).toContain("Switch to dark theme");
+    expect(html("/signup")).toContain("Loading create account…");
+    expect(html("/signup")).toContain("auth-wash");
     expect(html("/calls/s1/review")).not.toContain("Breadcrumb");
     expect(html("/analytics")).not.toContain("Breadcrumb");
   });

@@ -1,4 +1,4 @@
-import type { BootstrapResponse, DailySummary, HealthReadyResponse, PublicCalendarProposal, PublicCampaign, PublicLead, PublicProposal, PublicWriteFields, SheetInfo } from "../../shared/contracts";
+import type { BootstrapResponse, DailySummary, HealthReadyResponse, PublicCalendarProposal, PublicCampaign, PublicLead, PublicProposal, PublicWriteFields, SessionResponse, SheetInfo } from "../../shared/contracts";
 import type { CampaignBrief, ProspectPreparation } from "../../shared/campaigns";
 import { LEADS_PAGE_SIZE, type LeadSortKey } from "../../shared/leadsQueue";
 
@@ -11,12 +11,24 @@ async function parseError(response: Response): Promise<string> {
   }
 }
 
-export async function login(password: string): Promise<void> {
+export async function login(email: string, password: string): Promise<void> {
   const response = await fetch("/api/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ password })
+    body: JSON.stringify({ email, password })
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+}
+
+export async function signup(email: string, password: string): Promise<void> {
+  const response = await fetch("/api/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email, password })
   });
   if (!response.ok) {
     throw new Error(await parseError(response));
@@ -24,12 +36,22 @@ export async function login(password: string): Promise<void> {
 }
 
 export async function logout(): Promise<void> {
-  await fetch("/api/logout", { method: "POST", credentials: "include" });
+  const response = await fetch("/api/logout", { method: "POST", credentials: "include" });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
 }
 
-export async function fetchSession(): Promise<boolean> {
-  const response = await fetch("/api/session", { credentials: "include" });
-  return response.ok;
+export async function fetchSession(): Promise<SessionResponse> {
+  try {
+    const response = await fetch("/api/session", { credentials: "include" });
+    if (!response.ok) {
+      return { authenticated: false, email: null };
+    }
+    return (await response.json()) as SessionResponse;
+  } catch {
+    return { authenticated: false, email: null };
+  }
 }
 
 export async function fetchBootstrap(): Promise<BootstrapResponse> {

@@ -1,3 +1,4 @@
+import type Database from "better-sqlite3";
 import { hashPassword } from "../../src/server/auth/password.js";
 import { buildApp, type BuildAppOptions } from "../../src/server/index.js";
 import type { AppContext } from "../../src/server/context.js";
@@ -5,14 +6,28 @@ import type { Env } from "../../src/server/env.js";
 import { loadCampaigns } from "../../src/server/config/campaigns.js";
 
 export const TEST_PASSWORD = "test-password";
+export const TEST_EMAIL = "operator@test.local";
 export const TEST_AUTH_TOKEN = "test-twilio-auth-token";
+
+let testPasswordHash: Promise<string> | null = null;
+
+function hashedTestPassword(): Promise<string> {
+  testPasswordHash ??= hashPassword(TEST_PASSWORD);
+  return testPasswordHash;
+}
+
+export async function seedTestUser(db: Database.Database): Promise<void> {
+  const hash = await hashedTestPassword();
+  db.prepare(
+    `INSERT OR IGNORE INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)`
+  ).run("test-operator", TEST_EMAIL, hash, new Date().toISOString());
+}
 
 export async function makeTestEnv(overrides: Partial<Env> = {}): Promise<Env> {
   return {
     NODE_ENV: "test",
     APP_BASE_URL: "http://127.0.0.1:3000",
     PORT: 3000,
-    APP_PASSWORD_HASH: await hashPassword(TEST_PASSWORD),
     SESSION_SECRET: "test-session-secret-32-characters-min",
     DATABASE_PATH: ":memory:",
     SHEETS_CONFIG_PATH: "./config/sheets.example.yaml",
@@ -55,6 +70,7 @@ export async function makeTestEnv(overrides: Partial<Env> = {}): Promise<Env> {
 export async function startTestApp(overrides: Partial<Env> = {}, options: BuildAppOptions = {}) {
   const env = await makeTestEnv(overrides);
   const app = await buildApp(env, { initialCampaigns: loadCampaigns(env.CAMPAIGNS_DIR), researchClient: null, ...options });
+  await seedTestUser(getAppContext(app).db);
   return { app, env };
 }
 
@@ -80,10 +96,11 @@ export async function bindSampleSheet(
 }
 
 export async function loginCookie(app: Awaited<ReturnType<typeof buildApp>>): Promise<string> {
+  await seedTestUser(getAppContext(app).db);
   const response = await app.inject({
     method: "POST",
     url: "/api/login",
-    payload: { password: TEST_PASSWORD }
+    payload: { email: TEST_EMAIL, password: TEST_PASSWORD }
   });
   const setCookie = response.headers["set-cookie"];
   const raw = Array.isArray(setCookie) ? setCookie[0] : setCookie;

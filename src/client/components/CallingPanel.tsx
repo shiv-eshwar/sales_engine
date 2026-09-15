@@ -11,6 +11,7 @@ import { hangUpTwilioCall, sendTwilioDigits, setTwilioMuted } from "../twilio/de
 import { openCallReviewTab } from "../state/openCallReview";
 import { formatUtteranceText, humanizeId, isWarningCue } from "../copy";
 import { SCROLL, SCROLLBAR, SHELL } from "../layout/shell";
+import { ThemeToggle } from "./ThemeToggle";
 
 type CallingPanelProps = {
   session: CallSessionView;
@@ -265,6 +266,7 @@ export function CallingPanel({
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
             <Button
               variant={muted ? "primary" : "outline"}
               className="min-h-11 rounded-lg!"

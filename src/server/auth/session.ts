@@ -5,6 +5,7 @@ const MAX_AGE_SECONDS = 60 * 60 * 12;
 
 type SessionPayload = {
   v: 1;
+  sub: string;
   exp: number;
 };
 
@@ -25,27 +26,30 @@ function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(left, right);
 }
 
-export function createSessionToken(secret: string, now = Date.now()): string {
-  const payload: SessionPayload = { v: 1, exp: now + MAX_AGE_SECONDS * 1000 };
+export function createSessionToken(secret: string, userId: string, now = Date.now()): string {
+  const payload: SessionPayload = { v: 1, sub: userId, exp: now + MAX_AGE_SECONDS * 1000 };
   const body = encode(payload);
   return `${body}.${sign(secret, body)}`;
 }
 
-export function readSessionToken(secret: string, token: string, now = Date.now()): boolean {
+export function readSessionToken(secret: string, token: string, now = Date.now()): string | null {
   const dot = token.lastIndexOf(".");
   if (dot <= 0) {
-    return false;
+    return null;
   }
   const body = token.slice(0, dot);
   const mac = token.slice(dot + 1);
   if (!safeEqual(sign(secret, body), mac)) {
-    return false;
+    return null;
   }
   try {
     const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as SessionPayload;
-    return payload.v === 1 && payload.exp > now;
+    if (payload.v !== 1 || payload.exp <= now || typeof payload.sub !== "string" || payload.sub.length === 0) {
+      return null;
+    }
+    return payload.sub;
   } catch {
-    return false;
+    return null;
   }
 }
 

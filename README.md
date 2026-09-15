@@ -20,7 +20,7 @@ The application does **not**:
 ## Architecture
 
 ```
-Browser (React)  --open access-->  Fastify (Node 22)
+Browser (React)  --session cookie-->  Fastify (Node 22)
        |                                    |
        | Twilio Voice SDK                   | TwiML + status + recording webhooks
        |                                    | Media Streams WS -> Deepgram (caller + contact)
@@ -48,7 +48,7 @@ cp .env.example .env
 npm install
 ```
 
-Auth is **open access** for this single-user operator (no login password). Do not expose the host publicly without adding a gate or network restriction.
+Sign in with **email and password** stored in SQLite (`/login` and `/signup`). Successful login sets a signed HTTP-only `SameSite=Lax` session cookie. There is no Google login and no Supabase. Google Calendar OAuth in Settings is only for invites, not for signing into Mantis. Accounts on one box share the same operator workspace (campaigns, Sheet, Calendar). Keep the host private or behind nginx — signup is open to anyone who can reach the app. Set `SESSION_SECRET` to at least 16 characters.
 
 ## Multiple offerings and AI campaigns
 
@@ -175,7 +175,6 @@ Production `npm start` listens on `PORT` (default 3000) and serves the SPA. `npm
 | `npm run build` | Vite production client into `dist/client` |
 | `npm start` | `NODE_ENV=production` Fastify serving API + `dist/client` |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run hash-password` | Generate `APP_PASSWORD_HASH` |
 | `./scripts/deploy-production.sh` | Azure VM only: fetch `origin/main`, build, switch `/opt/sales-engine/current`, restart `sales-engine` |
 
 Migrations in `migrations/` run automatically on process start. SQLite defaults to `DATABASE_PATH=./data/ledger.sqlite` (WAL mode).
@@ -189,7 +188,7 @@ npm run test:e2e
 
 ## Production deploy (Azure VM)
 
-Pushes to `main` run `.github/workflows/deploy.yml`. GitHub Actions SSHs into the VM, resets `/opt/sales-engine/control` to `origin/main`, builds a timestamped release under `/opt/sales-engine/releases/`, points `/opt/sales-engine/current` at it, restarts `sales-engine`, and checks `/health/live` plus `/health/ready`. It does **not** restart `sales-engine-tunnel`. Secrets stay in `/opt/sales-engine/shared/.env`; SQLite and `sheets.yaml` stay in `/opt/sales-engine/shared/data`. Production binds `HOST=127.0.0.1` so nginx (basic auth + Twilio `/twilio/` bypass) is the public entry. Unit file and nginx templates live in `infra/`; deploys do not rewrite `/etc`.
+Pushes to `main` run `.github/workflows/deploy.yml`. GitHub Actions SSHs into the VM, resets `/opt/sales-engine/control` to `origin/main`, builds a timestamped release under `/opt/sales-engine/releases/`, points `/opt/sales-engine/current` at it, restarts `sales-engine`, and checks `/health/live` plus `/health/ready`. It does **not** restart `sales-engine-tunnel`. Secrets stay in `/opt/sales-engine/shared/.env`; SQLite and `sheets.yaml` stay in `/opt/sales-engine/shared/data`. Production binds `HOST=127.0.0.1` so nginx (basic auth + Twilio `/twilio/` and Calendar OAuth `/api/google/calendar/callback` bypass) is the public entry. Unit file and nginx templates live in `infra/`; deploys do not rewrite `/etc`.
 
 One-time VM setup (SSH in as `azureuser`). Safer if the VM checkout is still behind GitHub or has local commits:
 

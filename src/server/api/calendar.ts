@@ -78,7 +78,12 @@ export async function registerCalendarApi(app: FastifyInstance, ctx: AppContext)
     } catch (error) {
       return reply.code(400).send({ error: error instanceof Error ? error.message : "Calendar connect failed" });
     }
-    reply.clearCookie(OAUTH_COOKIE, { path: "/" });
+    reply.clearCookie(OAUTH_COOKIE, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      secure: cookieSecure(ctx.env)
+    });
     return reply.redirect(`${origin}/settings?calendar=connected`);
   });
 

@@ -106,10 +106,12 @@ export type BootstrapResponse = {
   recordingNotice: string;
   pendingProposal: PublicProposal | null;
   summary: DailySummary;
+  operator: { email: string };
 };
 
 export type SessionResponse = {
   authenticated: boolean;
+  email: string | null;
 };
 
 export type HealthLiveResponse = {

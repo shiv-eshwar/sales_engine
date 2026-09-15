@@ -47,6 +47,9 @@ describe("caller-facing copy", () => {
     expect(NAV_COPY.analytics).toBe("Analytics");
     expect(NAV_COPY.settings).toBe("Settings");
     expect(NAV_COPY.newCampaign).toBe("New campaign");
+    expect(NAV_COPY.signOut).toBe("Sign out");
+    expect(NAV_COPY.themeToDark).toBe("Switch to dark theme");
+    expect(NAV_COPY.themeToLight).toBe("Switch to light theme");
     expect(NAV_COPY.calendar).toBe("Calendar");
     expect(NAV_COPY.campaign).toBe("Campaign");
     expect(NAV_COPY.editOffering).toBe("Edit offering");
@@ -58,6 +61,7 @@ describe("caller-facing copy", () => {
     expect(pageTitle()).toBe("Mantis");
     expect(PAGE_TITLES.home).toBe("Ready · Mantis");
     expect(PAGE_TITLES.login).toBe("Sign in · Mantis");
+    expect(PAGE_TITLES.signup).toBe("Create account · Mantis");
     expect(PAGE_TITLES.analytics).toBe("Analytics · Mantis");
     expect(PAGE_TITLES.notifications).toBe("Notifications · Mantis");
     expect(PAGE_TITLES.settings).toBe("Settings · Mantis");

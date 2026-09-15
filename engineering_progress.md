@@ -30,8 +30,8 @@ Status values: `not_started` · `in_progress` · `blocked` · `completed`
 | Phase | Slice 7 — Live coach feed + operator-approved Calendar |
 | Slice | 7 (code complete; Slice 6 live PSTN smoke still gated) |
 | Status | `completed` |
-| Next action | Confirm public `APP_BASE_URL` (ngrok) matches TwiML App, then run §19 live PSTN smoke and fill speaker mapping in `VERIFICATION.md`. |
-| Blocked on | Slice 6 live controlled PSTN smoke / speaker mapping. Calendar OAuth is optional until the operator connects Google. Google Sheet is connected; Twilio Voice credentials present in local `.env`. Azure auto-deploy from `main` is live. |
+| Next action | Confirm public `APP_BASE_URL` (trycloudflare) matches TwiML App, then run §19 live PSTN smoke and fill speaker mapping in `VERIFICATION.md`. |
+| Blocked on | Slice 6 live controlled PSTN smoke / speaker mapping. Production Calendar OAuth is connected. Google Sheet is connected; Azure auto-deploy from `main` is live. |
 
 ---
 
@@ -61,7 +61,7 @@ Does not replace Slice 6 live smoke. Proof of done: a `main` push shows a green 
 | 4 | Live coach | `completed` | One cue card, talk ratio, qualification indicators, stale-response handling (live model not required) |
 | 5 | Post-call CRM update | `completed` | Review diff, approve & next, verified batch write, retry ledger (live Sheet smoke still required) |
 | 6 | Verification and hardening | `blocked` | Holdouts H1–H14, Playwright (fakes), Docker recipe, README + VERIFICATION.md; live smoke still required |
-| 7 | Live coach feed + approved Calendar | `completed` | Append-only coach messages, two-way thread, operator OAuth Calendar, Approve-only send; typecheck + 162 Vitest + 7 Playwright (Calendar fakes) |
+| 7 | Live coach feed + approved Calendar | `completed` | Append-only coach messages, two-way thread, operator OAuth Calendar, Approve-only send; typecheck + 195 Vitest + 8 Playwright (Calendar fakes, email/password auth) |
 
 Slice 6 live PSTN smoke is a holdout. Slice 7 does not wait on it. Do not begin later slices while the current slice’s core automated checks are failing.
 
@@ -93,7 +93,7 @@ Source: `whatthis.md` §6–8, §15A, §16–17, §20 Slice 1.
 
 ### 1.2 Auth and health
 
-- [x] Single-user password login (`APP_PASSWORD_HASH`)
+- [x] Email/password accounts in SQLite (`/login` + `/signup`); signed HTTP-only Secure SameSite=Lax session cookie
 - [x] Signed HTTP-only Secure SameSite=Lax session cookie
 - [x] Application API/WebSocket routes require the session
 - [x] `/health/live` (no external calls)
@@ -287,6 +287,17 @@ Source: `whatthis.md` §4, §13, §15B, §20 Slice 7.
 - [x] Propose does not insert; approve inserts once; dismiss; review can propose
 - [x] Playwright uses Calendar fakes (no live Google)
 
+### Operator email/password auth
+
+Proof: typecheck + 195 Vitest (`tests/unit/auth.test.ts`, `tests/integration/auth.test.ts`, `tests/unit/theme.test.ts`) + 8 Playwright (`tests/e2e/auth.spec.ts` plus operator/campaign journeys now fill `/login`). No Google login. No Supabase. Calendar OAuth stays Settings-only.
+
+- [x] `users` table; scrypt password hashes; signup `POST /api/signup`; login `POST /api/login`
+- [x] Signed HTTP-only session cookie with user id; `requireSession` returns 401
+- [x] `/login` and `/signup` pages; Settings Account + Sign out
+- [x] `SESSION_SECRET` required for `/health/ready` auth check
+- [x] Auth pages share a quiet mint wash (same-hue blobs, reduced-motion freeze)
+- [x] Light/dark theme toggle (evergreen dark, mint accent, persisted in this browser)
+
 ### Eve skills + pre-call scan
 
 Proof: Vitest including `tests/unit/agents.test.ts`, `tests/unit/prospect-brief.test.ts`, and stored-vs-generated schema tests. No §4 non-goals. No shared `agents/skills/` library.
@@ -475,3 +486,8 @@ These do not block scaffolding or tests. They block production Sheet mapping and
 | 2026-09-13 | Slice 7: append-only coach feed + composer, operator Google Calendar OAuth with Approve-only send, shared CalendarEventCard on live coach and call-review. Typecheck + 162 Vitest + 7 Playwright (Calendar fakes). Unattended auto-send still forbidden. Slice 6 live PSTN smoke remains a holdout. | Slice 7 code complete; Slice 6 live smoke still blocked |
 | 2026-09-13 | Operator Settings page at `/settings` (Calendar connect/disconnect, campaign Sheet status, Twilio device, AI/Deepgram/research). Navbar Calendar OAuth control replaced with a Settings icon. OAuth callback lands on Settings. Slice 6 live PSTN smoke unchanged. | Slice 7 code complete; Slice 6 live smoke still blocked |
 | 2026-09-15 | Calendar intents: meeting invites vs operator-only callback/reminder (`sendUpdates: none`). Optional morning-of `calendarReminder`. Local OAuth client in `.env` (not committed). Approve-only send unchanged. | Slice 7 calendar intents; Slice 6 live smoke still blocked |
+| 2026-09-15 | Restored in-app auth: email/password accounts in SQLite, `/login` + `/signup`, session cookie gate. No Google login or Supabase. Calendar OAuth remains Settings-only. | Slice 7 complete; operator auth restored; Slice 6 live smoke still blocked |
+| 2026-09-15 | Production Calendar: OAuth keys in shared `.env`, nginx callback bypass (no basic auth), VM origin → `shiv-eshwar/Mantis`. `/health/ready` calendar connected; refresh token stored. | Slice 7 complete; production Calendar connected; Slice 6 live smoke still blocked |
+| 2026-09-15 | Auth pages: quiet same-hue mint wash behind Sign in / Create account (AuthShell + boot skeleton). Reduced-motion freezes the blobs. | Slice 7 complete; operator auth polish; Slice 6 live smoke still blocked |
+| 2026-09-15 | Light/dark theme: evergreen dark (not navy invert), mint accent kept, header/auth/Settings/live-call toggle, preference persisted. | Slice 7 complete; operator theme; Slice 6 live smoke still blocked |
+| 2026-09-15 | Verified auth + theme: logout Set-Cookie now matches Secure/SameSite so HTTPS sign-out clears the session; unknown-email login still runs scrypt; 390px header stays in-viewport (logo + New campaign icon-only). Typecheck + 195 Vitest + 8 Playwright. | Slice 7 complete; operator auth + theme; Slice 6 live smoke still blocked |

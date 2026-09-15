@@ -1,4 +1,6 @@
 import { SPLIT, SPLIT_PANE, SPLIT_RAIL } from "../layout/shell";
+import { AuthWash } from "./AuthShell";
+import { ThemeToggle } from "./ThemeToggle";
 import { REVIEW_COLUMN, REVIEW_COMPOSER } from "./reviewChatLayout";
 
 export function PageSpinner({
@@ -74,7 +76,7 @@ export function ContactCardSkeleton({
           </div>
         </div>
       </div>
-      <div className="relative z-20 isolate mt-auto flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 bg-surface px-5 py-4 shadow-[0_-8px_24px_-12px_hsl(220_20%_12%/0.12)] sm:gap-x-5 sm:px-8 sm:pb-8 sm:pt-4 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-20 max-lg:px-[max(1.25rem,env(safe-area-inset-left))] max-lg:pr-[max(1.25rem,env(safe-area-inset-right))] max-lg:pb-[max(1rem,env(safe-area-inset-bottom))] max-lg:pt-4">
+      <div className="relative z-20 isolate mt-auto flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 bg-surface px-5 py-4 shadow-[0_-8px_24px_-12px_var(--elev-shadow)] sm:gap-x-5 sm:px-8 sm:pb-8 sm:pt-4 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-20 max-lg:px-[max(1.25rem,env(safe-area-inset-left))] max-lg:pr-[max(1.25rem,env(safe-area-inset-right))] max-lg:pb-[max(1rem,env(safe-area-inset-bottom))] max-lg:pt-4">
         <Pulse className="h-11 w-28 rounded-lg" />
         {skip ? <Pulse className="h-11 w-20 rounded-lg" /> : null}
         <Pulse className="h-3.5 w-14" />
@@ -330,25 +332,39 @@ export function ReviewSkeleton() {
   );
 }
 
-export function LoginSkeleton() {
+export function LoginSkeleton({ fields = 2 }: { fields?: 2 | 3 }) {
+  const label = fields === 3 ? "Loading create account…" : "Loading sign in…";
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6" role="status" aria-label="Loading sign in…">
-      <Pulse ground className="h-3 w-14" />
-      <Pulse ground className="mt-2 h-8 w-28" />
-      <Pulse ground className="mt-2 h-5 w-64 max-w-full" />
-      <div className="mt-8 flex flex-col gap-6" aria-hidden="true">
-        <div className="flex flex-col gap-2">
-          <Pulse className="h-3.5 w-20" />
+    <div className="relative flex min-h-dvh flex-col overflow-hidden">
+      <div className="relative z-20 h-[3px] bg-accent" />
+      <AuthWash />
+      <div className="absolute right-[max(1rem,env(safe-area-inset-right))] top-5 z-30">
+        <ThemeToggle />
+      </div>
+      <main className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-12" role="status" aria-label={label}>
+        <div className="flex items-center gap-2">
+          <Pulse ground className="size-6 rounded-lg" />
+          <Pulse ground className="h-4 w-16" />
+        </div>
+        <Pulse ground className="mt-8 h-8 w-36" />
+        <Pulse ground className="mt-2 h-5 w-64 max-w-full" />
+        <div className="mt-8 flex flex-col gap-5" aria-hidden="true">
+          {Array.from({ length: fields }, (_, index) => (
+            <div key={index} className="flex flex-col gap-2">
+              <Pulse className="h-3.5 w-20" />
+              <Pulse className="h-11 w-full rounded-lg" />
+            </div>
+          ))}
           <Pulse className="h-11 w-full rounded-lg" />
         </div>
-        <Pulse className="h-11 w-full rounded-lg" />
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
 
 export function bootSkeleton(pathname: string) {
-  if (pathname.startsWith("/login")) return <LoginSkeleton />;
+  if (pathname.startsWith("/login")) return <LoginSkeleton fields={2} />;
+  if (pathname.startsWith("/signup")) return <LoginSkeleton fields={3} />;
   if (pathname.startsWith("/analytics")) return <AnalyticsSkeleton />;
   if (pathname.startsWith("/settings")) return <SettingsSkeleton />;
   if (pathname.startsWith("/notifications") || pathname.startsWith("/diagnostics")) {

@@ -843,7 +843,7 @@ Requirements:
 
 ### Authentication
 
-This is a single-user internal tool. Implement one password configured through `APP_PASSWORD_HASH` or an equivalent secret. On successful login, issue a signed, HTTP-only, Secure, SameSite=Lax session cookie. Do not add an external auth provider.
+This is an internal operator tool. Accounts are email plus password stored in SQLite (scrypt). On successful login or signup, issue a signed, HTTP-only, Secure, SameSite=Lax session cookie. Do not add an external auth provider (no Google login, no Supabase). Google Calendar OAuth is a Settings integration for invites only.
 
 Protect all application API and browser WebSocket routes. Twilio routes use signature/session-token verification rather than the browser cookie.
 
@@ -853,7 +853,6 @@ Required environment variables should include:
 
 ```text
 APP_BASE_URL
-APP_PASSWORD_HASH
 SESSION_SECRET
 TWILIO_ACCOUNT_SID
 TWILIO_API_KEY_SID

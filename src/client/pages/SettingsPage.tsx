@@ -4,10 +4,11 @@ import { Button } from "@heroui/react";
 import type { CalendarConnectionStatus, ProviderStatus, SheetInfo } from "../../shared/contracts";
 import { NAV_COPY, EMPTY_COPY, PAGE_TITLES, SETTINGS_COPY } from "../copy";
 import { SCROLL } from "../layout/shell";
-import { disconnectCalendar, fetchHealthReady } from "../state/api";
+import { disconnectCalendar, fetchHealthReady, logout } from "../state/api";
 import type { DeviceStatus } from "../state/calls";
 import { useSession } from "../state/session";
 import { usePageTitle } from "../usePageTitle";
+import { ThemePair } from "../components/ThemeToggle";
 
 export function SettingsPage() {
   usePageTitle(PAGE_TITLES.settings);
@@ -15,6 +16,7 @@ export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [flash, setFlash] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [deepgram, setDeepgram] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,6 +56,16 @@ export function SettingsPage() {
     }
   }
 
+  async function onSignOut() {
+    setSigningOut(true);
+    try {
+      await logout();
+      window.location.assign("/login");
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
   return (
     <SettingsView
       calendar={data.calendar ?? { configured: false, connected: false, email: null }}
@@ -69,7 +81,10 @@ export function SettingsPage() {
       deepgram={deepgram}
       flash={flash}
       disconnecting={disconnecting}
+      signingOut={signingOut}
+      operatorEmail={data.operator?.email ?? ""}
       onDisconnect={() => void onDisconnect()}
+      onSignOut={() => void onSignOut()}
       onNewCampaign={() => setEditor("new")}
       onEditOffering={() => setEditor("edit")}
     />
@@ -90,7 +105,10 @@ export function SettingsView({
   deepgram,
   flash,
   disconnecting,
+  signingOut,
+  operatorEmail,
   onDisconnect,
+  onSignOut,
   onNewCampaign,
   onEditOffering
 }: {
@@ -107,7 +125,10 @@ export function SettingsView({
   deepgram: string | null;
   flash: string | null;
   disconnecting?: boolean;
+  signingOut?: boolean;
+  operatorEmail: string;
   onDisconnect?: () => void;
+  onSignOut?: () => void;
   onNewCampaign?: () => void;
   onEditOffering?: () => void;
 }) {
@@ -122,6 +143,32 @@ export function SettingsView({
         {flash ? <p className="mt-2 text-sm text-muted">{flash}</p> : null}
 
         <div className="mt-10 flex flex-col gap-12">
+          <section aria-labelledby="settings-account">
+            <h2 id="settings-account" className="text-sm font-medium text-muted">
+              {SETTINGS_COPY.account.heading}
+            </h2>
+            <div className="mt-3">
+              <p className="text-base font-semibold tracking-tight">{operatorEmail}</p>
+              <p className="mt-1 max-w-[36em] text-sm leading-relaxed text-muted">{SETTINGS_COPY.account.hint}</p>
+              <Button
+                variant="outline"
+                className="mt-4 min-h-11 rounded-lg!"
+                isDisabled={signingOut}
+                onPress={onSignOut}
+              >
+                {SETTINGS_COPY.account.signOut}
+              </Button>
+            </div>
+          </section>
+
+          <section aria-labelledby="settings-appearance">
+            <h2 id="settings-appearance" className="text-sm font-medium text-muted">
+              {SETTINGS_COPY.appearance.heading}
+            </h2>
+            <p className="mt-3 max-w-[36em] text-sm leading-relaxed text-muted">{SETTINGS_COPY.appearance.hint}</p>
+            <ThemePair />
+          </section>
+
           <section aria-labelledby="settings-calendar">
             <h2 id="settings-calendar" className="text-sm font-medium text-muted">
               {SETTINGS_COPY.calendar.heading}

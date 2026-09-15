@@ -9,7 +9,7 @@ import {
 } from "../../shared/schemas.js";
 import type { AppContext } from "../context.js";
 import { twilioVoiceConfigured } from "../twilio/config.js";
-import { requireSession } from "../auth/routes.js";
+import { getSessionUser, requireSession } from "../auth/routes.js";
 import { loadNextLead } from "../leads/nextLead.js";
 import { findPendingProposal } from "../review/store.js";
 import { buildDailySummary } from "../review/summary.js";
@@ -65,12 +65,13 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
     await requireSession(ctx, request, reply);
   };
 
-  app.get("/api/bootstrap", { preHandler: auth }, async () => {
+  app.get("/api/bootstrap", { preHandler: auth }, async (request) => {
     if (ctx.campaigns[0] && !ctx.operator.selectedCampaignId) {
       ctx.operator.selectedCampaignId = ctx.campaigns[0].id;
     }
     const next = await loadNextLead(ctx);
     const twilioOk = twilioVoiceConfigured(ctx.env);
+    const operator = getSessionUser(ctx, request);
     const body: BootstrapResponse = {
       campaigns: ctx.campaigns.map(campaign => toPublicCampaign(campaign, ctx)),
       selectedCampaignId: ctx.operator.selectedCampaignId,
@@ -93,7 +94,8 @@ export async function registerLeads(app: FastifyInstance, ctx: AppContext): Prom
       leads: next.leads,
       recordingNotice: ctx.env.RECORDING_NOTICE,
       pendingProposal: pendingProposal(ctx),
-      summary: buildDailySummary(ctx.db, ctx.playbook)
+      summary: buildDailySummary(ctx.db, ctx.playbook),
+      operator: { email: operator?.email ?? "" }
     };
     return body;
   });

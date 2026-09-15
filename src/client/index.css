@@ -6,6 +6,9 @@
   --radius-3xl: var(--radius);
   --radius-4xl: var(--radius);
   --animate-fade-in: fade-in 280ms ease-out;
+  --animate-auth-drift-a: auth-drift-a 22s ease-in-out infinite;
+  --animate-auth-drift-b: auth-drift-b 26s ease-in-out infinite;
+  --animate-auth-drift-c: auth-drift-c 19s ease-in-out infinite;
 }
 
 @keyframes fade-in {
@@ -27,6 +30,77 @@
   }
 }
 
+@keyframes auth-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(5%, 7%, 0) scale(1.06);
+  }
+}
+
+@keyframes auth-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-6%, -4%, 0) scale(1.05);
+  }
+}
+
+@keyframes auth-drift-c {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.03);
+  }
+  50% {
+    transform: translate3d(4%, -6%, 0) scale(0.97);
+  }
+}
+
+.auth-wash {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.auth-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(72px);
+  will-change: transform;
+}
+
+.auth-blob-a {
+  top: -14rem;
+  right: -10rem;
+  width: 36rem;
+  height: 36rem;
+  background: var(--auth-blob-a);
+  animation: var(--animate-auth-drift-a);
+}
+
+.auth-blob-b {
+  bottom: -12rem;
+  left: -9rem;
+  width: 28rem;
+  height: 28rem;
+  background: var(--auth-blob-b);
+  animation: var(--animate-auth-drift-b);
+}
+
+.auth-blob-c {
+  top: 38%;
+  left: 12%;
+  width: 18rem;
+  height: 18rem;
+  background: var(--auth-blob-c);
+  animation: var(--animate-auth-drift-c);
+}
+
 .brief-card-pulse {
   animation: brief-card-pulse 2.2s ease-in-out infinite;
 }
@@ -35,12 +109,18 @@
   .animate-fade-in,
   .animate-pulse,
   .animate-spin,
-  .brief-card-pulse {
+  .brief-card-pulse,
+  .auth-blob-a,
+  .auth-blob-b,
+  .auth-blob-c {
     animation: none !important;
   }
 }
 
-:root {
+:root,
+.light,
+[data-theme="light"] {
+  color-scheme: light;
   --radius: 8px;
   --field-radius: 8px;
 
@@ -97,6 +177,57 @@
   --field-placeholder: var(--gray-400);
   --field-border: var(--gray-300);
   --field-border-width: 1px;
+  --elev-shadow: hsl(220 20% 12% / 0.12);
+  --wash-spot: hsl(148 50% 93% / 0.7);
+  --wash-from: hsl(220 22% 97%);
+  --wash-to: hsl(150 16% 96%);
+  --auth-blob-a: hsl(148 72% 95% / 0.95);
+  --auth-blob-b: hsl(147 68% 88% / 0.55);
+  --auth-blob-c: hsl(146 55% 80% / 0.28);
+}
+
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Cool evergreen ground — same family as the mint mark, not navy and not true black. */
+  --background: hsl(152 18% 8%);
+  --foreground: hsl(148 22% 94%);
+  --surface: hsl(150 16% 11%);
+  --surface-foreground: hsl(148 22% 94%);
+  --surface-secondary: hsl(150 14% 15%);
+  --overlay: hsl(150 16% 13%);
+  --muted: hsl(150 10% 64%);
+  --accent: var(--green-400);
+  --accent-foreground: var(--green-900);
+  --accent-soft: hsl(148 28% 14%);
+  --accent-soft-foreground: hsl(148 38% 88%);
+  --success: hsl(154 42% 52%);
+  --success-foreground: var(--green-900);
+  --warning: hsl(36 88% 58%);
+  --warning-foreground: hsl(32 48% 12%);
+  --danger: hsl(4 72% 62%);
+  --danger-foreground: hsl(0 0% 100%);
+  --danger-soft: hsl(4 32% 16%);
+  --border: hsl(150 12% 18%);
+  --separator: hsl(150 12% 18%);
+  --focus: var(--green-300);
+  --link: var(--green-300);
+  --default: hsl(150 12% 16%);
+  --default-foreground: hsl(148 22% 94%);
+  --field-background: hsl(150 16% 11%);
+  --field-foreground: hsl(148 22% 94%);
+  --field-placeholder: hsl(150 10% 52%);
+  --field-border: hsl(150 10% 24%);
+  --elev-shadow: hsl(152 30% 2% / 0.45);
+  --wash-spot: hsl(148 32% 16% / 0.55);
+  --wash-from: hsl(152 18% 8%);
+  --wash-to: hsl(154 16% 7%);
+  --auth-blob-a: hsl(148 42% 18% / 0.8);
+  --auth-blob-b: hsl(152 36% 14% / 0.65);
+  --auth-blob-c: hsl(146 40% 20% / 0.4);
+  --surface-shadow: 0 0 0 0 transparent;
+  --overlay-shadow: 0 0 1px 0 hsl(148 20% 90% / 0.16) inset, 0 18px 40px 0 hsl(152 30% 2% / 0.45);
 }
 
 html,
@@ -125,8 +256,8 @@ html {
 body {
   margin: 0;
   background:
-    radial-gradient(1200px 480px at 50% -80px, hsl(148 50% 93% / 0.7), transparent 70%),
-    linear-gradient(180deg, hsl(220 22% 97%), hsl(150 16% 96%));
+    radial-gradient(1200px 480px at 50% -80px, var(--wash-spot), transparent 70%),
+    linear-gradient(180deg, var(--wash-from), var(--wash-to));
   color: var(--foreground);
   line-height: 1.5;
 }

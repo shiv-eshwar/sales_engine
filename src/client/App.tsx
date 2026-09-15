@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import type { BootstrapResponse } from "../shared/contracts";
-import { fetchBootstrap } from "./state/api";
+import { fetchBootstrap, fetchSession } from "./state/api";
 import { SessionProvider } from "./state/session";
 import { AppLayout } from "./layout/AppLayout";
 import { LeadsPage } from "./pages/LeadsPage";
@@ -10,63 +10,85 @@ import { ReviewPage } from "./pages/ReviewPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { LoginPage } from "./pages/LoginPage";
+import { SignupPage } from "./pages/SignupPage";
 import { EmptyState } from "./components/EmptyState";
 import { bootSkeleton, LoginSkeleton } from "./components/LoadingSkeleton";
 import { EMPTY_COPY, PAGE_TITLES, PRODUCT_NAME } from "./copy";
 import { SHELL } from "./layout/shell";
 import { usePageTitle } from "./usePageTitle";
+import { ThemeToggle } from "./components/ThemeToggle";
+
+function isAuthPath(pathname: string): boolean {
+  return pathname.startsWith("/login") || pathname.startsWith("/signup");
+}
 
 export function App() {
+  return (
+    <BrowserRouter>
+      <AuthGate />
+    </BrowserRouter>
+  );
+}
+
+function AuthGate() {
+  const location = useLocation();
+  const [auth, setAuth] = useState<"checking" | "guest" | "ready">("checking");
   const [bootstrap, setBootstrap] = useState<BootstrapResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const enterApp = useCallback(async () => {
+    setAuth("checking");
+    setError(null);
+    try {
+      const data = await fetchBootstrap();
+      setBootstrap(data);
+      setAuth("ready");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load";
+      setBootstrap(null);
+      if (message === "Sign in required") {
+        setError(null);
+        setAuth("guest");
+        return;
+      }
+      setError(message);
+      setAuth("guest");
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    void fetchBootstrap()
-      .then((data) => {
-        if (!cancelled) {
-          setBootstrap(data);
-          setError(null);
+    void fetchSession()
+      .then((session) => {
+        if (cancelled) return;
+        if (!session.authenticated) {
+          setAuth("guest");
+          return;
         }
+        return enterApp();
       })
       .catch((err: unknown) => {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to load");
+          setAuth("guest");
         }
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [enterApp]);
 
-  if (error) {
-    return (
-      <div className="flex min-h-dvh flex-col">
-        <header className="sticky top-0 z-50 bg-background">
-          <div className="h-[3px] bg-accent" />
-          <div className={`${SHELL} flex h-14 items-center`}>
-            <p className="text-[15px] font-semibold tracking-tight">{PRODUCT_NAME}</p>
-          </div>
-        </header>
-        <main className={`${SHELL} flex min-h-[calc(100vh-3.75rem)] items-center py-8`}>
-          <EmptyState
-            icon="error"
-            role="alert"
-            title={EMPTY_COPY.bootstrap.title}
-            description={error || EMPTY_COPY.bootstrap.description}
-          />
-        </main>
-      </div>
-    );
+  if (error && auth !== "ready") {
+    return <BootstrapError error={error} />;
   }
 
-  if (!bootstrap) {
-    const path = window.location.pathname;
-    if (path.startsWith("/login")) {
+  if (auth === "checking") {
+    if (isAuthPath(location.pathname)) {
       return (
         <div className="flex min-h-dvh flex-col">
-          <BootTitle title={PAGE_TITLES.login} />
-          <LoginSkeleton />
+          <BootTitle title={location.pathname.startsWith("/signup") ? PAGE_TITLES.signup : PAGE_TITLES.login} />
+          <LoginSkeleton fields={location.pathname.startsWith("/signup") ? 3 : 2} />
         </div>
       );
     }
@@ -93,31 +115,65 @@ export function App() {
           </div>
         </header>
         <main className={`${SHELL} flex min-h-0 flex-1 flex-col py-4 sm:py-5 lg:overflow-hidden lg:pb-5`}>
-          {bootSkeleton(path)}
+          {bootSkeleton(location.pathname)}
         </main>
       </div>
     );
   }
 
+  if (auth === "guest" || !bootstrap) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage onLoggedIn={() => void enterApp()} />} />
+        <Route path="/signup" element={<SignupPage onLoggedIn={() => void enterApp()} />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
   return (
-    <BrowserRouter>
-      <SessionProvider initial={bootstrap}>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route index element={<Navigate to="/leads" replace />} />
-            <Route path="/leads" element={<LeadsPage />} />
-            <Route path="/leads/:leadId" element={<LeadDetailPage />} />
-            <Route path="/calls/:sessionId/review" element={<ReviewPage />} />
-            <Route path="/diagnostics" element={<Navigate to="/notifications#queue" replace />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/review" element={<Navigate to="/leads" replace />} />
-            <Route path="*" element={<Navigate to="/leads" replace />} />
-          </Route>
-        </Routes>
-      </SessionProvider>
-    </BrowserRouter>
+    <SessionProvider initial={bootstrap}>
+      <Routes>
+        <Route path="/login" element={<Navigate to="/leads" replace />} />
+        <Route path="/signup" element={<Navigate to="/leads" replace />} />
+        <Route element={<AppLayout />}>
+          <Route index element={<Navigate to="/leads" replace />} />
+          <Route path="/leads" element={<LeadsPage />} />
+          <Route path="/leads/:leadId" element={<LeadDetailPage />} />
+          <Route path="/calls/:sessionId/review" element={<ReviewPage />} />
+          <Route path="/diagnostics" element={<Navigate to="/notifications#queue" replace />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/review" element={<Navigate to="/leads" replace />} />
+          <Route path="*" element={<Navigate to="/leads" replace />} />
+        </Route>
+      </Routes>
+    </SessionProvider>
+  );
+}
+
+function BootstrapError({ error }: { error: string }) {
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <header className="sticky top-0 z-50 bg-background">
+        <div className="h-[3px] bg-accent" />
+        <div className={`${SHELL} flex h-14 items-center`}>
+          <p className="text-[15px] font-semibold tracking-tight">{PRODUCT_NAME}</p>
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
+        </div>
+      </header>
+      <main className={`${SHELL} flex min-h-[calc(100vh-3.75rem)] items-center py-8`}>
+        <EmptyState
+          icon="error"
+          role="alert"
+          title={EMPTY_COPY.bootstrap.title}
+          description={error || EMPTY_COPY.bootstrap.description}
+        />
+      </main>
+    </div>
   );
 }
 
@@ -125,4 +181,3 @@ function BootTitle({ title }: { title: string }) {
   usePageTitle(title);
   return null;
 }
-

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { startE2eServer } from "./server.js";
+import { signIn } from "./auth.js";
 import { fakeResearch, interviewTurn, offering, prospectBrief, strategy } from "../helpers/campaigns.js";
 
 function offeringMessage(name: string, tag = "") {
@@ -47,8 +48,7 @@ async function openFirstLead(page: Page) {
 test("create different offerings, match leads by sheet tag, view cited preparation, switch and regenerate", async ({ page }) => {
   const server = await startE2eServer({ initialCampaigns: [], enqueueLlm: false, researchClient: fakeResearch });
   try {
-    await page.goto(server.baseURL);
-    await expect(page.getByRole("link", { name: "Mantis" })).toBeVisible();
+    await signIn(page, server.baseURL);
     await expect(page.getByRole("link", { name: /Queue diagnostics/ })).toHaveCount(0);
     await expect(page.getByRole("link", { name: /^Notifications/ })).toBeVisible();
     await expect(page.getByRole("link", { name: "Analytics" })).toBeVisible();
@@ -121,7 +121,7 @@ test("create different offerings, match leads by sheet tag, view cited preparati
 test("generation failures retain the offering input and retry creates an AI campaign", async ({ page }) => {
   const server = await startE2eServer({ initialCampaigns: [], enqueueLlm: false, researchClient: null });
   try {
-    await page.goto(server.baseURL);
+    await signIn(page, server.baseURL);
     await openCampaignChat(page);
     server.llm.enqueueRaw("invalid output");
     await sendCampaignChat(page, offeringMessage("Invoice assistant"));

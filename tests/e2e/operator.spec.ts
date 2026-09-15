@@ -1,5 +1,6 @@
 import { expect, test as base } from "@playwright/test";
 import { startE2eServer, type E2eServer } from "./server.js";
+import { signIn } from "./auth.js";
 
 const test = base.extend<{ server: E2eServer }>({
   server: async ({}, use) => {
@@ -10,8 +11,7 @@ const test = base.extend<{ server: E2eServer }>({
 });
 
 async function login(page: import("@playwright/test").Page, baseURL: string) {
-  await page.goto(baseURL);
-  await expect(page.getByRole("link", { name: "Mantis" })).toBeVisible();
+  await signIn(page, baseURL);
 }
 
 async function chooseCampaign(page: import("@playwright/test").Page, name: string) {
@@ -193,6 +193,6 @@ test("notifications lists queue issues and replaces diagnostics nav", async ({ p
 
 invalidSheet("invalid Sheet headers block Call", async ({ page, server }) => {
   await login(page, server.baseURL);
-  await expect(page.getByLabel("Sheet blocking error")).toBeVisible();
-  await expect(page.getByLabel("Sheet blocking error")).toContainText("Sheet needs a fix");
+  await expect(page.getByRole("status", { name: "Sheet needs a fix" })).toBeVisible();
+  await expect(page.getByRole("status", { name: "Sheet needs a fix" })).toContainText("Sheet needs a fix");
 });

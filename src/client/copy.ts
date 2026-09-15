@@ -11,7 +11,10 @@ export const NAV_COPY = {
   analytics: "Analytics",
   settings: "Settings",
   calendar: "Calendar",
-  newCampaign: "New campaign"
+  newCampaign: "New campaign",
+  signOut: "Sign out",
+  themeToDark: "Switch to dark theme",
+  themeToLight: "Switch to light theme"
 } as const;
 
 export function pageTitle(...parts: Array<string | null | undefined>): string {
@@ -24,6 +27,7 @@ export function pageTitle(...parts: Array<string | null | undefined>): string {
 export const PAGE_TITLES = {
   home: pageTitle("Ready"),
   login: pageTitle("Sign in"),
+  signup: pageTitle("Create account"),
   analytics: pageTitle("Analytics"),
   notifications: pageTitle("Notifications"),
   settings: pageTitle("Settings"),
@@ -36,6 +40,26 @@ export function notificationsNavLabel(count: number): string {
   if (count > 0) return `${NAV_COPY.notifications}, ${count} waiting`;
   return NAV_COPY.notifications;
 }
+
+export const AUTH_COPY = {
+  email: "Email",
+  password: "Password",
+  confirmPassword: "Confirm password",
+  passwordHint: "At least 8 characters",
+  mismatch: "Passwords do not match",
+  signInTitle: "Sign in",
+  signInBody: "Use your email and password to open the operator workspace.",
+  signInSubmit: "Sign in",
+  signInPending: "Signing in…",
+  signInFooter: "Need an account?",
+  signInFooterAction: "Create one",
+  signUpTitle: "Create account",
+  signUpBody: "Create an operator account with email and password. This workspace is shared across accounts on this box.",
+  signUpSubmit: "Create account",
+  signUpPending: "Creating account…",
+  signUpFooter: "Already have an account?",
+  signUpFooterAction: "Sign in"
+} as const;
 
 export const SEMANTIC_OUTCOME_LABELS: Record<string, string> = {
   meeting_booked: "Meeting booked",
@@ -159,6 +183,17 @@ export const SETTINGS_COPY = {
     unconfiguredHint: "Ask whoever runs this box to finish Google Calendar setup, then connect here.",
     connectedFlash: "Google Calendar connected.",
     deniedFlash: "Google Calendar connect was cancelled."
+  },
+  account: {
+    heading: "Account",
+    signOut: "Sign out",
+    hint: "Signing out ends this browser session. Sheet, campaigns, and Calendar stay as they are for the next sign-in."
+  },
+  appearance: {
+    heading: "Appearance",
+    hint: "Light and dark stay in this browser. Mint stays the accent either way.",
+    light: "Light",
+    dark: "Dark"
   },
   sheet: {
     heading: "Sheet",

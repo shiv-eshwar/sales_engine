@@ -69,19 +69,20 @@ describe("AI campaigns and prospect preparation", () => {
       }
     });
     apps.push(app);
+    const cookie = await loginCookie(app);
     const payload = { requestId: randomUUID(), messages: [{ role: "user", content: "Hello" }] };
-    const failed = await app.inject({ method: "POST", url: "/api/campaigns/interview", payload });
+    const failed = await app.inject({ method: "POST", url: "/api/campaigns/interview", headers: { cookie }, payload });
     expect(failed.statusCode).toBe(502);
     expect(failed.json().error).toBe(message);
     expect((await app.inject({ url: "/health/ready" })).json().checks.llm.ok).toBe(false);
     revoked = false;
-    const recovered = await app.inject({ method: "POST", url: "/api/campaigns/interview", payload });
+    const recovered = await app.inject({ method: "POST", url: "/api/campaigns/interview", headers: { cookie }, payload });
     expect(recovered.statusCode, recovered.body).toBe(200);
     expect((await app.inject({ url: "/health/ready" })).json().checks.llm.ok).toBe(true);
     expect(getAppContext(app).campaignStore.list()).toEqual([]);
   });
 
-  it("supports open access and keeps invalid generation out of saved campaigns", async () => {
+  it("requires a session and keeps invalid generation out of saved campaigns", async () => {
     const { app, llm, cookie, ctx } = await setup();
     const requestId = randomUUID();
     await bindSampleSheet(app, cookie, requestId);
@@ -90,7 +91,8 @@ describe("AI campaigns and prospect preparation", () => {
     expect((await app.inject({ method: "POST", url: "/api/campaigns", headers: { cookie }, payload })).statusCode).toBe(502);
     expect(ctx.campaignStore.list()).toEqual([]);
     llm.enqueueJson(strategy());
-    const created = await app.inject({ method: "POST", url: "/api/campaigns", payload });
+    expect((await app.inject({ method: "POST", url: "/api/campaigns", payload })).statusCode).toBe(401);
+    const created = await app.inject({ method: "POST", url: "/api/campaigns", headers: { cookie }, payload });
     expect(created.statusCode).toBe(201);
     const repeated = await app.inject({ method: "POST", url: "/api/campaigns", headers: { cookie }, payload });
     expect(repeated.json().id).toBe(created.json().id);

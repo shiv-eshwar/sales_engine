@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { SettingsView } from "../../src/client/pages/SettingsPage.js";
 import { SETTINGS_COPY } from "../../src/client/copy.js";
 import { isWorkspacePath } from "../../src/client/layout/shell.js";
+import { ThemeProvider } from "../../src/client/ThemeProvider.js";
 import type { SheetInfo } from "../../src/shared/contracts.js";
 
 const sheetOk: SheetInfo = {
@@ -33,7 +34,9 @@ const providerOk = { status: "ok" as const, message: "Ready", callerId: "+155555
 const providerOff = { status: "not_configured" as const, message: "Not configured" };
 
 function html(props: Parameters<typeof SettingsView>[0]): string {
-  return renderToStaticMarkup(createElement(MemoryRouter, null, createElement(SettingsView, props)));
+  return renderToStaticMarkup(
+    createElement(MemoryRouter, null, createElement(ThemeProvider, null, createElement(SettingsView, props)))
+  );
 }
 
 describe("Settings page", () => {
@@ -55,7 +58,8 @@ describe("Settings page", () => {
       ai: providerOff,
       research: providerOff,
       deepgram: "Deepgram not configured; transcription will be interrupted",
-      flash: null
+      flash: null,
+      operatorEmail: "op@test.local"
     });
     expect(markup).toContain(SETTINGS_COPY.calendar.disconnectedTitle);
     expect(markup).toContain(SETTINGS_COPY.calendar.connect);
@@ -77,7 +81,8 @@ describe("Settings page", () => {
       ai: { status: "ok", message: "AI generation configured" },
       research: providerOff,
       deepgram: "Deepgram API key is set",
-      flash: null
+      flash: null,
+      operatorEmail: "op@example.com"
     });
     expect(markup).toContain("op@example.com");
     expect(markup).toContain(SETTINGS_COPY.calendar.disconnect);
@@ -85,5 +90,10 @@ describe("Settings page", () => {
     expect(markup).toContain(SETTINGS_COPY.sheet.sample);
     expect(markup).toContain(SETTINGS_COPY.twilio.registered);
     expect(markup).toContain(SETTINGS_COPY.providers.ai);
+    expect(markup).toContain("op@example.com");
+    expect(markup).toContain(SETTINGS_COPY.account.signOut);
+    expect(markup).toContain(SETTINGS_COPY.appearance.heading);
+    expect(markup).toContain(SETTINGS_COPY.appearance.light);
+    expect(markup).toContain(SETTINGS_COPY.appearance.dark);
   });
 });
