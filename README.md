@@ -122,25 +122,23 @@ Startup preflight requires every configured header to exist exactly once. Invali
 
 Set `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL` for an OpenAI-compatible endpoint. `LLM_API_MODE` selects `chat_completions` (default) or `responses`. Campaign creation, prospect preparation, live coaching and post-call extraction use validated JSON. Campaign/preparation errors leave saved results unchanged and offer a retry. Invalid live cues are dropped; an active call continues. AI campaigns need this connection to generate a brief; explicitly configured legacy YAML campaigns can still call without coaching.
 
-For a dedicated local LiteLLM proxy using your ChatGPT subscription, install Docker with Compose, then run:
+For a dedicated local LiteLLM proxy using your OpenAI API key, install Docker with Compose and set `OPENAI_API_KEY` in the private `.env`. This is the upstream OpenAI key, not `LLM_API_KEY` / `SALES_LITELLM_MASTER_KEY`, which authenticate the app to the local proxy. No ChatGPT subscription login or refresh token is used.
 
-```bash
+```sh
 npm run proxy:setup
-npm run proxy:login
-npm run start:local
+npm run proxy:check
+npm start
 ```
 
-The login command displays a device code and OpenAI sign-in URL. Complete that sign-in to create the proxy's own renewable session. The `sales-engine` Compose project listens only on `127.0.0.1:4001`, has its own `sales-engine_chatgpt-auth` volume and master key, and restarts automatically with Docker. It does not require the Software Factory proxy or database. Setup writes the generated key and app/research connection settings to the ignored `.env` with owner-only permissions; restart the app after setup. Set `SALES_LITELLM_PORT` before setup to choose a different port.
+On the production server, use `AI_ENV_FILE=/opt/sales-engine/shared/.env npm run proxy:setup` and `AI_ENV_FILE=/opt/sales-engine/shared/.env npm run proxy:check`. Setup preserves the local proxy master key and configures app/research routing. Restart the app if its environment changed. To update only the proxy with production credentials, run `docker compose --env-file /opt/sales-engine/shared/.env -f infra/litellm/compose.yaml up -d --wait`. Never print the resolved Compose configuration, because it includes secrets.
 
-The proxy uses pinned LiteLLM `v1.89.5`, the version verified with Software Factory's [ChatGPT provider](https://docs.litellm.ai/docs/providers/chatgpt). Both `sales-fast` and `sales-research` route to `chatgpt/gpt-5.6-luna` through Responses. Requests use the subscription; there is no API-key provider fallback. Generation asks for JSON and validates it locally because this provider does not enforce JSON response format. Web research requires completed web-search output and provider citations.
+The proxy uses pinned LiteLLM `v1.89.5`. Both `sales-fast` and `sales-research` route to `openai/gpt-5.6-luna` through Responses using `OPENAI_API_KEY`. This uses OpenAI API access and billing. The proxy listens only on `127.0.0.1:4001` and restarts automatically with Docker. The old ChatGPT auth volume is no longer mounted; it does not need to be deleted to migrate. `proxy:login` only prints the migration instructions and cannot start an OAuth login.
 
-`npm run proxy:up` starts the proxy; `npm run proxy:down` stops it while preserving login storage. `npm run proxy:login` establishes an independent renewable login, verifies a refresh token was saved, and runs a real generation probe. Imported access-token-only sessions are no longer supported: they stop working after expiry or revocation and cannot renew. Never delete the auth volume unless you intend to sign in again.
-
-Run `npm run proxy:check` to verify actual upstream generation. For production, use `AI_ENV_FILE=/opt/sales-engine/shared/.env npm run proxy:check`. Container health and `/models` only prove the proxy process/routing is available; they do not prove its upstream login works. A revoked ChatGPT login requires `proxy:login`, not replacement of the LiteLLM master key. The app logs safe failure categories and reports the last observed AI generation health. Transient network/429/502/503/504 failures retry at most twice within the original request deadline; authentication failures do not retry. Production deployment checks generation before switching releases.
+Run `npm run proxy:check` to verify actual upstream generation. Container health and `/models` only prove the proxy process/routing is available, not that the upstream key can generate responses. The app logs safe failure categories and reports the last observed AI generation health. Temporary network/429/502/503/504 failures retry at most twice within the original deadline; authentication failures do not retry. Production deployment checks generation before switching releases.
 
 When `LLM_BASE_URL` points to `api.openai.com`, web research reuses that key and model through the [Responses API web search tool](https://developers.openai.com/api/docs/guides/tools-web-search). Search is required and source URLs come from provider citation metadata, not URLs invented in generated text. The model must support web search. To use a separate Responses-compatible endpoint, configure `RESEARCH_BASE_URL`, `RESEARCH_API_KEY`, and `RESEARCH_MODEL`; credentials are not implicitly forwarded to a different provider.
 
-`AI_GENERATION_TIMEOUT_MS` defaults to 90 seconds and `RESEARCH_TIMEOUT_MS` to 60 seconds. Live coaching retains its separate `LLM_TIMEOUT_MS` budget. A provider 401 means the configured API key was rejected; update the local environment and restart. `/health/ready` reports configured integrations, not live credential validation.
+`AI_GENERATION_TIMEOUT_MS` defaults to 90 seconds and `RESEARCH_TIMEOUT_MS` to 60 seconds. Live coaching retains its separate `LLM_TIMEOUT_MS` budget. A provider 401 requires checking both the local proxy key and the upstream OpenAI API key. `/health/ready` reports the last observed generation result, including authentication failures; `proxy:check` performs a fresh generation probe.
 
 ## AI agents (eve)
 

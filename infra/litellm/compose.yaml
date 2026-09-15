@@ -7,10 +7,9 @@ services:
       - "127.0.0.1:${SALES_LITELLM_PORT:-4001}:4000"
     environment:
       LITELLM_MASTER_KEY: ${SALES_LITELLM_MASTER_KEY:?Run npm run proxy:setup first}
-      CHATGPT_TOKEN_DIR: /var/lib/litellm/chatgpt
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in the private environment file}
     volumes:
       - ./config.yaml:/app/config.yaml:ro
-      - chatgpt-auth:/var/lib/litellm/chatgpt
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=5)"]
@@ -18,5 +17,3 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
-volumes:
-  chatgpt-auth:

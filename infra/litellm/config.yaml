@@ -1,13 +1,15 @@
-# Pinned to the same version verified with Software Factory's ChatGPT provider.
+# OpenAI API-key routing. The local proxy key is separate from OPENAI_API_KEY.
 model_list:
   - model_name: sales-fast
     litellm_params:
-      model: chatgpt/gpt-5.6-luna
+      model: openai/gpt-5.6-luna
+      api_key: os.environ/OPENAI_API_KEY
     model_info:
       mode: responses
   - model_name: sales-research
     litellm_params:
-      model: chatgpt/gpt-5.6-luna
+      model: openai/gpt-5.6-luna
+      api_key: os.environ/OPENAI_API_KEY
     model_info:
       mode: responses
 general_settings:
