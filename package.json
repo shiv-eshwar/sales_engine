@@ -21,7 +21,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "VITE_E2E=true vite build --outDir dist/e2e-client && playwright test",
-    "hash-password": "tsx scripts/hash-password.ts"
+    "hash-password": "tsx scripts/hash-password.ts",
+    "proxy:check": "tsx scripts/check-ai.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

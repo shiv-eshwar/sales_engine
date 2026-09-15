@@ -1,3 +1,4 @@
+import { LlmError } from "../llm/errors.js";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { campaignBriefSchema } from "../../shared/campaigns.js";
@@ -22,7 +23,7 @@ const interviewSchema = z.object({
 
 function generationError(error: unknown): string {
   if (error instanceof SheetBindingError) return error.message;
-  if (error instanceof Error && error.message === "LLM HTTP 401") return "The AI provider rejected the API key. Update LLM_API_KEY and restart the server, then try again.";
+  if (error instanceof LlmError) return error.message;
   if (error instanceof Error && /^(LLM HTTP|Campaign changed|Configure the LLM|Generated brief cited|That Sheet is already|Connect a unique)/.test(error.message)) return error.message;
   return "AI generation failed or returned an invalid result. Check the AI connection and try again; your saved campaign is unchanged.";
 }
@@ -101,6 +102,8 @@ export async function registerCampaigns(app: FastifyInstance, ctx: AppContext): 
         : `Created ${created.name}. Eligible Sheet contacts are ready to call.`;
       return { text: `${turn.message}\n\n${suffix}`, campaign: created };
     } catch (error) {
+      request.log.warn({ code: error instanceof LlmError ? error.code : "generation_failed",
+        upstreamStatus: error instanceof LlmError ? error.httpStatus : undefined }, "Campaign AI request failed");
       return reply.code(generationStatus(error)).send({ error: generationError(error) });
     } finally {
       generating.delete(lockKey);
@@ -138,6 +141,8 @@ export async function registerCampaigns(app: FastifyInstance, ctx: AppContext): 
       await activateCampaignSheet(ctx, campaign.config.id);
       return reply.code(201).send(toPublicCampaign(campaign.config, ctx));
     } catch (error) {
+      request.log.warn({ code: error instanceof LlmError ? error.code : "generation_failed",
+        upstreamStatus: error instanceof LlmError ? error.httpStatus : undefined }, "Campaign AI request failed");
       return reply.code(generationStatus(error)).send({ error: generationError(error) });
     } finally {
       generating.delete(requestId);
@@ -162,6 +167,8 @@ export async function registerCampaigns(app: FastifyInstance, ctx: AppContext): 
       ctx.campaigns.splice(index, 1, campaign.config);
       return toPublicCampaign(campaign.config, ctx);
     } catch (error) {
+      request.log.warn({ code: error instanceof LlmError ? error.code : "generation_failed",
+        upstreamStatus: error instanceof LlmError ? error.httpStatus : undefined }, "Campaign AI request failed");
       return reply.code(generationStatus(error)).send({ error: generationError(error) });
     } finally {
       generating.delete(id);

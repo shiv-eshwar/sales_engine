@@ -1,3 +1,5 @@
+export type LlmHealth = { ok: boolean | null; message: string; checkedAt: string | null };
+
 export type LlmCompleteInput = {
   system: string;
   user: string;
@@ -5,5 +7,6 @@ export type LlmCompleteInput = {
 };
 
 export type LlmClient = {
+  getHealth?: () => LlmHealth;
   completeJson: (input: LlmCompleteInput) => Promise<string>;
 };

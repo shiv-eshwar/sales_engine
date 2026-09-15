@@ -1,3 +1,4 @@
+import { LlmError } from "../../src/server/llm/errors.js";
 import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -52,6 +53,32 @@ describe("AI campaigns and prospect preparation", () => {
     expect(response.json().campaigns).toEqual([]);
     expect(response.json().lead).toBeNull();
     expect((await app.inject({ url: "/health/ready" })).statusCode).toBe(200);
+  });
+
+  it("reports revoked login, releases the interview lock, and succeeds after authentication recovers", async () => {
+    let revoked = true;
+    const message = "The AI service's ChatGPT login expired or was revoked. Reconnect ChatGPT.";
+    const { app } = await startTestApp({ LLM_BASE_URL: "http://localhost/v1", LLM_API_KEY: "test", LLM_MODEL: "test" }, {
+      initialCampaigns: [],
+      llmClient: {
+        getHealth: () => ({ ok: !revoked, message: revoked ? message : "AI generation verified", checkedAt: new Date().toISOString() }),
+        completeJson: async () => {
+          if (revoked) throw new LlmError("login_required", message, 401);
+          return JSON.stringify(interviewAsk("What are you selling?"));
+        }
+      }
+    });
+    apps.push(app);
+    const payload = { requestId: randomUUID(), messages: [{ role: "user", content: "Hello" }] };
+    const failed = await app.inject({ method: "POST", url: "/api/campaigns/interview", payload });
+    expect(failed.statusCode).toBe(502);
+    expect(failed.json().error).toBe(message);
+    expect((await app.inject({ url: "/health/ready" })).json().checks.llm.ok).toBe(false);
+    revoked = false;
+    const recovered = await app.inject({ method: "POST", url: "/api/campaigns/interview", payload });
+    expect(recovered.statusCode, recovered.body).toBe(200);
+    expect((await app.inject({ url: "/health/ready" })).json().checks.llm.ok).toBe(true);
+    expect(getAppContext(app).campaignStore.list()).toEqual([]);
   });
 
   it("supports open access and keeps invalid generation out of saved campaigns", async () => {

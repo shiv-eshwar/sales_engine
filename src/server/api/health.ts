@@ -65,10 +65,12 @@ export async function registerHealth(app: FastifyInstance, ctx: AppContext): Pro
     };
 
     const llmConfigured = Boolean(ctx.env.LLM_BASE_URL && ctx.env.LLM_API_KEY && ctx.env.LLM_MODEL);
+    const aiHealth = ctx.llmClient?.getHealth?.();
+    const checked = aiHealth?.checkedAt ? ` (last checked ${aiHealth.checkedAt})` : "";
     checks.llm = {
-      ok: true,
+      ok: aiHealth?.ok !== false,
       message: llmConfigured
-        ? "LLM is configured"
+        ? (aiHealth?.message ?? "LLM configured; no generation verified yet") + checked
         : "LLM not configured; live coaching will be skipped"
     };
     checks.research = {

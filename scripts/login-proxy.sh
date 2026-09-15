@@ -3,4 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 # A fresh OAuth session avoids sharing a rotating refresh token with another proxy.
 docker compose --env-file .env -f infra/litellm/compose.yaml exec litellm \
-  python -c 'import os; os.umask(0o077); from litellm.llms.chatgpt.authenticator import Authenticator; auth = Authenticator(); auth._login_device_code(); os.chmod(auth.auth_file, 0o600); print("ChatGPT subscription connected.")'
+  python -c 'import os; os.umask(0o077); from litellm.llms.chatgpt.authenticator import Authenticator; auth = Authenticator(); auth._login_device_code(); assert auth._read_auth_file().get("refresh_token"), "Login did not supply renewable credentials"; os.chmod(auth.auth_file, 0o600); print("ChatGPT subscription connected.")'
+
+# Verify upstream generation, not just container liveness.
+npx tsx scripts/check-ai.ts
