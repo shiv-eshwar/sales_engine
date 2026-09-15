@@ -249,7 +249,9 @@ Default Docker volume path is `/app/data/ledger.sqlite`.
 
 **Microphone.** Live Twilio calling needs a real mic and browser permission. Playwright E2E does not. If device.register succeeds but you hear nothing, check OS input device and that another app does not hold exclusive access.
 
-**Twilio device offline/error.** Confirm Voice credentials, TwiML app SID, and that `POST /api/twilio/token` returns 200 while logged in. Browser console errors from `@twilio/voice-sdk` usually mean a bad token or blocked WebRTC.
+**Twilio device offline/error.** The browser retries connection failures with backoff (2–30 seconds), retries failed token refreshes, and reconnects after connectivity returns. Token fetches time out after 10 seconds; registration attempts time out after 20 seconds. Tokens last one hour and refresh before expiry. Recovery does not destroy a device carrying a call. Settings shows the last SDK error, and the server logs structured browser status/error codes without tokens. A valid server token response alone does not prove browser registration succeeded.
+
+**Twilio URL audit.** Run `TWILIO_ENV_FILE=/opt/sales-engine/shared/.env node scripts/check-twilio.mjs` to verify account credentials, caller number, public health and the TwiML application's voice/status URLs. After confirming the intended deployment, add `--sync` to update those URLs and methods. Production deployment runs the read-only audit before switching releases. Keep session creation and webhooks on the same application/database. Use a stable public hostname; temporary tunnel URLs can change on restart.
 
 **Webhook signature 403.** `APP_BASE_URL` must be exactly the origin Twilio uses (scheme + host + port). A tunnel that rewrites HTTP/HTTPS or a trailing-slash mismatch will fail `X-Twilio-Signature`.
 

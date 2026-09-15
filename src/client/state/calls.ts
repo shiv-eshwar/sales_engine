@@ -41,7 +41,8 @@ async function parseError(response: Response): Promise<string> {
 export async function fetchVoiceToken(): Promise<string> {
   const response = await fetch("/api/twilio/token", {
     method: "POST",
-    credentials: "include"
+    credentials: "include",
+    signal: AbortSignal.timeout(10000)
   });
   if (!response.ok) {
     throw new Error(await parseError(response));

@@ -179,7 +179,7 @@ export const SETTINGS_COPY = {
     emptyHint: "Voice calling stays off until this box has Twilio Voice set up. There is no keypad here.",
     registered: "Browser device registered",
     registering: "Registering this browser…",
-    offline: "Twilio is set up, but this browser is not registered yet. Keep the app open on Ready so the device can come online.",
+    offline: "Voice disconnected. Reconnecting automatically; check your internet connection if this continues.",
     error: "This browser could not register with Twilio."
   },
   providers: {

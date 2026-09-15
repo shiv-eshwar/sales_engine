@@ -26,6 +26,15 @@ describe("Twilio call sessions and webhooks", () => {
     await app.close();
   });
 
+  it("accepts structured device diagnostics and rejects arbitrary SDK payloads", async () => {
+    const ok = await app.inject({ method: "POST", url: "/api/twilio/device-status",
+      headers: { cookie }, payload: { status: "error", code: 20104 } });
+    expect(ok.statusCode).toBe(204);
+    const invalid = await app.inject({ method: "POST", url: "/api/twilio/device-status",
+      headers: { cookie }, payload: { status: "error", token: "must-not-be-accepted" } });
+    expect(invalid.statusCode).toBe(400);
+  });
+
   it("maps one lead to one session and TwiML dials the stored E.164 not a client number", async () => {
     const created = await app.inject({
       method: "POST",

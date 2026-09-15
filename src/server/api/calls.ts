@@ -56,6 +56,16 @@ export async function registerCallApi(app: FastifyInstance, ctx: AppContext): Pr
     return { token: createVoiceAccessToken(ctx.env), identity: "operator" };
   });
 
+  app.post("/api/twilio/device-status", { preHandler: auth }, async (request, reply) => {
+    const parsed = z.object({
+      status: z.enum(["offline", "registering", "registered", "error"]),
+      code: z.number().int().min(0).max(999999).optional()
+    }).strict().safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid voice status" });
+    request.log.info(parsed.data, "Browser voice device status");
+    return reply.code(204).send();
+  });
+
   app.post("/api/calls/sessions", { preHandler: auth }, async (request, reply) => {
     const parsed = createSessionSchema.safeParse(request.body);
     if (!parsed.success) {

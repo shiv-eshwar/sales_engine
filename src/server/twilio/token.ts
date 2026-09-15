@@ -2,7 +2,7 @@ import twilio from "twilio";
 import type { Env } from "../env.js";
 import { OPERATOR_IDENTITY } from "./config.js";
 
-const TOKEN_TTL_SECONDS = 60 * 5;
+const TOKEN_TTL_SECONDS = 60 * 60;
 
 export function createVoiceAccessToken(env: Env): string {
   if (

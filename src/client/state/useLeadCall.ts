@@ -110,6 +110,7 @@ export function useLeadCall(lead: PublicLead | null) {
       try {
         await connectTwilioCall(session.id);
       } catch (connectError) {
+        setCallError(connectError instanceof Error ? connectError.message : "Could not connect voice");
         openCallReviewTab(session.id);
         await cancelCallSession(session.id);
         try {

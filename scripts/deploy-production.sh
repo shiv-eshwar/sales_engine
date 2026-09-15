@@ -94,6 +94,9 @@ echo "==> Installing dependencies and building"
 env NODE_ENV=development npm ci
 npm run build
 
+# Stop before switching releases if Twilio points at another deployment.
+TWILIO_ENV_FILE="$SHARED/.env" node scripts/check-twilio.mjs
+
 RELEASE="$RELEASES/$(date -u +%Y%m%d%H%M%S)"
 echo "==> Creating release $RELEASE"
 mkdir -p "$RELEASE"
